@@ -16,7 +16,7 @@ export default function Landing() {
             <div className="flex items-center justify-center gap-3 mb-6">
               <Waves className="w-10 h-10 md:w-12 md:h-12 text-primary" />
               <h1 className="text-3xl md:text-5xl font-bold text-foreground">
-                SwimCoach
+                Hart SC Coaches Platform
               </h1>
             </div>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -78,7 +78,7 @@ export default function Landing() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-muted-foreground text-sm md:text-base">
-                SwimCoach replaces basic logging tools with a comprehensive relational database platform. Track every detail of your training sessions from poolside, on any device.
+                Hart SC Coaches Platform replaces basic logging tools with a comprehensive relational database platform. Track every detail of your training sessions from poolside, on any device.
               </p>
               <ul className="text-sm md:text-base text-muted-foreground space-y-2 ml-4">
                 <li className="flex items-start gap-2">
