@@ -106,7 +106,7 @@ export default function RegistrationPage() {
 
   if (registrationComplete) {
     return (
-      <div className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto scroll-container bg-gradient-to-br from-[#4B9A4A] to-[#3d7d3d] py-8">
+      <div className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto scroll-container bg-white py-8">
         <div className="max-w-md w-full px-6">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -116,7 +116,7 @@ export default function RegistrationPage() {
           >
             <div className="bg-card rounded-2xl shadow-2xl p-8 text-center">
               <CheckCircle2 
-                className="w-16 h-16 mx-auto mb-4 text-[#4B9A4A]"
+                className="w-16 h-16 mx-auto mb-4 text-[#059467]"
               />
               <h2 className="text-2xl font-bold mb-2">Welcome aboard!</h2>
               <p className="text-muted-foreground mb-4">
@@ -139,7 +139,7 @@ export default function RegistrationPage() {
   }
 
   return (
-    <div className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto scroll-container bg-gradient-to-br from-[#4B9A4A] to-[#3d7d3d] py-8">
+    <div className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto scroll-container bg-white py-8">
       <div className="max-w-md w-full px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -151,7 +151,7 @@ export default function RegistrationPage() {
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold mb-2">Create your account</h2>
               <p className="text-muted-foreground text-sm">
-                Complete your registration to access Hart SC Coaches
+                Complete your registration to access Swim Squad
               </p>
             </div>
 
@@ -226,7 +226,7 @@ export default function RegistrationPage() {
                 <Button
                   type="submit"
                   data-testid="button-register"
-                  className="w-full h-11 bg-[#4B9A4A] text-white hover:bg-[#3d7d3d] transition-colors"
+                  className="w-full h-11 bg-[#059467] text-white hover:bg-[#047a55] transition-colors"
                   disabled={registerMutation.isPending || !form.watch('inviteToken')}
                 >
                   {registerMutation.isPending ? 'Creating account...' : 'Create Account'}
@@ -239,7 +239,7 @@ export default function RegistrationPage() {
                 Already have an account?{' '}
                 <button 
                   data-testid="link-signin"
-                  className="text-[#4B9A4A] hover:underline transition-all"
+                  className="text-[#059467] hover:underline transition-all"
                   onClick={(e) => {
                     e.preventDefault();
                     setLocation('/login');

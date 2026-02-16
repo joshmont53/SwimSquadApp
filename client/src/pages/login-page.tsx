@@ -101,7 +101,7 @@ export default function LoginPage() {
 
   return (
     <div 
-      className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto scroll-container bg-gradient-to-br from-[#4B9A4A] to-[#3d7d3d] py-8"
+      className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto scroll-container bg-white py-8"
     >
       <div className="max-w-md w-full px-6">
         <motion.div
@@ -164,7 +164,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   data-testid="button-signin"
-                  className="w-full h-11 bg-[#4B9A4A] text-white hover:bg-[#3d7d3d] transition-colors"
+                  className="w-full h-11 bg-[#059467] text-white hover:bg-[#047a55] transition-colors"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
@@ -193,7 +193,7 @@ export default function LoginPage() {
             <div className="mt-5 text-center">
               <button 
                 data-testid="link-forgot-password"
-                className="text-sm text-[#4B9A4A] hover:underline transition-all"
+                className="text-sm text-[#059467] hover:underline transition-all"
                 onClick={(e) => {
                   e.preventDefault();
                   toast({
