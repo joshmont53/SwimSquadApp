@@ -1,0 +1,85 @@
+You are my security + GDPR review assistant for my Replit-deployed coaching app.
+
+Goal: produce a concise checklist report of risks + fixes, specifically around:
+1) database security & exposure
+2) authentication / authorization
+3) secrets management
+4) logging & data leakage
+5) AI feature data minimisation (ensure no swimmer personal data is sent to AI)
+6) basic GDPR readiness items I should add
+
+Context:
+- App stores swimmers: first name, last name, ASA number, and currently DOB (children/minors).
+- App is deployed on Replit to a public URL but only I have a login currently.
+- There is (or will be) an AI feature to help with swim set writing.
+
+Instructions:
+1) Inspect the codebase and identify:
+   A) Where swimmer data is stored (DB type, schema, migrations/models).
+   B) Where secrets are stored (env vars, Replit Secrets, config files).
+   C) Where authentication is implemented (login, password storage, sessions/JWT).
+   D) Where authorization is enforced (club isolation, role checks, route guards).
+   E) Any logs, analytics, error tracking that might capture swimmer info.
+
+2) Database security checks:
+   - Confirm DB is not publicly accessible (no open ports, no hardcoded external connection strings exposed).
+   - Confirm DB credentials are stored in environment secrets (not in repo).
+   - Confirm encryption-in-transit is used for DB connections (TLS/SSL if supported).
+   - Confirm least-privilege DB user (not admin/root if avoidable).
+   - Confirm backups are secured (if any), and no plain exports in repo/storage.
+   - Identify any endpoints that could leak swimmer data (e.g., /api/swimmers without auth).
+
+3) Auth / session checks:
+   - Confirm passwords are hashed with a strong algorithm (bcrypt/argon2/scrypt) and salted.
+   - Confirm no plaintext passwords anywhere.
+   - Confirm session cookies are httpOnly + secure + sameSite (if cookies used).
+   - Confirm rate limiting / brute force protections for login if possible.
+   - Confirm “forgot password” or invite flows don’t leak accounts.
+
+4) Data access / multi-tenancy (even if not live yet):
+   - If clubs exist: confirm every swimmer query is scoped by club_id and user role.
+   - Verify there is no “IDOR” (Insecure Direct Object Reference) where changing an ID reveals other clubs’ swimmers.
+   - Ensure admin routes are protected.
+
+5) AI feature checks (CRITICAL):
+   - Locate every call to an LLM/AI provider (OpenAI, Anthropic, etc.) or any “agent” code.
+   - For each AI call, print the exact prompt payload structure and identify what data is included.
+   - Flag if any of these are sent to AI:
+     * swimmer first/last name
+     * ASA number
+     * exact DOB
+     * any unique identifiers that could identify a child
+   - Recommend changes to minimise data:
+     * convert DOB -> age band (e.g., 11–12)
+     * remove names/ASA from prompts
+     * send only squad-level aggregate info (age band, ability level, session goals)
+   - Confirm AI requests/responses are not logged with swimmer info.
+   - Confirm AI provider keys are stored only in secrets, not in code.
+
+6) Logging / telemetry checks:
+   - Search for logging of request bodies, DB objects, errors containing swimmer data.
+   - Ensure stack traces or debug logs aren’t exposing secrets or personal data.
+   - If analytics tools exist, list them and what data they collect.
+
+7) Output format:
+   Produce a report with:
+   - “High risk” findings (must fix)
+   - “Medium risk” findings (should fix)
+   - “Low risk / best practice”
+   For each finding include:
+   - file path(s)
+   - why it’s a risk
+   - exact recommended fix (code-level if applicable)
+   - quick verification step to confirm it’s fixed
+
+8) Quick GDPR readiness list (non-legal, practical):
+   - confirm presence/absence of privacy policy link in app
+   - data retention/delete flow (can I delete a swimmer permanently?)
+   - export function (optional)
+   - access controls for coaches
+   - note: children’s data -> extra care
+
+Start now. If you need to search, use ripgrep or equivalent to locate keywords:
+“swimmer”, “dob”, “birth”, “asa”, “openai”, “anthropic”, “llm”, “agent”, “prompt”, “log”, “console”, “debug”, “analytics”, “sentry”, “posthog”, “segment”, “jwt”, “session”, “bcrypt”, “argon”, “cookie”, “club_id”.
+
+Return the report.
