@@ -7,9 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, Target, Trash2, Save, Edit, MessageSquare, Copy } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Target, Trash2, Save, Edit, MessageSquare, Copy, ChevronRight, FileText, Ruler } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useState, useEffect } from "react";
 import type { SwimmingSession, Coach, Squad, Location, Swimmer, Attendance } from "@shared/schema";
@@ -24,6 +26,8 @@ export default function SessionDetail() {
 
   const [attendanceData, setAttendanceData] = useState<Record<string, { status: string, notes: string | null }>>({});
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+  const [distanceSheetOpen, setDistanceSheetOpen] = useState(false);
+  const [notesSheetOpen, setNotesSheetOpen] = useState(false);
 
   const { data: session, isLoading } = useQuery<SwimmingSession>({
     queryKey: ["/api/sessions", sessionId],
@@ -253,13 +257,11 @@ export default function SessionDetail() {
 
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         <Tabs defaultValue="details" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details" data-testid="tab-details">Details</TabsTrigger>
+            <TabsTrigger value="session" data-testid="tab-session">Session</TabsTrigger>
             <TabsTrigger value="attendance" data-testid="tab-attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="feedback" data-testid="tab-feedback">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Feedback
-            </TabsTrigger>
+            <TabsTrigger value="feedback" data-testid="tab-feedback">Feedback</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="space-y-6">
@@ -380,6 +382,67 @@ export default function SessionDetail() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="session" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <CardTitle>Session Content</CardTitle>
+                  <Link href={`/sessions/${sessionId}/edit`}>
+                    <Button variant="outline" size="default" data-testid="button-edit-session-content">
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  {/* Session text */}
+                  <div className="flex-1 min-w-0">
+                    {(session as any).sessionContentHtml ? (
+                      <div
+                        className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+                        dangerouslySetInnerHTML={{ __html: (session as any).sessionContentHtml }}
+                      />
+                    ) : (session as any).sessionContent ? (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {(session as any).sessionContent}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No session content yet. Click Edit to add content.</p>
+                    )}
+                  </div>
+
+                  {/* Sidebar action buttons */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {session.totalDistance > 0 && (
+                      <button
+                        onClick={() => setDistanceSheetOpen(true)}
+                        className="flex items-center gap-1 rounded-md border bg-card px-2.5 py-2 text-xs font-medium text-muted-foreground hover-elevate transition-colors"
+                        data-testid="button-open-distance-sheet"
+                        title="View distance breakdown"
+                      >
+                        <Ruler className="w-3.5 h-3.5" />
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                    {(session as any).sessionNotes && (
+                      <button
+                        onClick={() => setNotesSheetOpen(true)}
+                        className="flex items-center gap-1 rounded-md border bg-card px-2.5 py-2 text-xs font-medium text-muted-foreground hover-elevate transition-colors"
+                        data-testid="button-open-notes-sheet"
+                        title="View session notes"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="attendance" className="space-y-6">
@@ -505,6 +568,102 @@ export default function SessionDetail() {
         open={duplicateModalOpen}
         onOpenChange={setDuplicateModalOpen}
       />
+
+      {/* Distance Breakdown Sheet */}
+      <Sheet open={distanceSheetOpen} onOpenChange={setDistanceSheetOpen}>
+        <SheetContent side="right" className="w-full sm:w-[30rem] sm:max-w-[30rem] p-0 flex flex-col">
+          <SheetHeader className="p-6 pb-4 border-b">
+            <SheetTitle className="flex items-center gap-2">
+              <Ruler className="h-5 w-5 text-primary" />
+              Distance Breakdown
+            </SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              Total: <span className="font-semibold text-primary">{session.totalDistance}m</span>
+            </p>
+          </SheetHeader>
+          <ScrollArea className="flex-1 p-6">
+            {strokeData.length > 0 ? (
+              <Accordion type="multiple" className="w-full">
+                {strokeData.map((stroke, index) => {
+                  const total = stroke.swim + stroke.drill + stroke.kick + stroke.pull;
+                  return (
+                    <AccordionItem key={index} value={`stroke-${index}`}>
+                      <AccordionTrigger className="text-sm font-medium">
+                        <div className="flex items-center justify-between w-full pr-4">
+                          <span>{stroke.name}</span>
+                          <span className="text-primary">{total}m</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          {stroke.swim > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Swim</p>
+                              <p className="font-semibold">{stroke.swim}m</p>
+                            </div>
+                          )}
+                          {stroke.drill > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Drill</p>
+                              <p className="font-semibold">{stroke.drill}m</p>
+                            </div>
+                          )}
+                          {stroke.kick > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Kick</p>
+                              <p className="font-semibold">{stroke.kick}m</p>
+                            </div>
+                          )}
+                          {stroke.pull > 0 && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Pull</p>
+                              <p className="font-semibold">{stroke.pull}m</p>
+                            </div>
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-40 text-center">
+                <Ruler className="h-10 w-10 text-muted-foreground mb-3 opacity-40" />
+                <p className="text-sm text-muted-foreground">No distance data recorded for this session.</p>
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Session Notes Sheet */}
+      <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+        <SheetContent side="right" className="w-full sm:w-[30rem] sm:max-w-[30rem] p-0 flex flex-col">
+          <SheetHeader className="p-6 pb-4 border-b">
+            <SheetTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Session Notes
+            </SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="flex-1 p-6">
+            {(session as any).sessionNotesHtml ? (
+              <div
+                className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: (session as any).sessionNotesHtml }}
+              />
+            ) : (session as any).sessionNotes ? (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {(session as any).sessionNotes}
+              </p>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-40 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground mb-3 opacity-40" />
+                <p className="text-sm text-muted-foreground">No notes for this session.</p>
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

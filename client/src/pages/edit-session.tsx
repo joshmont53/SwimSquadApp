@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, ArrowRight, Save, AlertCircle, Lightbulb, ChevronDown, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, AlertCircle, Lightbulb, ChevronDown, X, FileText } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import type { Coach, Squad, Location, Swimmer, SwimmingSession, SessionSquad } from "@shared/schema";
 import { SessionWriterHelper } from "@/components/SessionWriterHelper";
@@ -31,6 +31,7 @@ const sessionFormSchema = z.object({
   setWriterId: z.string().min(1, "Set writer is required"),
   focus: z.string().min(1, "Session focus is required"),
   sessionContent: z.string().optional(),
+  sessionNotes: z.string().optional(),
   totalFrontCrawlSwim: z.coerce.number().min(0).default(0),
   totalFrontCrawlDrill: z.coerce.number().min(0).default(0),
   totalFrontCrawlKick: z.coerce.number().min(0).default(0),
@@ -140,6 +141,7 @@ export default function EditSession() {
         setWriterId: session.setWriterId,
         focus: session.focus,
         sessionContent: (session as any).sessionContent || "",
+        sessionNotes: (session as any).sessionNotes || "",
         totalFrontCrawlSwim: session.totalFrontCrawlSwim,
         totalFrontCrawlDrill: session.totalFrontCrawlDrill,
         totalFrontCrawlKick: session.totalFrontCrawlKick,
@@ -259,6 +261,10 @@ export default function EditSession() {
         data.totalIMSwim + data.totalIMDrill + data.totalIMKick + data.totalIMPull +
         data.totalNo1Swim + data.totalNo1Drill + data.totalNo1Kick + data.totalNo1Pull;
 
+      const notesHtml = data.sessionNotes
+        ? `<p>${data.sessionNotes.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+        : null;
+
       const payload = {
         ...data,
         squadId: selectedSquadIds[0] || data.squadId,
@@ -267,6 +273,8 @@ export default function EditSession() {
         duration,
         totalDistance,
         squadIds: selectedSquadIds,
+        sessionNotes: data.sessionNotes || null,
+        sessionNotesHtml: notesHtml,
       };
 
       await apiRequest("PUT", `/api/sessions/${sessionId}`, payload);
@@ -785,6 +793,42 @@ export default function EditSession() {
                   </CardContent>
                 </Card>
               </div>
+            )}
+
+            {/* Session Notes - shown on Step 2 */}
+            {step === 2 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <CardTitle>Session Notes</CardTitle>
+                      <CardDescription>
+                        Add coaching notes, reminders, or context for this session
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="sessionNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Add any notes, reminders, or context for this session..."
+                            className="min-h-[160px] text-sm"
+                            data-testid="textarea-session-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
             )}
 
             {/* Navigation Footer */}

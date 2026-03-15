@@ -167,6 +167,10 @@ export const swimmingSessions = pgTable("swimming_sessions", {
   // Session content (raw text written by coach)
   sessionContent: text("session_content"),
   sessionContentHtml: text("session_content_html"),
+
+  // Session notes (coach's additional notes for this session)
+  sessionNotes: text("session_notes"),
+  sessionNotesHtml: text("session_notes_html"),
   
   // Detected drills (AI-identified drill IDs from session content)
   detectedDrillIds: text("detected_drill_ids").array().default(sql`ARRAY[]::text[]`),
