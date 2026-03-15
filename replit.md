@@ -26,6 +26,7 @@ Core features include:
   - File type badges in preview dialog header
   - Navigation available in both desktop and mobile sidebars under the MY TOOLS section
 - **Intelligent Drill Detection**: AI-powered feature that automatically detects drills mentioned in training session content using GPT-4o-mini. Detected drills are displayed in a dedicated sidebar (accessed via Play button) with expandable cards showing full drill details and embedded videos. The drills sidebar button is positioned inside the session content container using absolute positioning (`right-0`), stacked directly below the distance breakdown button when present. Both buttons shift left together when the distance sidebar opens to remain accessible. Includes fallback case-insensitive substring matching for reliability.
+- **Squad Grid View**: A new view mode on the Manage Swimmers page (web-only, hidden on mobile). Toggled via "List View" / "Grid View" buttons in the header. Displays swimmers organised in a matrix by squad (rows) × age group columns (8-, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18+). Each cell shows individual swimmer name chips. Age is calculated as at December 31 of the current year. Features: sticky header/count/squad-name columns, drag-and-drop row/column reordering via `react-dnd`, show/hide squads and age groups via popover checkboxes. Component: `client/src/pages/squad-overview-grid.tsx`.
 - **Feedback System**: Comprehensive three-part feedback system:
   - **Feedback Form**: Coaches can rate sessions across 6 categories (Engagement, Difficulty, Technique Focus, Energy Levels, Session Flow, Overall Effectiveness) on a 1-5 scale, with optional notes and privacy settings. Accessible via feedback icon on session cards.
   - **Feedback Analytics Dashboard**: Displays aggregated feedback data with trend charts, category breakdowns, stroke/discipline analysis, and AI-powered pattern detection using GPT-4o-mini. Features coach performance comparisons and hidden correlation discovery.
@@ -50,5 +51,5 @@ The authentication system is a production-ready, standalone Email/Password authe
 -   **Email Service**: Resend API
 
 ### Key NPM Packages
--   **Frontend**: `react`, `react-dom`, `wouter`, `@tanstack/react-query`, `react-hook-form`, `zod`, `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `lucide-react`.
+-   **Frontend**: `react`, `react-dom`, `wouter`, `@tanstack/react-query`, `react-hook-form`, `zod`, `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `lucide-react`, `react-dnd`, `react-dnd-html5-backend`.
 -   **Backend**: `express`, `drizzle-orm`, `@neondatabase/serverless`, `express-session`, `connect-pg-simple`, `bcrypt`.

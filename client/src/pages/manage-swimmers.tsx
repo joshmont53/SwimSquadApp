@@ -25,7 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Pencil, Trash2, Menu, Search, Filter, Users } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Menu, Search, Filter, Users, List, LayoutGrid } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { SquadOverviewGrid } from './squad-overview-grid';
 
 interface ManageSwimmersProps {
   swimmers: Swimmer[];
@@ -33,8 +35,11 @@ interface ManageSwimmersProps {
   onBack: () => void;
 }
 
+type ViewMode = 'list' | 'grid';
+
 export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps) {
   const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingSwimmer, setEditingSwimmer] = useState<Swimmer | null>(null);
   const [deletingSwimmer, setDeletingSwimmer] = useState<Swimmer | null>(null);
@@ -271,7 +276,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden" data-testid="view-manage-swimmers">
       <div className="flex-shrink-0 sticky top-0 z-10 bg-background">
-        <div className="max-w-4xl mx-auto">
+        <div className={cn(viewMode === 'grid' ? 'max-w-7xl mx-auto' : 'max-w-4xl mx-auto')}>
           <div className="flex items-center gap-3 mb-6 pb-3 border-b">
             <Button
               variant="ghost"
@@ -321,9 +326,38 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
               </SelectContent>
             </Select>
           </div>
+
+          {/* View Toggle - hidden on mobile */}
+          <div className="mt-3 hidden sm:flex gap-2">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              data-testid="button-list-view"
+            >
+              <List className="h-4 w-4 mr-2" />
+              List View
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              data-testid="button-grid-view"
+            >
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Grid View
+            </Button>
+          </div>
         </div>
       </div>
 
+      {viewMode === 'grid' && (
+        <div className={cn('flex-1 overflow-hidden px-4 pb-4 max-w-7xl mx-auto w-full')}>
+          <SquadOverviewGrid swimmers={swimmers} squads={squads} />
+        </div>
+      )}
+
+      {viewMode === 'list' && (
       <div className="flex-1 overflow-auto overflow-x-hidden scroll-container">
         <div className="max-w-4xl mx-auto pt-4">
           {/* Select all control - only show if there are swimmers to select */}
@@ -415,6 +449,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
           </div>
         </div>
       </div>
+      )}
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent data-testid="dialog-add-swimmer">
