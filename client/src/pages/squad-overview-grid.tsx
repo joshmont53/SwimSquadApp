@@ -237,7 +237,7 @@ export function SquadOverviewGrid({ swimmers, squads }: SquadOverviewGridProps) 
     <DndProvider backend={HTML5Backend}>
       <div className="space-y-4 h-full flex flex-col" data-testid="squad-overview-grid">
         {/* Controls */}
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-3 flex-shrink-0">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" data-testid="button-show-hide-squads">

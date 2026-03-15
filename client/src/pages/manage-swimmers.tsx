@@ -352,7 +352,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
       </div>
 
       {viewMode === 'grid' && (
-        <div className={cn('flex-1 overflow-hidden px-4 pb-4 max-w-7xl mx-auto w-full')}>
+        <div className="flex-1 overflow-hidden pt-4 pb-4 max-w-7xl mx-auto w-full">
           <SquadOverviewGrid swimmers={swimmers} squads={squads} />
         </div>
       )}
