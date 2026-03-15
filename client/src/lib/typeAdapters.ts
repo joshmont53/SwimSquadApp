@@ -100,6 +100,7 @@ export interface Session {
   focus: SessionFocus;
   content?: string | null;
   contentHtml?: string | null;
+  sessionNotes?: string | null;
   distanceBreakdown?: DistanceBreakdown;
   attendance?: AttendanceRecord[];
 }
@@ -329,6 +330,7 @@ export function adaptSession(backend: BackendSession & { attendance?: BackendAtt
     focus: backend.focus as SessionFocus,
     content: backend.sessionContent,
     contentHtml: backend.sessionContentHtml,
+    sessionNotes: backend.sessionNotes,
     distanceBreakdown,
     attendance: backend.attendance?.map(adaptAttendance),
   };

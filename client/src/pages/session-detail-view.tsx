@@ -219,6 +219,7 @@ export function SessionDetail({
   );
 
   const [sessionContent, setSessionContent] = useState('');
+  const [sessionNotes, setSessionNotes] = useState('');
 
   // ALL MUTATIONS MUST BE DEFINED BEFORE ANY CONDITIONAL RETURNS
   const updateAttendanceMutation = useMutation({
@@ -367,6 +368,30 @@ export function SessionDetail({
     },
   });
 
+  const saveNotesMutation = useMutation({
+    mutationFn: async (notes: string) => {
+      const notesHtml = notes
+        ? `<p>${notes.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+        : null;
+      return await apiRequest('PUT', `/api/sessions/${sessionId}`, {
+        sessionNotes: notes || null,
+        sessionNotesHtml: notesHtml,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sessions', sessionId] });
+      toast({ title: 'Notes saved' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save notes',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Update state when session data loads
   useEffect(() => {
     if (session) {
@@ -382,6 +407,8 @@ export function SessionDetail({
         }
       }
       
+      setSessionNotes(session.sessionNotes || '');
+
       setEditFormData({
         date: formatSessionDate(session.date),
         startTime: session.startTime,
@@ -939,6 +966,36 @@ export function SessionDetail({
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Session Notes */}
+            <div className="mt-4 border rounded-lg p-4 md:p-6 bg-card">
+              <div className="flex items-start gap-3 mb-3">
+                <FileText className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="text-base font-semibold">Session Notes</h3>
+                  <p className="text-sm text-muted-foreground">Add personal notes for this session (observations, reminders, etc.)</p>
+                </div>
+              </div>
+              <textarea
+                value={sessionNotes}
+                onChange={(e) => setSessionNotes(e.target.value)}
+                placeholder="e.g., Focus on technique, specific swimmer improvements, pool conditions..."
+                rows={4}
+                className="w-full text-sm resize-y rounded-md border border-input bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 placeholder:text-muted-foreground"
+                data-testid="textarea-session-notes"
+              />
+              <div className="flex justify-end mt-3">
+                <Button
+                  size="sm"
+                  onClick={() => saveNotesMutation.mutate(sessionNotes)}
+                  disabled={saveNotesMutation.isPending}
+                  data-testid="button-save-notes"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saveNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
+                </Button>
+              </div>
             </div>
           </div>
         )}
