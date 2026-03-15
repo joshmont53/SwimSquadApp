@@ -42,6 +42,7 @@ export interface Swimmer {
   squadId: string;
   asaNumber: number;
   dateOfBirth: Date;
+  gender: 'male' | 'female';
 }
 
 export type SessionFocus =
@@ -165,6 +166,7 @@ export function adaptSwimmer(backend: BackendSwimmer): Swimmer {
     squadId: backend.squadId,
     asaNumber: backend.asaNumber,
     dateOfBirth: new Date(backend.dob),
+    gender: (backend.gender === 'female' ? 'female' : 'male') as 'male' | 'female',
   };
 }
 
@@ -175,6 +177,7 @@ export function adaptSwimmerToBackend(frontend: Omit<Swimmer, 'id' | 'name'>): O
     squadId: frontend.squadId,
     asaNumber: frontend.asaNumber,
     dob: frontend.dateOfBirth.toISOString().split('T')[0],
+    gender: frontend.gender,
   };
 }
 

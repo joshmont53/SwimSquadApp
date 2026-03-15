@@ -114,6 +114,7 @@ export const swimmers = pgTable("swimmers", {
   squadId: varchar("squad_id").references(() => squads.id).notNull(),
   asaNumber: integer("asa_number").notNull(),
   dob: date("dob").notNull(),
+  gender: varchar("gender").notNull().default("male"), // "male" | "female"
   recordStatus: varchar("record_status").notNull().default("active"), // "active" | "inactive"
   createdAt: timestamp("created_at").defaultNow(),
 });

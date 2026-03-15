@@ -98,7 +98,12 @@ const DraggableSquadRow = ({
                 {swimmersInCell.map((swimmer) => (
                   <div
                     key={swimmer.id}
-                    className="px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100 truncate"
+                    className={cn(
+                      'px-2 py-1 text-xs rounded truncate',
+                      swimmer.gender === 'female'
+                        ? 'bg-pink-100 dark:bg-pink-900 text-pink-900 dark:text-pink-100'
+                        : 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                    )}
                     title={`${swimmer.firstName} ${swimmer.lastName}`}
                     data-testid={`swimmer-chip-${swimmer.id}`}
                   >

@@ -55,6 +55,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
     dateOfBirth: '',
     squadId: '',
     asaNumber: 0,
+    gender: 'male' as 'male' | 'female',
   });
 
   const createMutation = useMutation({
@@ -64,7 +65,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/swimmers'] });
       setIsAddDialogOpen(false);
-      setFormData({ firstName: '', lastName: '', dateOfBirth: '', squadId: '', asaNumber: 0 });
+      setFormData({ firstName: '', lastName: '', dateOfBirth: '', squadId: '', asaNumber: 0, gender: 'male' });
     },
     onError: (error: Error) => {
       toast({
@@ -82,7 +83,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/swimmers'] });
       setEditingSwimmer(null);
-      setFormData({ firstName: '', lastName: '', dateOfBirth: '', squadId: '', asaNumber: 0 });
+      setFormData({ firstName: '', lastName: '', dateOfBirth: '', squadId: '', asaNumber: 0, gender: 'male' });
       // Remove edited swimmer from selection if it was selected
       if (selectedSwimmers.has(variables.id)) {
         const newSelected = new Set(selectedSwimmers);
@@ -164,6 +165,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
       squadId: formData.squadId,
       asaNumber: formData.asaNumber,
       dob: formData.dateOfBirth,
+      gender: formData.gender,
     };
 
     createMutation.mutate(swimmerData);
@@ -177,6 +179,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
       dateOfBirth: swimmer.dateOfBirth.toISOString().split('T')[0],
       squadId: swimmer.squadId || '',
       asaNumber: swimmer.asaNumber,
+      gender: swimmer.gender,
     });
   };
 
@@ -198,6 +201,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
       squadId: formData.squadId,
       asaNumber: formData.asaNumber,
       dob: formData.dateOfBirth,
+      gender: formData.gender,
     };
 
     updateMutation.mutate({ id: editingSwimmer.id, data: swimmerData });
@@ -487,6 +491,21 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
               />
             </div>
             <div>
+              <Label htmlFor="gender">Gender *</Label>
+              <Select
+                value={formData.gender}
+                onValueChange={(value) => setFormData({ ...formData, gender: value as 'male' | 'female' })}
+              >
+                <SelectTrigger id="gender" data-testid="select-gender">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="squadId">Squad *</Label>
               <Select
                 value={formData.squadId}
@@ -531,7 +550,7 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
         onOpenChange={(open) => {
           if (!open) {
             setEditingSwimmer(null);
-            setFormData({ firstName: '', lastName: '', dateOfBirth: '', squadId: '', asaNumber: 0 });
+            setFormData({ firstName: '', lastName: '', dateOfBirth: '', squadId: '', asaNumber: 0, gender: 'male' });
           }
         }}
       >
@@ -568,6 +587,21 @@ export function ManageSwimmers({ swimmers, squads, onBack }: ManageSwimmersProps
                 onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                 data-testid="input-edit-dob"
               />
+            </div>
+            <div>
+              <Label htmlFor="edit-gender">Gender *</Label>
+              <Select
+                value={formData.gender}
+                onValueChange={(value) => setFormData({ ...formData, gender: value as 'male' | 'female' })}
+              >
+                <SelectTrigger id="edit-gender" data-testid="select-edit-gender">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="edit-squadId">Squad *</Label>
