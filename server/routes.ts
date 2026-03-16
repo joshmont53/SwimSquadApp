@@ -19,6 +19,7 @@ import {
   insertSessionFeedbackSchema,
   type SessionFeedback,
 } from "@shared/schema";
+import type { CoachNote, CoachNoteItem } from "./storage";
 import { sendInvitationEmail } from "./emailService";
 import { randomBytes } from "crypto";
 import { calculateSessionDistancesAI, validateDistances, detectDrillsInSession, type DrillReference } from "./aiParser";
@@ -3107,6 +3108,90 @@ CRITICAL RULES:
     } catch (error: any) {
       console.error("Error removing device token:", error);
       res.status(500).json({ message: "Failed to remove device token" });
+    }
+  });
+
+  // ============================================================================
+  // Coach Notes routes (Handbook Notes Feature)
+  // ============================================================================
+
+  // GET /api/coach-notes?coachId=xxx — fetch all notes for a coach
+  app.get("/api/coach-notes", requireAuth, async (req: any, res) => {
+    try {
+      const { coachId } = req.query;
+      if (!coachId || typeof coachId !== "string") {
+        return res.status(400).json({ message: "coachId query param is required" });
+      }
+      const notes = await storage.getCoachNotes(coachId);
+      res.json(notes);
+    } catch (error: any) {
+      console.error("Error fetching coach notes:", error);
+      res.status(500).json({ message: "Failed to fetch coach notes" });
+    }
+  });
+
+  // POST /api/coach-notes — create a new note
+  app.post("/api/coach-notes", requireAuth, async (req: any, res) => {
+    try {
+      const { title, type, content, status, creatorId, items, squadIds } = req.body;
+      if (!title || !type || !creatorId || !squadIds || squadIds.length === 0) {
+        return res.status(400).json({ message: "title, type, creatorId, and at least one squadId are required" });
+      }
+      const note = await storage.createCoachNote(
+        { title, type, content: content || null, status: status || "open", creatorId },
+        items || [],
+        squadIds,
+      );
+      res.status(201).json(note);
+    } catch (error: any) {
+      console.error("Error creating coach note:", error);
+      res.status(500).json({ message: "Failed to create coach note" });
+    }
+  });
+
+  // PATCH /api/coach-notes/:id — update note (title/content/status/items/squads)
+  app.patch("/api/coach-notes/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { title, content, status, items, squadIds } = req.body;
+      const noteFields: Record<string, any> = {};
+      if (title !== undefined) noteFields.title = title;
+      if (content !== undefined) noteFields.content = content;
+      if (status !== undefined) noteFields.status = status;
+
+      const updated = await storage.updateCoachNote(id, noteFields, items, squadIds);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating coach note:", error);
+      res.status(500).json({ message: "Failed to update coach note" });
+    }
+  });
+
+  // DELETE /api/coach-notes/:id — delete note (cascades to items and squad links)
+  app.delete("/api/coach-notes/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCoachNote(id);
+      res.json({ message: "Note deleted" });
+    } catch (error: any) {
+      console.error("Error deleting coach note:", error);
+      res.status(500).json({ message: "Failed to delete coach note" });
+    }
+  });
+
+  // PATCH /api/coach-note-items/:itemId — toggle a checklist item's completed state
+  app.patch("/api/coach-note-items/:itemId", requireAuth, async (req: any, res) => {
+    try {
+      const { itemId } = req.params;
+      const { completed } = req.body;
+      if (typeof completed !== "boolean") {
+        return res.status(400).json({ message: "completed (boolean) is required" });
+      }
+      const updated = await storage.updateCoachNoteItem(itemId, completed);
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating coach note item:", error);
+      res.status(500).json({ message: "Failed to update note item" });
     }
   });
 

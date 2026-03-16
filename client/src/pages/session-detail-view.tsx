@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { Session, Squad, Location, Coach, Swimmer, AttendanceRecord, SessionFocus } from '../lib/typeAdapters';
@@ -20,7 +20,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/RichTextEditor';
@@ -37,6 +39,7 @@ interface SessionDetailProps {
   locations: Location[];
   coaches: Coach[];
   swimmers: Swimmer[];
+  coachId?: string;
   onBack: () => void;
   onNavigateToSession?: (sessionId: string) => void;
 }
@@ -74,10 +77,12 @@ export function SessionDetail({
   locations,
   coaches,
   swimmers,
+  coachId,
   onBack,
   onNavigateToSession,
 }: SessionDetailProps) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   
   // Fetch session data
   const { data: backendSession, isLoading: sessionLoading } = useQuery<BackendSession>({
@@ -114,6 +119,32 @@ export function SessionDetail({
     queryKey: ['/api/coaches/me'],
   });
 
+  // Resolve the effective coach ID for training notes (prop takes precedence)
+  const effectiveCoachId = coachId ?? currentCoach?.id;
+
+  // Fetch handbook (training) notes for the current coach
+  const { data: allCoachNotes = [] } = useQuery<any[]>({
+    queryKey: ['/api/coach-notes', effectiveCoachId],
+    queryFn: async () => {
+      if (!effectiveCoachId) return [];
+      const response = await fetch(`/api/coach-notes?coachId=${effectiveCoachId}`);
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!effectiveCoachId,
+  });
+
+  // Toggle a coach note item (mark complete/incomplete)
+  const toggleNoteItemMutation = useMutation({
+    mutationFn: async ({ itemId, completed }: { itemId: string; completed: boolean }) => {
+      const response = await apiRequest('PATCH', `/api/coach-note-items/${itemId}`, { completed });
+      return response.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/coach-notes', effectiveCoachId] });
+    },
+  });
+
   // Adapt backend data to frontend types
   const session = useMemo(
     () => backendSession ? adaptSession(backendSession) : null,
@@ -148,11 +179,22 @@ export function SessionDetail({
   const squad = squads.find(s => s.id === session?.squadId);
   const location = locations.find(l => l.id === session?.locationId);
 
+  // Open training notes for the session's squads from handbook
+  const squadTrainingNotes = useMemo(() => {
+    if (!activeSessionSquadIds.length) return [];
+    return allCoachNotes.filter((note: any) => {
+      if (note.status !== 'open') return false;
+      const noteSquadIds: string[] = note.squadIds ?? [];
+      return activeSessionSquadIds.some(id => noteSquadIds.includes(id));
+    });
+  }, [allCoachNotes, activeSessionSquadIds]);
+
   const [activeTab, setActiveTab] = useState<TabType>('detail');
   const [isEditingSession, setIsEditingSession] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drillsSidebarOpen, setDrillsSidebarOpen] = useState(false);
   const [notesSidebarOpen, setNotesSidebarOpen] = useState(false);
+  const [trainingNotesSidebarOpen, setTrainingNotesSidebarOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
@@ -971,13 +1013,14 @@ export function SessionDetail({
                       </button>
                     )}
 
-                    {/* Notes Toggle Button - only show in view mode when notes exist */}
+                    {/* Session Notes Toggle Button - only show in view mode when notes exist */}
                     {sessionNotes && (
                       <button
                         onClick={() => {
                           setNotesSidebarOpen(!notesSidebarOpen);
                           setSidebarOpen(false);
                           setDrillsSidebarOpen(false);
+                          setTrainingNotesSidebarOpen(false);
                         }}
                         className={cn(
                           "absolute border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
@@ -997,6 +1040,43 @@ export function SessionDetail({
                           className={cn(
                             "h-5 w-5 transition-transform",
                             notesSidebarOpen && "rotate-180"
+                          )}
+                        />
+                      </button>
+                    )}
+
+                    {/* Training Notes Toggle Button - shows open handbook notes for this session's squads */}
+                    {!isEditingSession && squadTrainingNotes.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setTrainingNotesSidebarOpen(!trainingNotesSidebarOpen);
+                          setSidebarOpen(false);
+                          setDrillsSidebarOpen(false);
+                          setNotesSidebarOpen(false);
+                        }}
+                        className={cn(
+                          "absolute border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
+                          // Position below all other sidebar buttons that are visible
+                          (session.distanceBreakdown || isCalculatingDistances || sessionContent) && (detectedDrills.length > 0 || isCalculatingDrills || sessionContent) && sessionNotes
+                            ? "top-[10.5rem] md:top-[12rem]"
+                            : ((session.distanceBreakdown || isCalculatingDistances || sessionContent) && (detectedDrills.length > 0 || isCalculatingDrills || sessionContent)) ||
+                              ((session.distanceBreakdown || isCalculatingDistances || sessionContent) && sessionNotes) ||
+                              ((detectedDrills.length > 0 || isCalculatingDrills || sessionContent) && sessionNotes)
+                            ? "top-[7rem] md:top-[8.5rem]"
+                            : (session.distanceBreakdown || isCalculatingDistances || sessionContent) || (detectedDrills.length > 0 || isCalculatingDrills || sessionContent) || sessionNotes
+                            ? "top-16 md:top-20"
+                            : "top-4 md:top-6",
+                          trainingNotesSidebarOpen ? "right-[280px] md:right-[30rem]" : "right-0"
+                        )}
+                        data-testid="button-toggle-training-notes-sidebar"
+                        title="Training Notes"
+                      >
+                        <ListChecks className={cn("h-4 w-4 text-primary", trainingNotesSidebarOpen && "mr-1")} />
+                        {trainingNotesSidebarOpen && <span className="text-xs hidden md:inline">Training Notes</span>}
+                        <ChevronRight
+                          className={cn(
+                            "h-5 w-5 transition-transform",
+                            trainingNotesSidebarOpen && "rotate-180"
                           )}
                         />
                       </button>
@@ -1138,6 +1218,14 @@ export function SessionDetail({
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setNotesSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile backdrop for training notes sidebar */}
+      {activeTab === 'session' && trainingNotesSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setTrainingNotesSidebarOpen(false)}
         />
       )}
 
@@ -1734,6 +1822,85 @@ export function SessionDetail({
               <div className="text-sm whitespace-pre-wrap leading-relaxed">
                 {sessionNotes}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Training Notes Sidebar - shows open handbook notes for this session's squads */}
+      {activeTab === 'session' && !isEditingSession && squadTrainingNotes.length > 0 && (
+        <div
+          className={cn(
+            "fixed inset-y-0 right-0 md:inset-y-auto md:top-[180px] md:bottom-4 md:right-4 border-l md:border md:rounded-lg bg-card overflow-y-auto transition-all duration-300 ease-in-out z-50",
+            trainingNotesSidebarOpen ? "w-[280px] md:w-80" : "w-0 overflow-hidden"
+          )}
+        >
+          {trainingNotesSidebarOpen && (
+            <div className="h-full flex flex-col">
+              <div className="p-4 md:p-5 border-b">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 font-semibold text-sm">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    Training Notes
+                  </h3>
+                  <button
+                    onClick={() => setTrainingNotesSidebarOpen(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Close training notes"
+                    data-testid="button-close-training-notes-sidebar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Open notes for {sessionSquadsList.map(s => s.name).join(', ')}
+                </p>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-4 md:p-5 space-y-4">
+                  {squadTrainingNotes.map((note: any) => (
+                    <div key={note.id} className="space-y-2" data-testid={`training-note-${note.id}`}>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm leading-snug">{note.title}</p>
+                          {note.content && (
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{note.content}</p>
+                          )}
+                        </div>
+                      </div>
+                      {note.type === 'checklist' && note.items && note.items.length > 0 && (
+                        <div className="space-y-1.5 pl-1">
+                          {note.items.map((item: any) => (
+                            <div key={item.id} className="flex items-start gap-2">
+                              <Checkbox
+                                id={`item-${item.id}`}
+                                checked={item.completed}
+                                onCheckedChange={(checked) => {
+                                  toggleNoteItemMutation.mutate({ itemId: item.id, completed: !!checked });
+                                }}
+                                className="mt-0.5 shrink-0"
+                                data-testid={`checkbox-note-item-${item.id}`}
+                              />
+                              <label
+                                htmlFor={`item-${item.id}`}
+                                className={cn(
+                                  "text-xs leading-snug cursor-pointer",
+                                  item.completed && "line-through text-muted-foreground"
+                                )}
+                              >
+                                {item.text}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {note.type === 'text' && note.content && (
+                        <p className="text-xs text-muted-foreground pl-1 leading-relaxed">{note.content}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           )}
         </div>

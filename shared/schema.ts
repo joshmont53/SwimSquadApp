@@ -691,3 +691,71 @@ export const insertNotificationLogSchema = createInsertSchema(notificationLog).o
   sentAt: true 
 });
 export type InsertNotificationLog = z.infer<typeof insertNotificationLogSchema>;
+
+// ============================================================================
+// Coach Notes (Handbook Notes Feature)
+// ============================================================================
+
+export const coachNotes = pgTable("coach_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  type: varchar("type").notNull(), // 'text' | 'checklist'
+  content: text("content"), // populated only when type = 'text'
+  status: varchar("status").notNull().default("open"), // 'open' | 'closed'
+  creatorId: varchar("creator_id").references(() => coaches.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const coachNoteItems = pgTable("coach_note_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteId: varchar("note_id").references(() => coachNotes.id, { onDelete: "cascade" }).notNull(),
+  text: text("text").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const coachNoteSquads = pgTable("coach_note_squads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  noteId: varchar("note_id").references(() => coachNotes.id, { onDelete: "cascade" }).notNull(),
+  squadId: varchar("squad_id").references(() => squads.id, { onDelete: "cascade" }).notNull(),
+}, (table) => [unique().on(table.noteId, table.squadId)]);
+
+export const coachNotesRelations = relations(coachNotes, ({ one, many }) => ({
+  creator: one(coaches, {
+    fields: [coachNotes.creatorId],
+    references: [coaches.id],
+  }),
+  items: many(coachNoteItems),
+  noteSquads: many(coachNoteSquads),
+}));
+
+export const coachNoteItemsRelations = relations(coachNoteItems, ({ one }) => ({
+  note: one(coachNotes, {
+    fields: [coachNoteItems.noteId],
+    references: [coachNotes.id],
+  }),
+}));
+
+export const coachNoteSquadsRelations = relations(coachNoteSquads, ({ one }) => ({
+  note: one(coachNotes, {
+    fields: [coachNoteSquads.noteId],
+    references: [coachNotes.id],
+  }),
+  squad: one(squads, {
+    fields: [coachNoteSquads.squadId],
+    references: [squads.id],
+  }),
+}));
+
+export type CoachNote = typeof coachNotes.$inferSelect;
+export type InsertCoachNote = typeof coachNotes.$inferInsert;
+export const insertCoachNoteSchema = createInsertSchema(coachNotes).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type CoachNoteItem = typeof coachNoteItems.$inferSelect;
+export type InsertCoachNoteItem = typeof coachNoteItems.$inferInsert;
+export const insertCoachNoteItemSchema = createInsertSchema(coachNoteItems).omit({ id: true, createdAt: true });
+
+export type CoachNoteSquad = typeof coachNoteSquads.$inferSelect;
+export type InsertCoachNoteSquad = typeof coachNoteSquads.$inferInsert;

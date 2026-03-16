@@ -1035,6 +1035,7 @@ function CalendarApp() {
                 locations={locations}
                 coaches={coaches}
                 swimmers={swimmers}
+                coachId={currentCoach?.id}
                 onBack={handleBackFromSession}
                 onNavigateToSession={setSelectedSessionId}
               />

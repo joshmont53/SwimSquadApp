@@ -18,6 +18,14 @@ import {
   sessionSquads,
   deviceTokens,
   notificationLog,
+  coachNotes,
+  coachNoteItems,
+  coachNoteSquads,
+  type CoachNote,
+  type InsertCoachNote,
+  type CoachNoteItem,
+  type InsertCoachNoteItem,
+  type CoachNoteSquad,
   type User,
   type UpsertUser,
   type Coach,
@@ -57,6 +65,8 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
+
+export type { CoachNote, InsertCoachNote, CoachNoteItem, InsertCoachNoteItem, CoachNoteSquad };
 
 export interface IStorage {
   // User operations (required for Replit Auth + Email/Password Auth)
@@ -181,6 +191,14 @@ export interface IStorage {
   // Notification Log operations (Push Notifications Feature - No impact on existing functionality)
   getNotificationLog(sessionId: string, coachId: string, reminderNumber: number): Promise<NotificationLog | undefined>;
   createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog>;
+
+  // Coach Notes operations (Handbook Notes Feature)
+  getCoachNotes(coachId: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] })[]>;
+  getCoachNote(id: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] }) | undefined>;
+  createCoachNote(note: InsertCoachNote, itemTexts: string[], squadIds: string[]): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }>;
+  updateCoachNote(id: string, note: Partial<InsertCoachNote>, itemTexts?: { id?: string; text: string; completed: boolean; sortOrder: number }[], squadIds?: string[]): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }>;
+  deleteCoachNote(id: string): Promise<void>;
+  updateCoachNoteItem(itemId: string, completed: boolean): Promise<CoachNoteItem>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -934,6 +952,109 @@ export class DatabaseStorage implements IStorage {
   async createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog> {
     const [newLog] = await db.insert(notificationLog).values(log).returning();
     return newLog;
+  }
+
+  // ============================================================================
+  // Coach Notes operations (Handbook Notes Feature)
+  // ============================================================================
+
+  private async _enrichNote(note: CoachNote): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }> {
+    const items = await db.select().from(coachNoteItems).where(eq(coachNoteItems.noteId, note.id)).orderBy(coachNoteItems.sortOrder);
+    const squadsRows = await db.select().from(coachNoteSquads).where(eq(coachNoteSquads.noteId, note.id));
+    return { ...note, items, squadIds: squadsRows.map(r => r.squadId) };
+  }
+
+  async getCoachNotes(coachId: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] })[]> {
+    const notes = await db.select().from(coachNotes).where(eq(coachNotes.creatorId, coachId));
+    return Promise.all(notes.map(n => this._enrichNote(n)));
+  }
+
+  async getCoachNote(id: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] }) | undefined> {
+    const [note] = await db.select().from(coachNotes).where(eq(coachNotes.id, id));
+    if (!note) return undefined;
+    return this._enrichNote(note);
+  }
+
+  async createCoachNote(
+    note: InsertCoachNote,
+    itemTexts: string[],
+    squadIds: string[],
+  ): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }> {
+    const [created] = await db.insert(coachNotes).values(note).returning();
+
+    const items: CoachNoteItem[] = [];
+    for (let i = 0; i < itemTexts.length; i++) {
+      if (itemTexts[i].trim()) {
+        const [item] = await db.insert(coachNoteItems).values({ noteId: created.id, text: itemTexts[i], sortOrder: i }).returning();
+        items.push(item);
+      }
+    }
+
+    for (const squadId of squadIds) {
+      await db.insert(coachNoteSquads).values({ noteId: created.id, squadId }).onConflictDoNothing();
+    }
+
+    return { ...created, items, squadIds };
+  }
+
+  async updateCoachNote(
+    id: string,
+    note: Partial<InsertCoachNote>,
+    itemTexts?: { id?: string; text: string; completed: boolean; sortOrder: number }[],
+    squadIds?: string[],
+  ): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }> {
+    const [updated] = await db
+      .update(coachNotes)
+      .set({ ...note, updatedAt: new Date() })
+      .where(eq(coachNotes.id, id))
+      .returning();
+
+    if (itemTexts !== undefined) {
+      await db.delete(coachNoteItems).where(eq(coachNoteItems.noteId, id));
+      for (let i = 0; i < itemTexts.length; i++) {
+        const item = itemTexts[i];
+        if (item.text.trim()) {
+          await db.insert(coachNoteItems).values({
+            noteId: id,
+            text: item.text,
+            completed: item.completed,
+            sortOrder: item.sortOrder ?? i,
+          });
+        }
+      }
+    }
+
+    if (squadIds !== undefined) {
+      await db.delete(coachNoteSquads).where(eq(coachNoteSquads.noteId, id));
+      for (const squadId of squadIds) {
+        await db.insert(coachNoteSquads).values({ noteId: id, squadId }).onConflictDoNothing();
+      }
+    }
+
+    return this._enrichNote(updated);
+  }
+
+  async deleteCoachNote(id: string): Promise<void> {
+    await db.delete(coachNotes).where(eq(coachNotes.id, id));
+  }
+
+  async updateCoachNoteItem(itemId: string, completed: boolean): Promise<CoachNoteItem> {
+    const [updated] = await db
+      .update(coachNoteItems)
+      .set({ completed })
+      .where(eq(coachNoteItems.id, itemId))
+      .returning();
+
+    // Auto-close parent note if all items are now complete
+    if (completed) {
+      const allItems = await db.select().from(coachNoteItems).where(eq(coachNoteItems.noteId, updated.noteId));
+      const allDone = allItems.every(i => i.completed);
+      if (allDone) {
+        await db.update(coachNotes).set({ status: "closed", updatedAt: new Date() }).where(eq(coachNotes.id, updated.noteId));
+      }
+    }
+
+    return updated;
   }
 }
 

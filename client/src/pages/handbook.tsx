@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -87,21 +89,24 @@ type NoteStatus = 'open' | 'closed';
 
 interface NoteItem {
   id: string;
+  noteId: string;
   text: string;
   completed: boolean;
+  sortOrder: number;
+  createdAt: string;
 }
 
 interface CoachNote {
   id: string;
   title: string;
   type: NoteType;
-  content?: string;
-  items?: NoteItem[];
+  content: string | null;
+  items: NoteItem[];
   squadIds: string[];
   status: NoteStatus;
   creatorId: string;
-  createdDate: Date;
-  updatedDate: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface HandbookProps {
@@ -578,7 +583,7 @@ interface NotesSectionProps {
 }
 
 function NotesSection({ coach, squads }: NotesSectionProps) {
-  const [notes, setNotes] = useState<CoachNote[]>([]);
+  const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<CoachNote | null>(null);
   const [expandedNoteIds, setExpandedNoteIds] = useState<Set<string>>(new Set());
@@ -586,7 +591,7 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
     title: string;
     type: NoteType;
     content: string;
-    items: NoteItem[];
+    items: { id: string; text: string; completed: boolean }[];
     selectedSquadIds: string[];
   }>({
     title: '',
@@ -596,21 +601,31 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
     selectedSquadIds: [],
   });
 
-  useEffect(() => {
-    const stored = localStorage.getItem('coach_notes');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setNotes(parsed.map((note: CoachNote) => ({
-        ...note,
-        createdDate: new Date(note.createdDate),
-        updatedDate: new Date(note.updatedDate),
-      })));
-    }
-  }, []);
+  const { data: notes = [], isLoading } = useQuery<CoachNote[]>({
+    queryKey: ['/api/coach-notes', coach.id],
+    queryFn: () => fetch(`/api/coach-notes?coachId=${coach.id}`).then(r => r.json()),
+  });
 
-  useEffect(() => {
-    localStorage.setItem('coach_notes', JSON.stringify(notes));
-  }, [notes]);
+  const createMutation = useMutation({
+    mutationFn: (body: object) => apiRequest('POST', '/api/coach-notes', body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/coach-notes', coach.id] }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: object }) => apiRequest('PATCH', `/api/coach-notes/${id}`, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/coach-notes', coach.id] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/coach-notes/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/coach-notes', coach.id] }),
+  });
+
+  const toggleItemMutation = useMutation({
+    mutationFn: ({ itemId, completed }: { itemId: string; completed: boolean }) =>
+      apiRequest('PATCH', `/api/coach-note-items/${itemId}`, { completed }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/coach-notes', coach.id] }),
+  });
 
   const resetForm = () => {
     setFormData({ title: '', type: 'text', content: '', items: [], selectedSquadIds: [] });
@@ -628,7 +643,7 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
       title: note.title,
       type: note.type,
       content: note.content || '',
-      items: note.items || [],
+      items: note.items.map(i => ({ id: i.id, text: i.text, completed: i.completed })),
       selectedSquadIds: note.squadIds,
     });
     setIsAddDialogOpen(true);
@@ -636,63 +651,44 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
 
   const handleSave = () => {
     if (!formData.title.trim() || formData.selectedSquadIds.length === 0) return;
-    const now = new Date();
+    const itemTexts = formData.items.map(i => i.text);
     if (editingNote) {
-      setNotes(prev => prev.map(n =>
-        n.id === editingNote.id
-          ? {
-              ...n,
-              title: formData.title,
-              type: formData.type,
-              content: formData.type === 'text' ? formData.content : undefined,
-              items: formData.type === 'checklist' ? formData.items : undefined,
-              squadIds: formData.selectedSquadIds,
-              updatedDate: now,
-            }
-          : n
-      ));
+      updateMutation.mutate({
+        id: editingNote.id,
+        body: {
+          title: formData.title,
+          content: formData.type === 'text' ? formData.content : null,
+          items: formData.type === 'checklist'
+            ? formData.items.map((i, idx) => ({ text: i.text, completed: i.completed, sortOrder: idx }))
+            : [],
+          squadIds: formData.selectedSquadIds,
+        },
+      });
     } else {
-      const newNote: CoachNote = {
-        id: `note-${Date.now()}`,
+      createMutation.mutate({
         title: formData.title,
         type: formData.type,
-        content: formData.type === 'text' ? formData.content : undefined,
-        items: formData.type === 'checklist' ? formData.items : undefined,
-        squadIds: formData.selectedSquadIds,
-        status: 'open',
+        content: formData.type === 'text' ? formData.content : null,
         creatorId: coach.id,
-        createdDate: now,
-        updatedDate: now,
-      };
-      setNotes(prev => [newNote, ...prev]);
+        squadIds: formData.selectedSquadIds,
+        items: itemTexts,
+      });
     }
     setIsAddDialogOpen(false);
     resetForm();
   };
 
   const handleDelete = (id: string) => {
-    setNotes(prev => prev.filter(n => n.id !== id));
+    deleteMutation.mutate(id);
   };
 
-  const toggleNoteStatus = (id: string) => {
-    setNotes(prev => prev.map(n =>
-      n.id === id
-        ? { ...n, status: n.status === 'open' ? 'closed' : 'open', updatedDate: new Date() }
-        : n
-    ));
+  const toggleNoteStatus = (note: CoachNote) => {
+    const newStatus = note.status === 'open' ? 'closed' : 'open';
+    updateMutation.mutate({ id: note.id, body: { status: newStatus } });
   };
 
-  const toggleItemCompletion = (noteId: string, itemId: string) => {
-    setNotes(prev => prev.map(n => {
-      if (n.id === noteId && n.items) {
-        const updatedItems = n.items.map(item =>
-          item.id === itemId ? { ...item, completed: !item.completed } : item
-        );
-        const allCompleted = updatedItems.every(item => item.completed);
-        return { ...n, items: updatedItems, status: allCompleted ? 'closed' : n.status, updatedDate: new Date() };
-      }
-      return n;
-    }));
+  const toggleItemCompletion = (itemId: string, currentCompleted: boolean) => {
+    toggleItemMutation.mutate({ itemId, completed: !currentCompleted });
   };
 
   const addChecklistItem = () => {
@@ -732,7 +728,7 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
   };
 
   const getCompletionStats = (note: CoachNote) => {
-    if (note.type !== 'checklist' || !note.items) return null;
+    if (note.type !== 'checklist') return null;
     const completed = note.items.filter(item => item.completed).length;
     return { completed, total: note.items.length };
   };
@@ -796,7 +792,7 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
                   <Edit2 className="h-4 w-4" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => toggleNoteStatus(note.id)} data-testid={`button-toggle-note-status-${note.id}`} title={isClosed ? 'Reopen' : 'Mark complete'}>
+              <Button variant="ghost" size="icon" onClick={() => toggleNoteStatus(note)} data-testid={`button-toggle-note-status-${note.id}`} title={isClosed ? 'Reopen' : 'Mark complete'}>
                 <CheckSquare className={cn("h-4 w-4", !isClosed && "text-primary")} />
               </Button>
               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(note.id)} data-testid={`button-delete-note-${note.id}`}>
@@ -810,13 +806,13 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
               {note.type === 'text' && note.content && (
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
               )}
-              {note.type === 'checklist' && note.items && (
+              {note.type === 'checklist' && (
                 <div className="space-y-2">
                   {note.items.map(item => (
                     <div key={item.id} className="flex items-start gap-2 p-2 rounded hover:bg-accent/50 transition-colors">
                       <Checkbox
                         checked={item.completed}
-                        onCheckedChange={() => !isClosed && toggleItemCompletion(note.id, item.id)}
+                        onCheckedChange={() => !isClosed && toggleItemCompletion(item.id, item.completed)}
                         disabled={isClosed}
                         className="mt-0.5"
                         data-testid={`checkbox-item-${item.id}`}
@@ -830,7 +826,7 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
               )}
               <div className="flex flex-wrap gap-2 pt-2 border-t">
                 <span className="text-xs text-muted-foreground">
-                  Updated {format(note.updatedDate, 'MMM dd, yyyy')}
+                  Updated {format(new Date(note.updatedAt), 'MMM dd, yyyy')}
                 </span>
               </div>
             </div>
@@ -850,7 +846,12 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
         </Button>
       </div>
 
-      {notes.length === 0 ? (
+      {isLoading ? (
+        <Card className="p-12 text-center" data-testid="card-notes-loading">
+          <div className="h-8 w-8 mx-auto mb-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-muted-foreground text-sm">Loading notes...</p>
+        </Card>
+      ) : notes.length === 0 ? (
         <Card className="p-12 text-center" data-testid="card-notes-empty">
           <ListChecks className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <p className="text-muted-foreground mb-2">No notes yet</p>
