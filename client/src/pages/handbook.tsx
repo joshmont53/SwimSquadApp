@@ -956,12 +956,13 @@ function NotesSection({ coach, squads }: NotesSectionProps) {
                   </Button>
                 </div>
                 <div className="space-y-2" data-testid="list-checklist-items">
-                  {formData.items.map((item) => (
+                  {formData.items.map((item, index) => (
                     <div key={item.id} className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground w-5 text-right shrink-0">{index + 1}.</span>
                       <Input
                         value={item.text}
                         onChange={(e) => updateChecklistItem(item.id, e.target.value)}
-                        placeholder="Checklist item..."
+                        placeholder="Enter checklist item..."
                         data-testid={`input-checklist-item-${item.id}`}
                       />
                       <Button
