@@ -4,6 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { 
@@ -23,14 +27,20 @@ import {
   FileSpreadsheet,
   ChevronDown,
   ChevronUp,
-  Trophy
+  ChevronRight,
+  Trophy,
+  Plus,
+  Edit2,
+  CheckSquare,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import type { Coach } from '@/lib/typeAdapters';
+import type { Coach, Squad } from '@/lib/typeAdapters';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -72,8 +82,31 @@ type DocumentCategory =
   | 'Meeting Notes'
   | 'Other';
 
+type NoteType = 'text' | 'checklist';
+type NoteStatus = 'open' | 'closed';
+
+interface NoteItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+interface CoachNote {
+  id: string;
+  title: string;
+  type: NoteType;
+  content?: string;
+  items?: NoteItem[];
+  squadIds: string[];
+  status: NoteStatus;
+  creatorId: string;
+  createdDate: Date;
+  updatedDate: Date;
+}
+
 interface HandbookProps {
   coach: Coach;
+  squads: Squad[];
   onBack: () => void;
 }
 
@@ -95,7 +128,7 @@ const CATEGORY_ICONS: Record<DocumentCategory, React.ElementType> = {
   'Other': Folder,
 };
 
-export function Handbook({ coach, onBack }: HandbookProps) {
+export function Handbook({ coach, squads, onBack }: HandbookProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | 'all'>('all');
@@ -231,6 +264,20 @@ export function Handbook({ coach, onBack }: HandbookProps) {
           {documents.length} document{documents.length !== 1 ? 's' : ''}
         </Badge>
       </div>
+
+      <Tabs defaultValue="documents" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="documents" className="flex items-center gap-2" data-testid="tab-documents">
+            <FileText className="h-4 w-4" />
+            Documents
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="flex items-center gap-2" data-testid="tab-notes">
+            <ListChecks className="h-4 w-4" />
+            Notes
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="documents" className="space-y-6 mt-3">
 
       <Card>
         <button
@@ -444,6 +491,14 @@ export function Handbook({ coach, onBack }: HandbookProps) {
         </div>
       )}
 
+        </TabsContent>
+
+        <TabsContent value="notes" className="mt-3">
+          <NotesSection coach={coach} squads={squads} />
+        </TabsContent>
+
+      </Tabs>
+
       <Dialog open={!!previewDocument} onOpenChange={(open) => !open && setPreviewDocument(null)}>
         <DialogContent className="max-w-4xl h-[80vh] flex flex-col" data-testid="dialog-preview">
           <DialogHeader className="shrink-0">
@@ -513,6 +568,463 @@ export function Handbook({ coach, onBack }: HandbookProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+interface NotesSectionProps {
+  coach: Coach;
+  squads: Squad[];
+}
+
+function NotesSection({ coach, squads }: NotesSectionProps) {
+  const [notes, setNotes] = useState<CoachNote[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<CoachNote | null>(null);
+  const [expandedNoteIds, setExpandedNoteIds] = useState<Set<string>>(new Set());
+  const [formData, setFormData] = useState<{
+    title: string;
+    type: NoteType;
+    content: string;
+    items: NoteItem[];
+    selectedSquadIds: string[];
+  }>({
+    title: '',
+    type: 'text',
+    content: '',
+    items: [],
+    selectedSquadIds: [],
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem('coach_notes');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setNotes(parsed.map((note: CoachNote) => ({
+        ...note,
+        createdDate: new Date(note.createdDate),
+        updatedDate: new Date(note.updatedDate),
+      })));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('coach_notes', JSON.stringify(notes));
+  }, [notes]);
+
+  const resetForm = () => {
+    setFormData({ title: '', type: 'text', content: '', items: [], selectedSquadIds: [] });
+  };
+
+  const openAddDialog = () => {
+    resetForm();
+    setEditingNote(null);
+    setIsAddDialogOpen(true);
+  };
+
+  const openEditDialog = (note: CoachNote) => {
+    setEditingNote(note);
+    setFormData({
+      title: note.title,
+      type: note.type,
+      content: note.content || '',
+      items: note.items || [],
+      selectedSquadIds: note.squadIds,
+    });
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!formData.title.trim() || formData.selectedSquadIds.length === 0) return;
+    const now = new Date();
+    if (editingNote) {
+      setNotes(prev => prev.map(n =>
+        n.id === editingNote.id
+          ? {
+              ...n,
+              title: formData.title,
+              type: formData.type,
+              content: formData.type === 'text' ? formData.content : undefined,
+              items: formData.type === 'checklist' ? formData.items : undefined,
+              squadIds: formData.selectedSquadIds,
+              updatedDate: now,
+            }
+          : n
+      ));
+    } else {
+      const newNote: CoachNote = {
+        id: `note-${Date.now()}`,
+        title: formData.title,
+        type: formData.type,
+        content: formData.type === 'text' ? formData.content : undefined,
+        items: formData.type === 'checklist' ? formData.items : undefined,
+        squadIds: formData.selectedSquadIds,
+        status: 'open',
+        creatorId: coach.id,
+        createdDate: now,
+        updatedDate: now,
+      };
+      setNotes(prev => [newNote, ...prev]);
+    }
+    setIsAddDialogOpen(false);
+    resetForm();
+  };
+
+  const handleDelete = (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+  };
+
+  const toggleNoteStatus = (id: string) => {
+    setNotes(prev => prev.map(n =>
+      n.id === id
+        ? { ...n, status: n.status === 'open' ? 'closed' : 'open', updatedDate: new Date() }
+        : n
+    ));
+  };
+
+  const toggleItemCompletion = (noteId: string, itemId: string) => {
+    setNotes(prev => prev.map(n => {
+      if (n.id === noteId && n.items) {
+        const updatedItems = n.items.map(item =>
+          item.id === itemId ? { ...item, completed: !item.completed } : item
+        );
+        const allCompleted = updatedItems.every(item => item.completed);
+        return { ...n, items: updatedItems, status: allCompleted ? 'closed' : n.status, updatedDate: new Date() };
+      }
+      return n;
+    }));
+  };
+
+  const addChecklistItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { id: `item-${Date.now()}`, text: '', completed: false }],
+    }));
+  };
+
+  const updateChecklistItem = (itemId: string, text: string) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map(item => item.id === itemId ? { ...item, text } : item),
+    }));
+  };
+
+  const removeChecklistItem = (itemId: string) => {
+    setFormData(prev => ({ ...prev, items: prev.items.filter(item => item.id !== itemId) }));
+  };
+
+  const toggleSquadSelection = (squadId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedSquadIds: prev.selectedSquadIds.includes(squadId)
+        ? prev.selectedSquadIds.filter(id => id !== squadId)
+        : [...prev.selectedSquadIds, squadId],
+    }));
+  };
+
+  const toggleNoteExpansion = (noteId: string) => {
+    setExpandedNoteIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) newSet.delete(noteId);
+      else newSet.add(noteId);
+      return newSet;
+    });
+  };
+
+  const getCompletionStats = (note: CoachNote) => {
+    if (note.type !== 'checklist' || !note.items) return null;
+    const completed = note.items.filter(item => item.completed).length;
+    return { completed, total: note.items.length };
+  };
+
+  const openNotes = notes.filter(n => n.status === 'open');
+  const closedNotes = notes.filter(n => n.status === 'closed');
+
+  const NoteCard = ({ note }: { note: CoachNote }) => {
+    const isExpanded = expandedNoteIds.has(note.id);
+    const stats = getCompletionStats(note);
+    const isClosed = note.status === 'closed';
+
+    return (
+      <Card key={note.id} className={cn("p-4", isClosed && "opacity-60")} data-testid={`card-note-${note.id}`}>
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <button
+              onClick={() => toggleNoteExpansion(note.id)}
+              className="flex items-start gap-2 flex-1 text-left group"
+              data-testid={`button-expand-note-${note.id}`}
+            >
+              {isExpanded
+                ? <ChevronDown className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                : <ChevronRight className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              }
+              <div className="flex-1 min-w-0">
+                <h4 className={cn("font-medium group-hover:text-primary transition-colors", isClosed && "line-through text-muted-foreground")}>
+                  {note.title}
+                </h4>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {note.squadIds.map(squadId => {
+                    const squad = squads.find(s => s.id === squadId);
+                    return squad ? (
+                      <Badge
+                        key={squadId}
+                        variant="secondary"
+                        className="text-xs"
+                        style={{ backgroundColor: `${squad.color}20`, color: squad.color }}
+                      >
+                        {squad.name}
+                      </Badge>
+                    ) : null;
+                  })}
+                  <Badge variant="outline" className="text-xs">
+                    {note.type === 'checklist'
+                      ? <><CheckSquare className="h-3 w-3 mr-1" />Checklist</>
+                      : <><FileText className="h-3 w-3 mr-1" />Note</>
+                    }
+                  </Badge>
+                  {stats && (
+                    <span className="text-xs text-muted-foreground">
+                      {stats.completed}/{stats.total} completed
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+            <div className="flex gap-1">
+              {!isClosed && (
+                <Button variant="ghost" size="icon" onClick={() => openEditDialog(note)} data-testid={`button-edit-note-${note.id}`}>
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => toggleNoteStatus(note.id)} data-testid={`button-toggle-note-status-${note.id}`} title={isClosed ? 'Reopen' : 'Mark complete'}>
+                <CheckSquare className={cn("h-4 w-4", !isClosed && "text-primary")} />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(note.id)} data-testid={`button-delete-note-${note.id}`}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {isExpanded && (
+            <div className="ml-7 space-y-3">
+              {note.type === 'text' && note.content && (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
+              )}
+              {note.type === 'checklist' && note.items && (
+                <div className="space-y-2">
+                  {note.items.map(item => (
+                    <div key={item.id} className="flex items-start gap-2 p-2 rounded hover:bg-accent/50 transition-colors">
+                      <Checkbox
+                        checked={item.completed}
+                        onCheckedChange={() => !isClosed && toggleItemCompletion(note.id, item.id)}
+                        disabled={isClosed}
+                        className="mt-0.5"
+                        data-testid={`checkbox-item-${item.id}`}
+                      />
+                      <span className={cn("text-sm flex-1", item.completed && "line-through text-muted-foreground")}>
+                        {item.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <span className="text-xs text-muted-foreground">
+                  Updated {format(note.updatedDate, 'MMM dd, yyyy')}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Training Notes</h2>
+        <Button onClick={openAddDialog} data-testid="button-add-note">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Note
+        </Button>
+      </div>
+
+      {notes.length === 0 ? (
+        <Card className="p-12 text-center" data-testid="card-notes-empty">
+          <ListChecks className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+          <p className="text-muted-foreground mb-2">No notes yet</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Create notes to track training ideas, drills to try, and session reminders
+          </p>
+          <Button onClick={openAddDialog} data-testid="button-add-first-note">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Your First Note
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {openNotes.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Active Notes ({openNotes.length})
+              </h3>
+              <div className="space-y-3" data-testid="list-open-notes">
+                {openNotes.map(note => <NoteCard key={note.id} note={note} />)}
+              </div>
+            </div>
+          )}
+
+          {closedNotes.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <CheckSquare className="h-4 w-4" />
+                Completed ({closedNotes.length})
+              </h3>
+              <div className="space-y-3" data-testid="list-closed-notes">
+                {closedNotes.map(note => <NoteCard key={note.id} note={note} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-note-form">
+          <DialogHeader>
+            <DialogTitle>{editingNote ? 'Edit Note' : 'Add New Note'}</DialogTitle>
+            <DialogDescription>
+              Create a note or checklist to track training ideas and reminders
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Title *</Label>
+              <Input
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g., Drills to try with Performance squad"
+                className="mt-2"
+                data-testid="input-note-title"
+              />
+            </div>
+
+            <div>
+              <Label>Type *</Label>
+              <RadioGroup
+                value={formData.type}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as NoteType }))}
+                className="flex gap-4 mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="text" id="type-text" data-testid="radio-type-text" />
+                  <Label htmlFor="type-text" className="flex items-center gap-2 font-normal cursor-pointer">
+                    <FileText className="h-4 w-4" /> Text Note
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="checklist" id="type-checklist" data-testid="radio-type-checklist" />
+                  <Label htmlFor="type-checklist" className="flex items-center gap-2 font-normal cursor-pointer">
+                    <CheckSquare className="h-4 w-4" /> Checklist
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {formData.type === 'text' ? (
+              <div>
+                <Label>Content</Label>
+                <Textarea
+                  value={formData.content}
+                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                  placeholder="Add your note content here..."
+                  rows={5}
+                  className="mt-2"
+                  data-testid="textarea-note-content"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Checklist Items *</Label>
+                  <Button variant="outline" size="sm" onClick={addChecklistItem} data-testid="button-add-checklist-item">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                <div className="space-y-2" data-testid="list-checklist-items">
+                  {formData.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2">
+                      <Input
+                        value={item.text}
+                        onChange={(e) => updateChecklistItem(item.id, e.target.value)}
+                        placeholder="Checklist item..."
+                        data-testid={`input-checklist-item-${item.id}`}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeChecklistItem(item.id)}
+                        data-testid={`button-remove-item-${item.id}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {formData.items.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No items yet — click "Add Item" to start your checklist
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label>Squads *</Label>
+              <p className="text-sm text-muted-foreground mb-2">Select which squads this note applies to</p>
+              <div className="space-y-2" data-testid="list-squad-selection">
+                {squads.map(squad => (
+                  <div key={squad.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`squad-${squad.id}`}
+                      checked={formData.selectedSquadIds.includes(squad.id)}
+                      onCheckedChange={() => toggleSquadSelection(squad.id)}
+                      data-testid={`checkbox-squad-${squad.id}`}
+                    />
+                    <Label htmlFor={`squad-${squad.id}`} className="font-normal cursor-pointer flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: squad.color }} />
+                      {squad.name}
+                    </Label>
+                  </div>
+                ))}
+                {squads.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No squads available</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} data-testid="button-note-cancel">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={
+                !formData.title.trim() ||
+                formData.selectedSquadIds.length === 0 ||
+                (formData.type === 'checklist' && formData.items.filter(item => item.text.trim()).length === 0)
+              }
+              data-testid="button-note-save"
+            >
+              {editingNote ? 'Save Changes' : 'Create Note'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

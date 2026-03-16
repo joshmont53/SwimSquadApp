@@ -1071,7 +1071,7 @@ function CalendarApp() {
             <FeedbackAnalytics onBack={handleBackToHome} />
           ) : managementView === 'handbook' ? (
             currentCoach ? (
-              <Handbook coach={currentCoach} onBack={handleBackToHome} />
+              <Handbook coach={currentCoach} squads={squads} onBack={handleBackToHome} />
             ) : null
           ) : managementView === 'swimmerProfiles' ? (
             currentCoach ? (
