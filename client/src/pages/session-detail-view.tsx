@@ -152,6 +152,7 @@ export function SessionDetail({
   const [isEditingSession, setIsEditingSession] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drillsSidebarOpen, setDrillsSidebarOpen] = useState(false);
+  const [notesSidebarOpen, setNotesSidebarOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
@@ -247,9 +248,14 @@ export function SessionDetail({
   const saveContentMutation = useMutation({
     mutationFn: async (content: string) => {
       const plainText = stripHtmlTags(content);
+      const notesHtml = sessionNotes
+        ? `<p>${sessionNotes.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+        : null;
       return await apiRequest('PUT', `/api/sessions/${sessionId}`, { 
         sessionContent: plainText,
         sessionContentHtml: content,
+        sessionNotes: sessionNotes || null,
+        sessionNotesHtml: notesHtml,
       });
     },
     onSuccess: () => {
@@ -363,30 +369,6 @@ export function SessionDetail({
       toast({
         title: 'Error',
         description: error.message || 'Failed to delete session',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const saveNotesMutation = useMutation({
-    mutationFn: async (notes: string) => {
-      const notesHtml = notes
-        ? `<p>${notes.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-        : null;
-      return await apiRequest('PUT', `/api/sessions/${sessionId}`, {
-        sessionNotes: notes || null,
-        sessionNotesHtml: notesHtml,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/sessions', sessionId] });
-      toast({ title: 'Notes saved' });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to save notes',
         variant: 'destructive',
       });
     },
@@ -841,6 +823,8 @@ export function SessionDetail({
                     onClick={() => {
                       setIsEditingSession(true);
                       setSidebarOpen(false);
+                      setNotesSidebarOpen(false);
+                      setDrillsSidebarOpen(false);
                     }}
                     disabled={sidebarOpen}
                     data-testid="button-edit-session"
@@ -888,11 +872,32 @@ export function SessionDetail({
 
             <div className="relative">
               {isEditingSession ? (
-                <RichTextEditor
-                  value={sessionContent}
-                  onChange={setSessionContent}
-                  placeholder="Enter session content..."
-                />
+                <>
+                  <RichTextEditor
+                    value={sessionContent}
+                    onChange={setSessionContent}
+                    placeholder="Enter session content..."
+                  />
+                  {/* Session Notes — only visible in edit mode */}
+                  <div className="mt-4 border rounded-lg p-4 md:p-6 bg-card">
+                    <div className="flex items-start gap-3 mb-3">
+                      <FileText className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <h3 className="text-base font-semibold">Session Notes</h3>
+                        <p className="text-sm text-muted-foreground">Add personal notes for this session (observations, reminders, etc.)</p>
+                      </div>
+                    </div>
+                    <textarea
+                      value={sessionNotes}
+                      onChange={(e) => setSessionNotes(e.target.value)}
+                      placeholder="e.g., Focus on technique, specific swimmer improvements, pool conditions..."
+                      rows={4}
+                      className="w-full text-sm resize-y rounded-md border border-input bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 placeholder:text-muted-foreground"
+                      data-testid="textarea-session-notes"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">Notes are saved when you click Save above.</p>
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="relative border rounded-lg p-4 md:p-6 bg-card min-h-[400px]">
@@ -911,6 +916,7 @@ export function SessionDetail({
                         onClick={() => {
                           setSidebarOpen(!sidebarOpen);
                           setDrillsSidebarOpen(false);
+                          setNotesSidebarOpen(false);
                         }}
                         className={cn(
                           "absolute top-4 md:top-6 border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
@@ -940,6 +946,7 @@ export function SessionDetail({
                         onClick={() => {
                           setDrillsSidebarOpen(!drillsSidebarOpen);
                           setSidebarOpen(false);
+                          setNotesSidebarOpen(false);
                         }}
                         className={cn(
                           "absolute border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
@@ -963,39 +970,40 @@ export function SessionDetail({
                         />
                       </button>
                     )}
+
+                    {/* Notes Toggle Button - only show in view mode when notes exist */}
+                    {sessionNotes && (
+                      <button
+                        onClick={() => {
+                          setNotesSidebarOpen(!notesSidebarOpen);
+                          setSidebarOpen(false);
+                          setDrillsSidebarOpen(false);
+                        }}
+                        className={cn(
+                          "absolute border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
+                          (session.distanceBreakdown || isCalculatingDistances || sessionContent) && (detectedDrills.length > 0 || isCalculatingDrills || sessionContent)
+                            ? "top-[7rem] md:top-[8.5rem]"
+                            : (session.distanceBreakdown || isCalculatingDistances || sessionContent) || (detectedDrills.length > 0 || isCalculatingDrills || sessionContent)
+                            ? "top-16 md:top-20"
+                            : "top-4 md:top-6",
+                          notesSidebarOpen ? "right-[280px] md:right-[30rem]" : "right-0"
+                        )}
+                        data-testid="button-toggle-notes-sidebar"
+                        title="Session Notes"
+                      >
+                        <FileText className={cn("h-4 w-4 text-primary", notesSidebarOpen && "mr-1")} />
+                        {notesSidebarOpen && <span className="text-xs hidden md:inline">Notes</span>}
+                        <ChevronRight
+                          className={cn(
+                            "h-5 w-5 transition-transform",
+                            notesSidebarOpen && "rotate-180"
+                          )}
+                        />
+                      </button>
+                    )}
                   </div>
                 </>
               )}
-            </div>
-
-            {/* Session Notes */}
-            <div className="mt-4 border rounded-lg p-4 md:p-6 bg-card">
-              <div className="flex items-start gap-3 mb-3">
-                <FileText className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <h3 className="text-base font-semibold">Session Notes</h3>
-                  <p className="text-sm text-muted-foreground">Add personal notes for this session (observations, reminders, etc.)</p>
-                </div>
-              </div>
-              <textarea
-                value={sessionNotes}
-                onChange={(e) => setSessionNotes(e.target.value)}
-                placeholder="e.g., Focus on technique, specific swimmer improvements, pool conditions..."
-                rows={4}
-                className="w-full text-sm resize-y rounded-md border border-input bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 placeholder:text-muted-foreground"
-                data-testid="textarea-session-notes"
-              />
-              <div className="flex justify-end mt-3">
-                <Button
-                  size="sm"
-                  onClick={() => saveNotesMutation.mutate(sessionNotes)}
-                  disabled={saveNotesMutation.isPending}
-                  data-testid="button-save-notes"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saveNotesMutation.isPending ? 'Saving...' : 'Save Notes'}
-                </Button>
-              </div>
             </div>
           </div>
         )}
@@ -1122,6 +1130,14 @@ export function SessionDetail({
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile backdrop for notes sidebar */}
+      {activeTab === 'session' && notesSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setNotesSidebarOpen(false)}
         />
       )}
 
@@ -1695,6 +1711,33 @@ export function SessionDetail({
         detectedDrills={detectedDrills}
         isCalculating={isCalculatingDrills}
       />
+
+      {/* Notes Sidebar - rendered outside scroll container for iOS Safari compatibility */}
+      {activeTab === 'session' && sessionNotes && !isEditingSession && (
+        <div
+          className={cn(
+            "fixed inset-y-0 right-0 md:inset-y-auto md:top-[180px] md:bottom-4 md:right-4 border-l md:border md:rounded-lg bg-card overflow-y-auto transition-all duration-300 ease-in-out z-50",
+            notesSidebarOpen ? "w-[280px] md:w-80 p-4 md:p-6" : "w-0 p-0 overflow-hidden"
+          )}
+        >
+          {notesSidebarOpen && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Session Notes
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Coach notes for this session
+                </p>
+              </div>
+              <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                {sessionNotes}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Session Writer Helper */}
       <SessionWriterHelper
