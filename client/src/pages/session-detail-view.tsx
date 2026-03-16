@@ -194,7 +194,7 @@ export function SessionDetail({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drillsSidebarOpen, setDrillsSidebarOpen] = useState(false);
   const [notesSidebarOpen, setNotesSidebarOpen] = useState(false);
-  const [trainingNotesSidebarOpen, setTrainingNotesSidebarOpen] = useState(false);
+  const [handbookNotesOpen, setHandbookNotesOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
@@ -306,6 +306,7 @@ export function SessionDetail({
       queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/sessions', sessionId] });
       setIsEditingSession(false);
+      setHandbookNotesOpen(false);
     },
     onError: (error: Error) => {
       setIsCalculatingDrills(false);
@@ -908,6 +909,16 @@ export function SessionDetail({
                     <FileText className="h-4 w-4 mr-2" />
                     Template
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHandbookNotesOpen(!handbookNotesOpen)}
+                    style={handbookNotesOpen ? { backgroundColor: '#4B9A4A20', borderColor: '#4B9A4A' } : undefined}
+                    data-testid="button-open-handbook-notes"
+                  >
+                    <ListChecks className="h-4 w-4 mr-2" style={{ color: '#4B9A4A' }} />
+                    Handbook Notes
+                  </Button>
                 </div>
               )}
             </div>
@@ -1020,7 +1031,6 @@ export function SessionDetail({
                           setNotesSidebarOpen(!notesSidebarOpen);
                           setSidebarOpen(false);
                           setDrillsSidebarOpen(false);
-                          setTrainingNotesSidebarOpen(false);
                         }}
                         className={cn(
                           "absolute border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
@@ -1045,42 +1055,6 @@ export function SessionDetail({
                       </button>
                     )}
 
-                    {/* Training Notes Toggle Button - shows open handbook notes for this session's squads */}
-                    {!isEditingSession && squadTrainingNotes.length > 0 && (
-                      <button
-                        onClick={() => {
-                          setTrainingNotesSidebarOpen(!trainingNotesSidebarOpen);
-                          setSidebarOpen(false);
-                          setDrillsSidebarOpen(false);
-                          setNotesSidebarOpen(false);
-                        }}
-                        className={cn(
-                          "absolute border bg-card p-2 rounded-l-lg shadow-lg hover:bg-accent transition-all z-50 flex items-center gap-2",
-                          // Position below all other sidebar buttons that are visible
-                          (session.distanceBreakdown || isCalculatingDistances || sessionContent) && (detectedDrills.length > 0 || isCalculatingDrills || sessionContent) && sessionNotes
-                            ? "top-[10.5rem] md:top-[12rem]"
-                            : ((session.distanceBreakdown || isCalculatingDistances || sessionContent) && (detectedDrills.length > 0 || isCalculatingDrills || sessionContent)) ||
-                              ((session.distanceBreakdown || isCalculatingDistances || sessionContent) && sessionNotes) ||
-                              ((detectedDrills.length > 0 || isCalculatingDrills || sessionContent) && sessionNotes)
-                            ? "top-[7rem] md:top-[8.5rem]"
-                            : (session.distanceBreakdown || isCalculatingDistances || sessionContent) || (detectedDrills.length > 0 || isCalculatingDrills || sessionContent) || sessionNotes
-                            ? "top-16 md:top-20"
-                            : "top-4 md:top-6",
-                          trainingNotesSidebarOpen ? "right-[280px] md:right-[30rem]" : "right-0"
-                        )}
-                        data-testid="button-toggle-training-notes-sidebar"
-                        title="Training Notes"
-                      >
-                        <ListChecks className={cn("h-4 w-4 text-primary", trainingNotesSidebarOpen && "mr-1")} />
-                        {trainingNotesSidebarOpen && <span className="text-xs hidden md:inline">Training Notes</span>}
-                        <ChevronRight
-                          className={cn(
-                            "h-5 w-5 transition-transform",
-                            trainingNotesSidebarOpen && "rotate-180"
-                          )}
-                        />
-                      </button>
-                    )}
                   </div>
                 </>
               )}
@@ -1221,13 +1195,6 @@ export function SessionDetail({
         />
       )}
 
-      {/* Mobile backdrop for training notes sidebar */}
-      {activeTab === 'session' && trainingNotesSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setTrainingNotesSidebarOpen(false)}
-        />
-      )}
 
       {/* Distance breakdown sidebar - rendered outside scroll container for iOS Safari compatibility */}
       {activeTab === 'session' && (session.distanceBreakdown || isCalculatingDistances || sessionContent) && !isEditingSession && (
@@ -1827,53 +1794,74 @@ export function SessionDetail({
         </div>
       )}
 
-      {/* Training Notes Sidebar - shows open handbook notes for this session's squads */}
-      {activeTab === 'session' && !isEditingSession && squadTrainingNotes.length > 0 && (
-        <div
-          className={cn(
-            "fixed inset-y-0 right-0 md:inset-y-auto md:top-[180px] md:bottom-4 md:right-4 border-l md:border md:rounded-lg bg-card overflow-y-auto transition-all duration-300 ease-in-out z-50",
-            trainingNotesSidebarOpen ? "w-[280px] md:w-80" : "w-0 overflow-hidden"
-          )}
-        >
-          {trainingNotesSidebarOpen && (
-            <div className="h-full flex flex-col">
-              <div className="p-4 md:p-5 border-b">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-2 font-semibold text-sm">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    Training Notes
-                  </h3>
-                  <button
-                    onClick={() => setTrainingNotesSidebarOpen(false)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Close training notes"
-                    data-testid="button-close-training-notes-sidebar"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Open notes for {sessionSquadsList.map(s => s.name).join(', ')}
+      {/* Handbook Notes Panel - slides in from right in edit mode */}
+      {handbookNotesOpen && isEditingSession && activeTab === 'session' && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setHandbookNotesOpen(false)}
+          />
+          {/* Panel */}
+          <div
+            className="fixed inset-y-0 right-0 w-full max-w-sm bg-background border-l shadow-xl z-50 flex flex-col"
+            data-testid="panel-handbook-notes"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between p-5 border-b shrink-0">
+              <div>
+                <h2 className="flex items-center gap-2 font-semibold text-base">
+                  <ListChecks className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+                  Training Notes
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {squadTrainingNotes.length} active note{squadTrainingNotes.length !== 1 ? 's' : ''} for this squad
                 </p>
               </div>
-              <ScrollArea className="flex-1">
-                <div className="p-4 md:p-5 space-y-4">
+              <button
+                onClick={() => setHandbookNotesOpen(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors mt-0.5"
+                aria-label="Close handbook notes"
+                data-testid="button-close-handbook-notes"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <ScrollArea className="flex-1">
+              {squadTrainingNotes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-10 text-center gap-3 min-h-[300px]">
+                  <div className="text-muted-foreground/40">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                      <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">No active notes</p>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-[200px]">
+                      No open notes found for this squad. Add notes in the Handbook section.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-5 space-y-4">
                   {squadTrainingNotes.map((note: any) => (
-                    <div key={note.id} className="space-y-2" data-testid={`training-note-${note.id}`}>
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm leading-snug">{note.title}</p>
-                          {note.content && (
-                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{note.content}</p>
-                          )}
-                        </div>
-                      </div>
+                    <div key={note.id} className="space-y-2 pb-4 border-b last:border-b-0 last:pb-0" data-testid={`training-note-${note.id}`}>
+                      <p className="font-medium text-sm leading-snug">{note.title}</p>
+                      {note.type === 'text' && note.content && (
+                        <p className="text-sm text-muted-foreground leading-relaxed">{note.content}</p>
+                      )}
                       {note.type === 'checklist' && note.items && note.items.length > 0 && (
-                        <div className="space-y-1.5 pl-1">
+                        <div className="space-y-2">
                           {note.items.map((item: any) => (
-                            <div key={item.id} className="flex items-start gap-2">
+                            <div key={item.id} className="flex items-start gap-2.5">
                               <Checkbox
-                                id={`item-${item.id}`}
+                                id={`hb-item-${item.id}`}
                                 checked={item.completed}
                                 onCheckedChange={(checked) => {
                                   toggleNoteItemMutation.mutate({ itemId: item.id, completed: !!checked });
@@ -1882,9 +1870,9 @@ export function SessionDetail({
                                 data-testid={`checkbox-note-item-${item.id}`}
                               />
                               <label
-                                htmlFor={`item-${item.id}`}
+                                htmlFor={`hb-item-${item.id}`}
                                 className={cn(
-                                  "text-xs leading-snug cursor-pointer",
+                                  "text-sm leading-snug cursor-pointer",
                                   item.completed && "line-through text-muted-foreground"
                                 )}
                               >
@@ -1894,16 +1882,13 @@ export function SessionDetail({
                           ))}
                         </div>
                       )}
-                      {note.type === 'text' && note.content && (
-                        <p className="text-xs text-muted-foreground pl-1 leading-relaxed">{note.content}</p>
-                      )}
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
-            </div>
-          )}
-        </div>
+              )}
+            </ScrollArea>
+          </div>
+        </>
       )}
 
       {/* Session Writer Helper */}
