@@ -28,6 +28,7 @@ import { CheckCircle } from 'lucide-react';
 
 const registerClubSchema = z.object({
   clubName: z.string().min(2, 'Club name must be at least 2 characters'),
+  clubColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex colour').default('#4B9A4A'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Please enter a valid email'),
@@ -63,6 +64,7 @@ export default function RegisterClubPage() {
     resolver: zodResolver(registerClubSchema),
     defaultValues: {
       clubName: '',
+      clubColor: '#4B9A4A',
       firstName: '',
       lastName: '',
       email: '',
@@ -163,6 +165,33 @@ export default function RegisterClubPage() {
                           disabled={registerMutation.isPending}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="clubColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Club Colour (optional)</FormLabel>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="h-11 w-16 cursor-pointer rounded-md border border-input"
+                          data-testid="input-club-colour"
+                          disabled={registerMutation.isPending}
+                        />
+                        <div
+                          className="h-11 flex-1 rounded-md border flex items-center justify-center text-sm font-mono"
+                          style={{ backgroundColor: field.value + '20', color: field.value, borderColor: field.value + '60' }}
+                        >
+                          {field.value.toUpperCase()}
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

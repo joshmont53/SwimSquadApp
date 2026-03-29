@@ -210,7 +210,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
         <Avatar className="h-12 w-12 shrink-0">
           <AvatarFallback 
             className="text-white font-bold"
-            style={{ backgroundColor: '#4B9A4A' }}
+            style={{ backgroundColor: 'var(--club-primary)' }}
           >
             {initials}
           </AvatarFallback>
@@ -281,14 +281,14 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+            <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
             Punctuality
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="text-center p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 rounded-lg border border-green-500/20">
-              <p className="text-3xl font-bold" style={{ color: '#4B9A4A' }} data-testid="text-ontime-percentage">
+              <p className="text-3xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-ontime-percentage">
                 {attendanceStats.onTimePercentage}%
               </p>
               <p className="text-sm text-muted-foreground mt-1">On Time</p>
@@ -336,26 +336,26 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Waves className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+            <Waves className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
             Distance Covered
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <p className="text-2xl font-bold" style={{ color: '#4B9A4A' }} data-testid="text-week-distance">
+              <p className="text-2xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-week-distance">
                 {distanceStats.thisWeek.toFixed(1)}km
               </p>
               <p className="text-sm text-muted-foreground mt-1">This Week</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <p className="text-2xl font-bold" style={{ color: '#4B9A4A' }} data-testid="text-month-distance">
+              <p className="text-2xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-month-distance">
                 {distanceStats.thisMonth.toFixed(1)}km
               </p>
               <p className="text-sm text-muted-foreground mt-1">This Month</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <p className="text-2xl font-bold" style={{ color: '#4B9A4A' }} data-testid="text-year-distance">
+              <p className="text-2xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-year-distance">
                 {distanceStats.thisYear.toFixed(1)}km
               </p>
               <p className="text-sm text-muted-foreground mt-1">This Year</p>
@@ -368,7 +368,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+            <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
             Attendance by Day of Week
           </CardTitle>
         </CardHeader>
@@ -387,7 +387,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
                     className="h-full rounded-full transition-all duration-500"
                     style={{ 
                       width: `${percentage}%`,
-                      backgroundColor: '#4B9A4A'
+                      backgroundColor: 'var(--club-primary)'
                     }}
                   />
                 </div>
@@ -401,7 +401,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+            <BarChart3 className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
             Attendance Trend (Last 6 Months)
           </CardTitle>
         </CardHeader>
@@ -417,7 +417,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
                     className="w-full rounded-t-lg transition-all duration-500 absolute bottom-0"
                     style={{ 
                       height: `${percentage}%`,
-                      backgroundColor: '#4B9A4A'
+                      backgroundColor: 'var(--club-primary)'
                     }}
                   />
                 </div>

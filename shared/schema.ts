@@ -26,6 +26,7 @@ export const clubs = pgTable("clubs", {
   clubName: varchar("club_name").notNull(),
   createdOn: timestamp("created_on").defaultNow(),
   primaryCoachId: varchar("primary_coach_id"), // Set after first coach is created
+  clubColor: varchar("club_color").default('#4B9A4A'), // Brand colour hex string
 });
 
 export type Club = typeof clubs.$inferSelect;

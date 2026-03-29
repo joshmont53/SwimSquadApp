@@ -8,6 +8,7 @@ interface AuthStatusResponse {
     firstName: string | null;
     lastName: string | null;
     role: string | null;
+    clubColor: string | null;
   };
 }
 

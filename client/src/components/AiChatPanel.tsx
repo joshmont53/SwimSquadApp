@@ -347,7 +347,7 @@ export function AiChatPanel({
         <div className="border-b p-3 lg:p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+              <Sparkles className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
               <h3 className="font-semibold text-sm lg:text-base">Assistant</h3>
             </div>
             <div className="flex items-center gap-1 lg:gap-2">
@@ -449,7 +449,7 @@ export function AiChatPanel({
                       ? 'text-white'
                       : 'bg-muted'
                   )}
-                  style={message.role === 'user' ? { backgroundColor: '#4B9A4A' } : undefined}
+                  style={message.role === 'user' ? { backgroundColor: 'var(--club-primary)' } : undefined}
                 >
                   <div className="whitespace-pre-wrap">{message.content}</div>
                   
@@ -480,7 +480,7 @@ export function AiChatPanel({
                           size="sm"
                           onClick={() => onInsertContent(message.content)}
                           className="h-7 px-2 text-xs"
-                          style={{ color: '#4B9A4A' }}
+                          style={{ color: 'var(--club-primary)' }}
                           data-testid={`button-insert-${idx}`}
                         >
                           Insert
@@ -526,7 +526,7 @@ export function AiChatPanel({
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isLoading}
               size="sm"
-              style={{ backgroundColor: '#4B9A4A' }}
+              style={{ backgroundColor: 'var(--club-primary)' }}
               className="text-white px-3"
               data-testid="button-send-message"
             >

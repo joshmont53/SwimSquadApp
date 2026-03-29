@@ -887,17 +887,17 @@ export function SessionDetail({
                     onClick={() => setIsHelperOpen(true)}
                     data-testid="button-open-helper"
                   >
-                    <Lightbulb className="h-4 w-4 mr-2" style={{ color: '#4B9A4A' }} />
+                    <Lightbulb className="h-4 w-4 mr-2" style={{ color: 'var(--club-primary)' }} />
                     Helper
                   </Button>
                   <Button 
                     variant="outline"
                     size="sm" 
                     onClick={() => setAiChatPanelOpen(!aiChatPanelOpen)}
-                    style={aiChatPanelOpen ? { backgroundColor: '#4B9A4A20', borderColor: '#4B9A4A' } : undefined}
+                    style={aiChatPanelOpen ? { backgroundColor: 'var(--club-primary-faint)', borderColor: 'var(--club-primary)' } : undefined}
                     data-testid="button-open-assistant"
                   >
-                    <Sparkles className="h-4 w-4 mr-2" style={{ color: '#4B9A4A' }} />
+                    <Sparkles className="h-4 w-4 mr-2" style={{ color: 'var(--club-primary)' }} />
                     Assistant
                   </Button>
                   <Button 
@@ -913,10 +913,10 @@ export function SessionDetail({
                     variant="outline"
                     size="sm"
                     onClick={() => setHandbookNotesOpen(!handbookNotesOpen)}
-                    style={handbookNotesOpen ? { backgroundColor: '#4B9A4A20', borderColor: '#4B9A4A' } : undefined}
+                    style={handbookNotesOpen ? { backgroundColor: 'var(--club-primary-faint)', borderColor: 'var(--club-primary)' } : undefined}
                     data-testid="button-open-handbook-notes"
                   >
-                    <ListChecks className="h-4 w-4 mr-2" style={{ color: '#4B9A4A' }} />
+                    <ListChecks className="h-4 w-4 mr-2" style={{ color: 'var(--club-primary)' }} />
                     Handbook Notes
                   </Button>
                 </div>
@@ -1811,7 +1811,7 @@ export function SessionDetail({
             <div className="flex items-start justify-between p-5 border-b shrink-0">
               <div>
                 <h2 className="flex items-center gap-2 font-semibold text-base">
-                  <ListChecks className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+                  <ListChecks className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
                   Training Notes
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">

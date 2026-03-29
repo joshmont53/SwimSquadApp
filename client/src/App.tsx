@@ -58,6 +58,7 @@ import {
   Search,
   X,
   BookOpen,
+  Settings,
 } from 'lucide-react';
 import { CollapsibleSidebar } from './components/CollapsibleSidebar';
 import { Badge } from './components/ui/badge';
@@ -88,7 +89,7 @@ import type {
 
 type View = 'month' | 'day';
 type MobileView = 'calendar' | 'list' | 'search';
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings';
 
 // Global storage for pending session ID from notification deep link
 // This is set before CalendarApp mounts and read when it does
@@ -103,6 +104,81 @@ export function getPendingSessionId(): string | null {
 export function setPendingSessionId(sessionId: string): void {
   pendingDeepLinkSessionId = sessionId;
   console.log('[DeepLink] Stored pending session ID:', sessionId);
+}
+
+// Club Settings View component (admin only)
+function ClubSettingsView({ onBack }: { onBack: () => void }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [colour, setColour] = useState(user?.clubColor || '#4B9A4A');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await apiRequest('PATCH', '/api/club/settings', { clubColor: colour });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to save');
+      }
+      document.documentElement.style.setProperty('--club-primary', colour);
+      document.documentElement.style.setProperty('--club-primary-faint', colour + '20');
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/status'] });
+      toast({ title: 'Club colour saved', description: 'The brand colour has been updated.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-lg mx-auto space-y-6 p-2">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-club-settings">
+          <Settings className="h-4 w-4 mr-2" />
+          Club Settings
+        </Button>
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">Club Branding</h2>
+        <p className="text-sm text-muted-foreground">Choose a brand colour that represents your club. This colour appears throughout the app.</p>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="club-colour-picker">Brand Colour</label>
+            <input
+              id="club-colour-picker"
+              type="color"
+              value={colour}
+              onChange={(e) => setColour(e.target.value)}
+              className="h-10 w-20 cursor-pointer rounded-md border border-input"
+              data-testid="input-club-colour"
+            />
+          </div>
+          <div
+            className="h-10 flex-1 rounded-md border border-border flex items-center justify-center text-sm font-mono"
+            style={{ backgroundColor: colour + '20', color: colour, borderColor: colour + '60' }}
+          >
+            {colour.toUpperCase()}
+          </div>
+        </div>
+        <div className="flex items-center gap-4 pt-2">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+            style={{ backgroundColor: colour }}
+          >
+            SC
+          </div>
+          <div className="text-sm text-muted-foreground">Preview of how your colour appears on avatars and accents</div>
+        </div>
+      </div>
+      <Button onClick={handleSave} disabled={saving} data-testid="button-save-club-colour">
+        {saving ? 'Saving…' : 'Save colour'}
+      </Button>
+    </div>
+  );
 }
 
 // Landing page with loading screen logic - ONLY for "/" route
@@ -138,6 +214,14 @@ function LandingPage() {
 function CalendarApp() {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Inject CSS variables for club colour whenever the user/club colour changes
+  useEffect(() => {
+    const colour = user?.clubColor || '#4B9A4A';
+    document.documentElement.style.setProperty('--club-primary', colour);
+    document.documentElement.style.setProperty('--club-primary-faint', colour + '20');
+  }, [user?.clubColor]);
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -459,11 +543,11 @@ function CalendarApp() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Profile Section */}
-      <div className="p-4 border-b" style={{ borderBottomColor: '#4B9A4A' }}>
+      <div className="p-4 border-b" style={{ borderBottomColor: 'var(--club-primary)' }}>
         <div className="flex items-center gap-3">
           <div 
             className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
-            style={{ backgroundColor: '#4B9A4A' }}
+            style={{ backgroundColor: 'var(--club-primary)' }}
             data-testid="avatar-initials-mobile"
           >
             {initials}
@@ -477,7 +561,7 @@ function CalendarApp() {
                 <Badge 
                   variant="secondary" 
                   className="text-xs px-1.5 py-0"
-                  style={{ backgroundColor: '#4B9A4A20', color: '#4B9A4A' }}
+                  style={{ backgroundColor: 'var(--club-primary-faint)', color: 'var(--club-primary)' }}
                   data-testid="badge-coach-level-mobile"
                 >
                   {currentCoach.level}
@@ -508,13 +592,13 @@ function CalendarApp() {
               {isActive('home') && (
                 <div 
                   className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                  style={{ backgroundColor: '#4B9A4A' }}
+                  style={{ backgroundColor: 'var(--club-primary)' }}
                 />
               )}
               <Home 
                 className={cn(
                   "h-4 w-4 mr-3 ml-2 transition-colors",
-                  isActive('home') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                  isActive('home') ? "text-foreground" : "text-muted-foreground"
                 )}
               />
               <span className="flex-1 text-left">Home</span>
@@ -541,13 +625,13 @@ function CalendarApp() {
                 {isActive('calendar') && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <CalendarDays 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('calendar') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    isActive('calendar') ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Calendar</span>
@@ -570,13 +654,13 @@ function CalendarApp() {
                 {isActive('sessionLibrary') && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <FileText 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('sessionLibrary') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    isActive('sessionLibrary') ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Session Library</span>
@@ -597,13 +681,13 @@ function CalendarApp() {
                 {isActive('drillsLibrary') && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <Target 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('drillsLibrary') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    isActive('drillsLibrary') ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Drills Library</span>
@@ -635,13 +719,13 @@ function CalendarApp() {
                   {isActive('coaches') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <UserCog 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('coaches') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('coaches') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Coaches</span>
@@ -662,13 +746,13 @@ function CalendarApp() {
                   {isActive('squads') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <Shield 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('squads') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('squads') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Squads</span>
@@ -689,13 +773,13 @@ function CalendarApp() {
                   {isActive('swimmers') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <Users 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('swimmers') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('swimmers') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Swimmers</span>
@@ -716,13 +800,13 @@ function CalendarApp() {
                   {isActive('locations') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <MapPin 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('locations') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('locations') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Locations</span>
@@ -743,13 +827,13 @@ function CalendarApp() {
                   {isActive('competitions') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <Trophy 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('competitions') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('competitions') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Competitions</span>
@@ -770,13 +854,13 @@ function CalendarApp() {
                   {isActive('invitations') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <Mail 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('invitations') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('invitations') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Coach Invitations</span>
@@ -794,16 +878,40 @@ function CalendarApp() {
                   {isActive('coachingRates') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <PoundSterling 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('coachingRates') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('coachingRates') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   <span className="flex-1 text-left">Coaching Rates</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
+                    isActive('clubSettings') && "bg-accent/50"
+                  )}
+                  onClick={() => handleManagementClick('clubSettings')}
+                  data-testid="button-club-settings-mobile"
+                >
+                  {isActive('clubSettings') && (
+                    <div 
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                      style={{ backgroundColor: 'var(--club-primary)' }}
+                    />
+                  )}
+                  <Settings 
+                    className={cn(
+                      "h-4 w-4 mr-3 ml-2 transition-colors",
+                      isActive('clubSettings') ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  />
+                  <span className="flex-1 text-left">Club Settings</span>
                 </Button>
               </div>
             </div>
@@ -829,13 +937,13 @@ function CalendarApp() {
                 {isActive('invoices') && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <Receipt 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('invoices') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    isActive('invoices') ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Invoice Tracker</span>
@@ -853,13 +961,13 @@ function CalendarApp() {
                 {isActive('feedbackAnalytics') && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <BarChart3 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('feedbackAnalytics') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    isActive('feedbackAnalytics') ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Feedback Analytics</span>
@@ -877,13 +985,13 @@ function CalendarApp() {
                 {(isActive('swimmerProfiles') || isActive('swimmerProfile')) && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <UserCog 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Swimmer Profiles</span>
@@ -901,13 +1009,13 @@ function CalendarApp() {
                 {isActive('handbook') && (
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                    style={{ backgroundColor: '#4B9A4A' }}
+                    style={{ backgroundColor: 'var(--club-primary)' }}
                   />
                 )}
                 <BookOpen 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('handbook') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                    isActive('handbook') ? "text-foreground" : "text-muted-foreground"
                   )}
                 />
                 <span className="flex-1 text-left">Handbook</span>
@@ -956,7 +1064,7 @@ function CalendarApp() {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-card p-4" style={{ borderBottom: '1px solid #4B9A4A' }}>
+        <header className="bg-card p-4" style={{ borderBottom: '1px solid var(--club-primary)' }}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -1095,6 +1203,8 @@ function CalendarApp() {
               attendance={allAttendance}
               onBack={handleBackFromSwimmerProfile}
             />
+          ) : managementView === 'clubSettings' ? (
+            <ClubSettingsView onBack={handleBackToHome} />
           ) : managementView === 'home' ? (
             currentCoach ? (
               <div className="px-2 pt-2 pb-4 overflow-y-auto">

@@ -116,7 +116,7 @@ export function SessionWriterHelper({ isOpen, onClose, squadId, sessionFocus, sq
         {/* Header */}
         <div className="p-3 border-b flex items-center justify-between bg-card">
           <div className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4" style={{ color: '#4B9A4A' }} />
+            <Lightbulb className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
             <div>
               <h3 className="text-sm font-medium">Session Writer Helper</h3>
               <p className="text-[10px] text-muted-foreground">Data-driven insights</p>
@@ -222,7 +222,7 @@ export function SessionWriterHelper({ isOpen, onClose, squadId, sessionFocus, sq
                 {/* Detailed Recommendations Section Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" style={{ color: '#4B9A4A' }} />
+                    <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--club-primary)' }} />
                     <h4 className="text-xs font-medium">Detailed Recommendations</h4>
                   </div>
                   <Button 
@@ -288,7 +288,7 @@ export function SessionWriterHelper({ isOpen, onClose, squadId, sessionFocus, sq
                     {displayInsights.focusTips && displayInsights.focusTips.length > 0 && (
                       <div>
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <Target className="h-3.5 w-3.5" style={{ color: '#4B9A4A' }} />
+                          <Target className="h-3.5 w-3.5" style={{ color: 'var(--club-primary)' }} />
                           <h5 className="text-[11px] font-medium">{sessionFocus || 'Session'} Tips</h5>
                         </div>
                         <div className="space-y-1.5">

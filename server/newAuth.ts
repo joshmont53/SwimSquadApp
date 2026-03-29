@@ -260,7 +260,7 @@ export function setupNewAuth(app: Express) {
   // Club self-registration endpoint - creates club + primary coach + user in one step
   app.post('/api/auth/register-club', async (req, res) => {
     try {
-      const { clubName, firstName, lastName, email, password, passwordConfirm, level, dob } = req.body;
+      const { clubName, clubColor, firstName, lastName, email, password, passwordConfirm, level, dob } = req.body;
 
       // Validate required fields
       if (!clubName || !firstName || !lastName || !email || !password || !passwordConfirm || !dob) {
@@ -298,7 +298,8 @@ export function setupNewAuth(app: Express) {
 
       const result = await db.transaction(async (tx) => {
         // 1. Create club
-        const [club] = await tx.insert(clubs).values({ clubName }).returning();
+        const validColor = clubColor && /^#[0-9a-fA-F]{6}$/.test(clubColor) ? clubColor : '#4B9A4A';
+        const [club] = await tx.insert(clubs).values({ clubName, clubColor: validColor }).returning();
 
         // 2. Create coach (admin of the club)
         const [coach] = await tx.insert(coaches).values({
@@ -517,6 +518,16 @@ export function setupNewAuth(app: Express) {
           return res.json({ authenticated: false });
         }
         
+        // Fetch club colour for this user
+        let clubColor: string = '#4B9A4A';
+        try {
+          const coach = await storage.getCoachByUserId(user.id);
+          if (coach?.clubId) {
+            const club = await storage.getClub(coach.clubId);
+            if (club?.clubColor) clubColor = club.clubColor;
+          }
+        } catch { /* non-fatal */ }
+
         return res.json({
           authenticated: true,
           user: {
@@ -525,6 +536,7 @@ export function setupNewAuth(app: Express) {
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role,
+            clubColor,
           },
         });
       }

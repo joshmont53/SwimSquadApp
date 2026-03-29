@@ -52,6 +52,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Club settings (admin only)
+  app.patch('/api/club/settings', requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const clubId = req.user.clubId;
+      const { clubColor } = req.body;
+
+      if (!clubColor || typeof clubColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(clubColor)) {
+        return res.status(400).json({ message: 'Invalid colour. Must be a 6-digit hex value, e.g. #4B9A4A' });
+      }
+
+      const updated = await storage.updateClub(clubId, { clubColor });
+      res.json({ clubColor: updated.clubColor });
+    } catch (error) {
+      console.error('Error updating club settings:', error);
+      res.status(500).json({ message: 'Failed to update club settings' });
+    }
+  });
+
   // Invitation management routes (Phase 3 - Admin only)
   // List all invitations
   app.get("/api/invitations", requireAuth, requireAdmin, async (req: any, res) => {

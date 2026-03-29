@@ -442,7 +442,7 @@ export function HomePage({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" style={{ color: '#4B9A4A' }} />
+                  <CalendarDays className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
                   Upcoming This Week
                 </CardTitle>
                 <Button 
@@ -501,7 +501,7 @@ export function HomePage({
                           </div>
                           {isSessionToday && (
                             <Badge 
-                              style={{ backgroundColor: '#4B9A4A20', color: '#4B9A4A' }}
+                              style={{ backgroundColor: 'var(--club-primary-faint)', color: 'var(--club-primary)' }}
                               className="text-xs ml-2"
                             >
                               Today
@@ -806,20 +806,20 @@ export function HomePage({
         <Card data-testid="card-coaching-profile">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Award className="h-4 w-4" style={{ color: '#4B9A4A' }} />
+              <Award className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
               Your Coaching Profile ({currentMonthName})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="text-2xl font-bold" style={{ color: '#4B9A4A' }} data-testid="text-sessions-led">
+                <p className="text-2xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-sessions-led">
                   {totalStats.sessionsThisMonth}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Sessions Led</p>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="text-2xl font-bold" style={{ color: '#4B9A4A' }} data-testid="text-squads-count">
+                <p className="text-2xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-squads-count">
                   {totalStats.squadsCoached}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Squads Coached</p>
@@ -833,7 +833,7 @@ export function HomePage({
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" style={{ color: '#4B9A4A' }} />
+              <Users className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
               All Swimmers Attendance
             </DialogTitle>
             <DialogDescription>
@@ -905,7 +905,7 @@ export function HomePage({
                             className="h-full rounded-full"
                             style={{ 
                               width: `${percentage ?? 0}%`,
-                              backgroundColor: (percentage ?? 0) >= 80 ? '#4B9A4A' : (percentage ?? 0) >= 60 ? '#f59e0b' : '#ef4444'
+                              backgroundColor: (percentage ?? 0) >= 80 ? 'var(--club-primary)' : (percentage ?? 0) >= 60 ? '#f59e0b' : '#ef4444'
                             }}
                           />
                         </div>

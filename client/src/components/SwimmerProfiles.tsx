@@ -158,7 +158,7 @@ export function SwimmerProfiles({
                       <Avatar className="h-12 w-12 shrink-0">
                         <AvatarFallback 
                           className="text-white font-bold"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         >
                           {initials}
                         </AvatarFallback>
@@ -175,9 +175,9 @@ export function SwimmerProfiles({
                             variant="outline"
                             style={
                               percentage >= 90 ? {
-                                backgroundColor: '#4B9A4A15',
-                                color: '#4B9A4A',
-                                borderColor: '#4B9A4A40'
+                                backgroundColor: 'var(--club-primary-faint)',
+                                color: 'var(--club-primary)',
+                                borderColor: 'var(--club-primary)'
                               } : percentage >= 75 ? {
                                 backgroundColor: '#fbbf2415',
                                 color: '#f59e0b',

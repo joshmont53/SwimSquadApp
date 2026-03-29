@@ -114,7 +114,7 @@ export function AddSession({ squads, locations, coaches, onSave, onCancel }: Add
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden" data-testid="view-add-session">
       {/* Header */}
-      <div className="flex-shrink-0 border-b p-4 flex items-center justify-between" style={{ borderBottomColor: '#4B9A4A' }}>
+      <div className="flex-shrink-0 border-b p-4 flex items-center justify-between" style={{ borderBottomColor: 'var(--club-primary)' }}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onCancel} data-testid="button-back">
             <ArrowLeft className="h-5 w-5" />

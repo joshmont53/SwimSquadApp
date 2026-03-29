@@ -4,13 +4,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { 
   CalendarDays, FileText, Target, Receipt, BarChart3, 
   UserCog, Users, Shield, MapPin, Trophy, LogOut, ChevronLeft, ChevronRight,
-  Mail, PoundSterling, Home, BookOpen
+  Mail, PoundSterling, Home, BookOpen, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { Session, Squad, Location, Coach, Swimmer } from '@/lib/typeAdapters';
 
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings';
 
 interface CollapsibleSidebarProps {
   collapsed: boolean;
@@ -66,7 +66,7 @@ export function CollapsibleSidebar({
       data-testid="sidebar-desktop"
     >
       {/* Profile Section */}
-      <div className="p-4 border-b" style={{ borderBottomColor: '#4B9A4A' }}>
+      <div className="p-4 border-b" style={{ borderBottomColor: 'var(--club-primary)' }}>
         <div className={cn(
           "flex items-center",
           collapsed ? "justify-center" : "gap-3"
@@ -75,7 +75,7 @@ export function CollapsibleSidebar({
             <TooltipTrigger asChild>
               <div 
                 className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 cursor-pointer"
-                style={{ backgroundColor: '#4B9A4A' }}
+                style={{ backgroundColor: 'var(--club-primary)' }}
                 data-testid="avatar-initials"
               >
                 {initials}
@@ -98,7 +98,7 @@ export function CollapsibleSidebar({
                 <Badge 
                   variant="secondary" 
                   className="text-xs px-1.5 py-0"
-                  style={{ backgroundColor: '#4B9A4A20', color: '#4B9A4A' }}
+                  style={{ backgroundColor: 'var(--club-primary-faint)', color: 'var(--club-primary)' }}
                   data-testid="badge-coach-level"
                 >
                   {currentCoach.level}
@@ -132,14 +132,14 @@ export function CollapsibleSidebar({
                   {isActive('home') && (
                     <div 
                       className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: '#4B9A4A' }}
+                      style={{ backgroundColor: 'var(--club-primary)' }}
                     />
                   )}
                   <Home 
                     className={cn(
                       "h-4 w-4 transition-colors",
                       collapsed ? "" : "mr-3 ml-2",
-                      isActive('home') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                      isActive('home') ? "text-foreground" : "text-muted-foreground"
                     )}
                   />
                   {!collapsed && <span className="flex-1 text-left">Home</span>}
@@ -177,14 +177,14 @@ export function CollapsibleSidebar({
                     {isActive('calendar') && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <CalendarDays 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('calendar') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        isActive('calendar') ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
@@ -222,14 +222,14 @@ export function CollapsibleSidebar({
                     {isActive('sessionLibrary') && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <FileText 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('sessionLibrary') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        isActive('sessionLibrary') ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
@@ -265,14 +265,14 @@ export function CollapsibleSidebar({
                     {isActive('drillsLibrary') && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <Target 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('drillsLibrary') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        isActive('drillsLibrary') ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
@@ -322,14 +322,14 @@ export function CollapsibleSidebar({
                       {isActive('coaches') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <UserCog 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('coaches') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('coaches') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -365,14 +365,14 @@ export function CollapsibleSidebar({
                       {isActive('squads') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <Shield 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('squads') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('squads') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -408,14 +408,14 @@ export function CollapsibleSidebar({
                       {isActive('swimmers') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <Users 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('swimmers') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('swimmers') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -451,14 +451,14 @@ export function CollapsibleSidebar({
                       {isActive('locations') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <MapPin 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('locations') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('locations') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -494,14 +494,14 @@ export function CollapsibleSidebar({
                       {isActive('competitions') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <Trophy 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('competitions') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('competitions') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -537,14 +537,14 @@ export function CollapsibleSidebar({
                       {isActive('invitations') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <Mail 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('invitations') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('invitations') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -575,14 +575,14 @@ export function CollapsibleSidebar({
                       {isActive('coachingRates') && (
                         <div 
                           className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: '#4B9A4A' }}
+                          style={{ backgroundColor: 'var(--club-primary)' }}
                         />
                       )}
                       <PoundSterling 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('coachingRates') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                          isActive('coachingRates') ? "text-foreground" : "text-muted-foreground"
                         )}
                       />
                       {!collapsed && (
@@ -593,6 +593,44 @@ export function CollapsibleSidebar({
                   {collapsed && (
                     <TooltipContent side="right">
                       Coaching Rates
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+
+                {/* Club Settings */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full py-2.5 relative transition-all duration-200",
+                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
+                        isActive('clubSettings') && "bg-accent/50"
+                      )}
+                      onClick={() => onNavigate('clubSettings')}
+                      data-testid="button-nav-club-settings"
+                    >
+                      {isActive('clubSettings') && (
+                        <div 
+                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                          style={{ backgroundColor: 'var(--club-primary)' }}
+                        />
+                      )}
+                      <Settings 
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          collapsed ? "" : "mr-3 ml-2",
+                          isActive('clubSettings') ? "text-foreground" : "text-muted-foreground"
+                        )}
+                      />
+                      {!collapsed && (
+                        <span className="flex-1 text-left">Club Settings</span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right">
+                      Club Settings
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -627,14 +665,14 @@ export function CollapsibleSidebar({
                     {isActive('invoices') && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <Receipt 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('invoices') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        isActive('invoices') ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
@@ -665,14 +703,14 @@ export function CollapsibleSidebar({
                     {isActive('feedbackAnalytics') && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <BarChart3 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('feedbackAnalytics') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        isActive('feedbackAnalytics') ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
@@ -703,14 +741,14 @@ export function CollapsibleSidebar({
                     {(isActive('swimmerProfiles') || isActive('swimmerProfile')) && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <UserCog 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
@@ -741,14 +779,14 @@ export function CollapsibleSidebar({
                     {isActive('handbook') && (
                       <div 
                         className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                        style={{ backgroundColor: '#4B9A4A' }}
+                        style={{ backgroundColor: 'var(--club-primary)' }}
                       />
                     )}
                     <BookOpen 
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('handbook') ? "text-[#4B9A4A]" : "text-muted-foreground"
+                        isActive('handbook') ? "text-foreground" : "text-muted-foreground"
                       )}
                     />
                     {!collapsed && (
