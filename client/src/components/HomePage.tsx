@@ -528,19 +528,20 @@ export function HomePage({
           </Card>
 
           <Card 
-            className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 cursor-pointer hover:shadow-lg transition-shadow lg:col-span-1"
+            className="text-white border-0 cursor-pointer hover:shadow-lg transition-shadow lg:col-span-1"
+            style={{ background: 'linear-gradient(to bottom right, var(--club-card-1-start), var(--club-card-1-end))' }}
             onClick={() => setShowAllSwimmers(true)}
             data-testid="card-attendance-rate"
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-green-100 text-sm">Attendance Rate ({currentMonthName})</p>
+                  <p className="text-white/80 text-sm">Attendance Rate ({currentMonthName})</p>
                   <p className="text-3xl font-bold mt-1" data-testid="text-avg-attendance">{avgAttendance}%</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-green-100 text-xs">Squad Average</p>
+                    <p className="text-white/80 text-xs">Squad Average</p>
                     {attendanceTrend !== null && (
-                      <span className={`text-xs flex items-center gap-0.5 ${attendanceTrend >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+                      <span className={`text-xs flex items-center gap-0.5 ${attendanceTrend >= 0 ? 'text-white/60' : 'text-red-200'}`}>
                         {attendanceTrend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                         {attendanceTrend >= 0 ? '+' : ''}{attendanceTrend}% vs last month
                       </span>
@@ -548,7 +549,7 @@ export function HomePage({
                   </div>
                 </div>
                 {attendanceTrend === null || attendanceTrend >= 0 ? (
-                  <TrendingUp className="h-10 w-10 text-green-200" />
+                  <TrendingUp className="h-10 w-10 text-white/60" />
                 ) : (
                   <TrendingDown className="h-10 w-10 text-red-200" />
                 )}
@@ -594,7 +595,7 @@ export function HomePage({
                 <div className="pt-3 border-t border-green-400/30">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-xs text-green-100 mb-1">
+                      <div className="flex items-center gap-1 text-xs text-white/80 mb-1">
                         <TrendingUp className="h-3 w-3" />
                         <span>Top 3</span>
                       </div>
@@ -604,14 +605,14 @@ export function HomePage({
                           className="flex items-center justify-between text-xs p-1.5 rounded bg-white/10"
                         >
                           <span className="truncate text-white">{swimmer.firstName} {swimmer.lastName[0]}.</span>
-                          <span className="text-xs font-semibold text-green-100 ml-1">{percentage}%</span>
+                          <span className="text-xs font-semibold text-white/80 ml-1">{percentage}%</span>
                         </div>
                       ))}
                     </div>
                     
                     {bottom3Swimmers.length > 0 && (
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-xs text-green-100 mb-1">
+                        <div className="flex items-center gap-1 text-xs text-white/80 mb-1">
                           <TrendingDown className="h-3 w-3" />
                           <span>Bottom 3</span>
                         </div>
@@ -628,7 +629,7 @@ export function HomePage({
                     )}
                   </div>
                   
-                  <div className="text-xs text-center text-green-100 pt-3 flex items-center justify-center gap-1">
+                  <div className="text-xs text-center text-white/80 pt-3 flex items-center justify-center gap-1">
                     <span>Click to view all {swimmerAttendance.length} swimmers</span>
                     <ChevronDown className="h-3 w-3" />
                   </div>
@@ -637,17 +638,17 @@ export function HomePage({
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 lg:col-span-1" data-testid="card-total-distance">
+          <Card className="text-white border-0 lg:col-span-1" style={{ background: 'linear-gradient(to bottom right, var(--club-card-2-start), var(--club-card-2-end))' }} data-testid="card-total-distance">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-emerald-100 text-sm">Total Distance</p>
+                  <p className="text-white/80 text-sm">Total Distance</p>
                   <p className="text-3xl font-bold mt-1" data-testid="text-total-distance">
                     {(thisWeekSwimmerStats.totalDistance / 1000).toFixed(1)}km
                   </p>
-                  <p className="text-emerald-100 text-xs mt-1">This Week</p>
+                  <p className="text-white/80 text-xs mt-1">This Week</p>
                 </div>
-                <Waves className="h-10 w-10 text-emerald-200" />
+                <Waves className="h-10 w-10 text-white/60" />
               </div>
               
               <div className="mb-3">
@@ -674,7 +675,7 @@ export function HomePage({
               
               <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-emerald-400/30">
                 <div>
-                  <p className="text-emerald-200">Avg per session</p>
+                  <p className="text-white/60">Avg per session</p>
                   <p className="font-semibold">
                     {thisWeekSessionsForDistance.length > 0 
                       ? (thisWeekSwimmerStats.totalDistance / thisWeekSessionsForDistance.length / 1000).toFixed(1)
@@ -682,7 +683,7 @@ export function HomePage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-emerald-200">Sessions</p>
+                  <p className="text-white/60">Sessions</p>
                   <p className="font-semibold">{thisWeekSessionsForDistance.length}</p>
                 </div>
               </div>
@@ -690,14 +691,14 @@ export function HomePage({
           </Card>
         </div>
 
-        <Card className="bg-gradient-to-br from-teal-600 to-teal-700 text-white border-0" data-testid="card-training-breakdown">
+        <Card className="text-white border-0" style={{ background: 'linear-gradient(to bottom right, var(--club-card-3-start), var(--club-card-3-end))' }} data-testid="card-training-breakdown">
           <CardHeader>
             <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
               <span className="flex items-center gap-2">
                 <Activity className="h-5 w-5 flex-shrink-0" />
                 This Week's Training Breakdown
               </span>
-              <span className="text-sm font-normal text-teal-100">
+              <span className="text-sm font-normal text-white/80">
                 ({squads.find(s => s.id === distanceSquadFilter)?.name})
               </span>
             </CardTitle>
@@ -737,7 +738,7 @@ export function HomePage({
                 <div className="grid grid-cols-2 gap-3">
                   {Object.entries(thisWeekSwimmerStats.types).map(([type, distance]) => (
                     <div key={type} className="p-3 bg-white/10 rounded-lg">
-                      <p className="text-xs text-teal-100 capitalize">{type}</p>
+                      <p className="text-xs text-white/80 capitalize">{type}</p>
                       <p className="text-lg font-bold mt-1">{(distance / 1000).toFixed(1)}km</p>
                     </div>
                   ))}
@@ -748,7 +749,7 @@ export function HomePage({
         </Card>
 
         {upcomingCompetitions.length > 0 && (
-          <Card className="bg-gradient-to-br from-lime-500 to-lime-600 text-white border-0" data-testid="card-upcoming-competitions">
+          <Card className="text-white border-0" style={{ background: 'linear-gradient(to bottom right, var(--club-card-4-start), var(--club-card-4-end))' }} data-testid="card-upcoming-competitions">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Trophy className="h-4 w-4" />
@@ -777,14 +778,14 @@ export function HomePage({
                             />
                             <span className="truncate">{comp.competitionName}</span>
                           </div>
-                          <div className="text-xs text-lime-50 mt-1 flex items-center gap-1">
+                          <div className="text-xs text-white/90 mt-1 flex items-center gap-1">
                             <CalendarDays className="h-3 w-3" />
                             {isSameDay 
                               ? format(compStart, 'EEE, MMM d, yyyy')
                               : `${format(compStart, 'MMM d')} - ${format(compEnd, 'MMM d, yyyy')}`
                             }
                           </div>
-                          <div className="text-xs text-lime-50 mt-0.5 flex items-center gap-1">
+                          <div className="text-xs text-white/90 mt-0.5 flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {location?.name || 'TBD'}
                           </div>

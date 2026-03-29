@@ -7,6 +7,14 @@
   /* Club brand colour defaults — overridden by JS after auth resolves */
   --club-primary: #4B9A4A;
   --club-primary-faint: #4B9A4A20;
+  --club-card-1-start: hsl(142, 70%, 47%);
+  --club-card-1-end:   hsl(142, 70%, 40%);
+  --club-card-2-start: hsl(160, 70%, 43%);
+  --club-card-2-end:   hsl(160, 70%, 36%);
+  --club-card-3-start: hsl(185, 70%, 40%);
+  --club-card-3-end:   hsl(185, 70%, 32%);
+  --club-card-4-start: hsl(84,  70%, 47%);
+  --club-card-4-end:   hsl(84,  70%, 40%);
 
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);

@@ -106,6 +106,52 @@ export function setPendingSessionId(sessionId: string): void {
   console.log('[DeepLink] Stored pending session ID:', sessionId);
 }
 
+// ── Club colour derivation ─────────────────────────────────────────────────
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l * 100];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return [h * 360, s * 100, l * 100];
+}
+
+function applyClubColours(hex: string) {
+  document.documentElement.style.setProperty('--club-primary', hex);
+  document.documentElement.style.setProperty('--club-primary-faint', hex + '20');
+
+  const [h, , l] = hexToHsl(hex);
+  const baseL = Math.max(35, Math.min(50, l));
+  const sat = 70;
+
+  // Four card gradient pairs — hue offsets mirror the green→emerald→teal/lime spread
+  const cards = [
+    { hOff: 22,  lStart: baseL + 2, lEnd: baseL - 5  }, // attendance   (~green)
+    { hOff: 40,  lStart: baseL - 2, lEnd: baseL - 9  }, // distance     (~emerald)
+    { hOff: 65,  lStart: baseL - 5, lEnd: baseL - 13 }, // training     (~teal)
+    { hOff: -36, lStart: baseL + 2, lEnd: baseL - 5  }, // competitions (~lime)
+  ];
+
+  cards.forEach(({ hOff, lStart, lEnd }, i) => {
+    const hue = ((h + hOff) % 360 + 360) % 360;
+    document.documentElement.style.setProperty(
+      `--club-card-${i + 1}-start`,
+      `hsl(${hue.toFixed(0)}, ${sat}%, ${lStart.toFixed(0)}%)`
+    );
+    document.documentElement.style.setProperty(
+      `--club-card-${i + 1}-end`,
+      `hsl(${hue.toFixed(0)}, ${sat}%, ${lEnd.toFixed(0)}%)`
+    );
+  });
+}
+
 // Club Settings View component (admin only)
 function ClubSettingsView({ onBack }: { onBack: () => void }) {
   const { user } = useAuth();
@@ -121,8 +167,7 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
         const err = await res.json();
         throw new Error(err.message || 'Failed to save');
       }
-      document.documentElement.style.setProperty('--club-primary', colour);
-      document.documentElement.style.setProperty('--club-primary-faint', colour + '20');
+      applyClubColours(colour);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/status'] });
       toast({ title: 'Club colour saved', description: 'The brand colour has been updated.' });
     } catch (err: any) {
@@ -217,9 +262,7 @@ function CalendarApp() {
 
   // Inject CSS variables for club colour whenever the user/club colour changes
   useEffect(() => {
-    const colour = user?.clubColor || '#4B9A4A';
-    document.documentElement.style.setProperty('--club-primary', colour);
-    document.documentElement.style.setProperty('--club-primary-faint', colour + '20');
+    applyClubColours(user?.clubColor || '#4B9A4A');
   }, [user?.clubColor]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
