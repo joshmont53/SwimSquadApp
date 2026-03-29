@@ -54,9 +54,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Invitation management routes (Phase 3 - Admin only)
   // List all invitations
-  app.get("/api/invitations", requireAuth, requireAdmin, async (req, res) => {
+  app.get("/api/invitations", requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      const invitations = await storage.getAllInvitations();
+      const clubId = req.user.clubId;
+      const invitations = await storage.getAllInvitations(clubId);
       // Sanitize invitations to remove sensitive fields (inviteToken)
       const sanitizedInvitations = invitations.map(sanitizeInvitation);
       res.json(sanitizedInvitations);
@@ -107,6 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invitation = await storage.createInvitation({
         email,
         coachId,
+        clubId: req.user.clubId,
         inviteToken,
         status: 'pending',
         expiresAt,
@@ -140,12 +142,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Resend invitation email
-  app.post("/api/invitations/:id/resend", requireAuth, requireAdmin, async (req, res) => {
+  app.post("/api/invitations/:id/resend", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
 
       // Get invitation
-      const invitations = await storage.getAllInvitations();
+      const invitations = await storage.getAllInvitations(req.user.clubId);
       const invitation = invitations.find(inv => inv.id === id);
 
       if (!invitation) {
@@ -193,12 +195,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Revoke invitation
-  app.patch("/api/invitations/:id/revoke", requireAuth, requireAdmin, async (req, res) => {
+  app.patch("/api/invitations/:id/revoke", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
 
       // Get invitation
-      const invitations = await storage.getAllInvitations();
+      const invitations = await storage.getAllInvitations(req.user.clubId);
       const invitation = invitations.find(inv => inv.id === id);
 
       if (!invitation) {
@@ -225,9 +227,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Coach routes
-  app.get("/api/coaches", requireAuth, async (req, res) => {
+  app.get("/api/coaches", requireAuth, async (req: any, res) => {
     try {
-      const coaches = await storage.getCoaches();
+      const clubId = req.user.clubId;
+      const coaches = await storage.getCoaches(clubId);
       res.json(coaches);
     } catch (error) {
       console.error("Error fetching coaches:", error);
@@ -319,9 +322,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Squad routes
-  app.get("/api/squads", requireAuth, async (req, res) => {
+  app.get("/api/squads", requireAuth, async (req: any, res) => {
     try {
-      const squads = await storage.getSquads();
+      const squads = await storage.getSquads(req.user.clubId);
       res.json(squads);
     } catch (error) {
       console.error("Error fetching squads:", error);
@@ -329,17 +332,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/squads", requireAuth, async (req, res) => {
+  app.post("/api/squads", requireAuth, async (req: any, res) => {
     try {
       const validatedData = insertSquadSchema.parse(req.body);
       
       if (!validatedData.color) {
-        const existingSquads = await storage.getSquads();
+        const existingSquads = await storage.getSquads(req.user.clubId);
         const existingColors = existingSquads.map(s => s.color);
         validatedData.color = getNextAvailableColor(existingColors);
       }
       
-      const squad = await storage.createSquad(validatedData);
+      const squad = await storage.createSquad({ ...validatedData, clubId: req.user.clubId });
       res.json(squad);
     } catch (error: any) {
       console.error("Error creating squad:", error);
@@ -375,9 +378,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Swimmer routes
-  app.get("/api/swimmers", requireAuth, async (req, res) => {
+  app.get("/api/swimmers", requireAuth, async (req: any, res) => {
     try {
-      const swimmers = await storage.getSwimmers();
+      const swimmers = await storage.getSwimmers(req.user.clubId);
       res.json(swimmers);
     } catch (error) {
       console.error("Error fetching swimmers:", error);
@@ -385,10 +388,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/swimmers", requireAuth, async (req, res) => {
+  app.post("/api/swimmers", requireAuth, async (req: any, res) => {
     try {
       const validatedData = insertSwimmerSchema.parse(req.body);
-      const swimmer = await storage.createSwimmer(validatedData);
+      const swimmer = await storage.createSwimmer({ ...validatedData, clubId: req.user.clubId });
       res.json(swimmer);
     } catch (error: any) {
       console.error("Error creating swimmer:", error);
@@ -440,9 +443,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Location routes
-  app.get("/api/locations", requireAuth, async (req, res) => {
+  app.get("/api/locations", requireAuth, async (req: any, res) => {
     try {
-      const locations = await storage.getLocations();
+      const locations = await storage.getLocations(req.user.clubId);
       res.json(locations);
     } catch (error) {
       console.error("Error fetching locations:", error);
@@ -450,10 +453,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/locations", requireAuth, async (req, res) => {
+  app.post("/api/locations", requireAuth, async (req: any, res) => {
     try {
       const validatedData = insertLocationSchema.parse(req.body);
-      const location = await storage.createLocation(validatedData);
+      const location = await storage.createLocation({ ...validatedData, clubId: req.user.clubId });
       res.json(location);
     } catch (error: any) {
       console.error("Error creating location:", error);
@@ -489,9 +492,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session routes
-  app.get("/api/sessions", requireAuth, async (req, res) => {
+  app.get("/api/sessions", requireAuth, async (req: any, res) => {
     try {
-      const sessions = await storage.getSessions();
+      const sessions = await storage.getSessions(req.user.clubId);
       res.json(sessions);
     } catch (error) {
       console.error("Error fetching sessions:", error);
@@ -533,11 +536,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sessions", requireAuth, async (req, res) => {
+  app.post("/api/sessions", requireAuth, async (req: any, res) => {
     try {
       const { squadIds, ...sessionBody } = req.body;
       const validatedData = insertSwimmingSessionSchema.parse(sessionBody);
-      let session = await storage.createSession(validatedData);
+      let session = await storage.createSession({ ...validatedData, clubId: req.user.clubId });
 
       // Create session_squads entries for multi-squad support
       const allSquadIds: string[] = squadIds && Array.isArray(squadIds) && squadIds.length > 0
@@ -552,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.sessionContent && session.sessionContent.trim()) {
         try {
           // Get all active drills for detection
-          const allDrills = await storage.getDrills();
+          const allDrills = await storage.getDrills(req.user.clubId);
           const drillReferences: DrillReference[] = allDrills.map(drill => ({
             id: drill.id,
             drillName: drill.drillName,
@@ -671,7 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const validatedData = insertSwimmingSessionSchema.parse(newSessionData);
-      const newSession = await storage.createSession(validatedData);
+      const newSession = await storage.createSession({ ...validatedData, clubId: req.user.clubId });
 
       for (const squadId of squadIds) {
         await storage.createSessionSquad({ sessionId: newSession.id, squadId });
@@ -685,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/sessions/:id", requireAuth, async (req, res) => {
+  app.put("/api/sessions/:id", requireAuth, async (req: any, res) => {
     try {
       const { squadIds, ...sessionBody } = req.body;
       const validatedData = insertSwimmingSessionSchema.partial().parse(sessionBody);
@@ -700,7 +703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (validatedData.sessionContent !== undefined && session.sessionContent && session.sessionContent.trim()) {
         try {
           // Get all active drills for detection
-          const allDrills = await storage.getDrills();
+          const allDrills = await storage.getDrills(req.user.clubId);
           const drillReferences: DrillReference[] = allDrills.map(drill => ({
             id: drill.id,
             drillName: drill.drillName,
@@ -857,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Assistant Chat endpoint - generate personalized AI responses
-  app.post("/api/sessions/:id/ai-chat", requireAuth, async (req, res) => {
+  app.post("/api/sessions/:id/ai-chat", requireAuth, async (req: any, res) => {
     try {
       const sessionId = req.params.id;
       const { message, history } = req.body;
@@ -884,11 +887,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? sessionSquadIds
         : (session.squadId ? [session.squadId] : []);
 
-      const allSquads = await storage.getSquads();
+      const allSquads = await storage.getSquads(req.user.clubId);
       const sessionSquads = allSquads.filter(sq => effectiveSquadIds.includes(sq.id));
       const combinedSquadName = sessionSquads.map(sq => sq.squadName).join(', ');
       
-      const allSwimmers = await storage.getSwimmers();
+      const allSwimmers = await storage.getSwimmers(req.user.clubId);
       const squadSwimmers = allSwimmers.filter(s => effectiveSquadIds.includes(s.squadId));
       
       const today = new Date();
@@ -915,7 +918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionSquadMap.set(ss.sessionId, existing);
       }
       
-      const allSessions = await storage.getSessions();
+      const allSessions = await storage.getSessions(req.user.clubId);
       const squadSessions = effectiveSquadIds.length > 0
         ? allSessions
             .filter(s => {
@@ -991,7 +994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Assistant Context endpoint - gather rich context for personalized AI responses
-  app.get("/api/sessions/:id/ai-context", requireAuth, async (req, res) => {
+  app.get("/api/sessions/:id/ai-context", requireAuth, async (req: any, res) => {
     try {
       const sessionId = req.params.id;
       
@@ -1011,11 +1014,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? sessionSquadIds
         : (session.squadId ? [session.squadId] : []);
 
-      const allSquads = await storage.getSquads();
+      const allSquads = await storage.getSquads(req.user.clubId);
       const sessionSquads = allSquads.filter(sq => effectiveSquadIds.includes(sq.id));
       const combinedSquadName = sessionSquads.map(sq => sq.squadName).join(', ');
       
-      const allSwimmers = await storage.getSwimmers();
+      const allSwimmers = await storage.getSwimmers(req.user.clubId);
       const squadSwimmers = allSwimmers.filter(s => effectiveSquadIds.includes(s.squadId));
       
       const today = new Date();
@@ -1042,7 +1045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionSquadMap.set(ss.sessionId, existing);
       }
       
-      const allSessions = await storage.getSessions();
+      const allSessions = await storage.getSessions(req.user.clubId);
       const squadSessions = effectiveSquadIds.length > 0
         ? allSessions
             .filter(s => {
@@ -1114,9 +1117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Attendance routes
-  app.get("/api/attendance", requireAuth, async (req, res) => {
+  app.get("/api/attendance", requireAuth, async (req: any, res) => {
     try {
-      const attendanceRecords = await storage.getAllAttendance();
+      const attendanceRecords = await storage.getAllAttendance(req.user.clubId);
       res.json(attendanceRecords);
     } catch (error) {
       console.error("Error fetching all attendance:", error);
@@ -1169,9 +1172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Get all competitions (all authenticated users)
-  app.get("/api/competitions", requireAuth, async (req, res) => {
+  app.get("/api/competitions", requireAuth, async (req: any, res) => {
     try {
-      const competitions = await storage.getCompetitions();
+      const competitions = await storage.getCompetitions(req.user.clubId);
       res.json(competitions);
     } catch (error) {
       console.error("Error fetching competitions:", error);
@@ -1194,7 +1197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new competition (admin only)
-  app.post("/api/competitions", requireAuth, requireAdmin, async (req, res) => {
+  app.post("/api/competitions", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       // Validate request body
       const validationResult = insertCompetitionSchema.safeParse(req.body);
@@ -1214,7 +1217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create competition
-      const competition = await storage.createCompetition(competitionData);
+      const competition = await storage.createCompetition({ ...competitionData, clubId: req.user.clubId });
       res.status(201).json(competition);
     } catch (error: any) {
       console.error("Error creating competition:", error);
@@ -1350,9 +1353,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Get all coaching rates (all authenticated users can view)
-  app.get("/api/coaching-rates", requireAuth, async (req, res) => {
+  app.get("/api/coaching-rates", requireAuth, async (req: any, res) => {
     try {
-      const rates = await storage.getAllCoachingRates();
+      const rates = await storage.getAllCoachingRates(req.user.clubId);
       res.json(rates);
     } catch (error: any) {
       console.error("Error fetching coaching rates:", error);
@@ -1361,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update coaching rates (admin only)
-  app.put("/api/coaching-rates", requireAuth, requireAdmin, async (req, res) => {
+  app.put("/api/coaching-rates", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       // Validate request body - expect array of rate updates
       if (!Array.isArray(req.body)) {
@@ -1385,7 +1388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update each rate
       const updatedRates = [];
       for (const rate of validatedRates) {
-        const updated = await storage.updateCoachingRate(rate.qualificationLevel, {
+        const updated = await storage.updateCoachingRate(req.user.clubId, rate.qualificationLevel, {
           hourlyRate: rate.hourlyRate.toString(),
           sessionWritingRate: rate.sessionWritingRate.toString(),
         });
@@ -1404,9 +1407,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Get all session templates
-  app.get("/api/session-templates", requireAuth, async (req, res) => {
+  app.get("/api/session-templates", requireAuth, async (req: any, res) => {
     try {
-      const templates = await storage.getSessionTemplates();
+      const templates = await storage.getSessionTemplates(req.user.clubId);
       res.json(templates);
     } catch (error) {
       console.error("Error fetching session templates:", error);
@@ -1448,6 +1451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertSessionTemplateSchema.parse({
         ...req.body,
         coachId: coach.id, // Ensure coachId is set to current user's coach
+        clubId: req.user.clubId,
       });
 
       const template = await storage.createSessionTemplate(validatedData);
@@ -1537,9 +1541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Get all drills
-  app.get("/api/drills", requireAuth, async (req, res) => {
+  app.get("/api/drills", requireAuth, async (req: any, res) => {
     try {
-      const drills = await storage.getDrills();
+      const drills = await storage.getDrills(req.user.clubId);
       res.json(drills);
     } catch (error) {
       console.error("Error fetching drills:", error);
@@ -1581,6 +1585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertDrillSchema.parse({
         ...req.body,
         coachId: coach.id, // Ensure coachId is set to current user's coach
+        clubId: req.user.clubId,
       });
 
       const drill = await storage.createDrill(validatedData);
@@ -1697,7 +1702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get coaching rates based on qualification level
-      const rate = await storage.getCoachingRate(coach.level || 'No Qualification');
+      const rate = await storage.getCoachingRate(req.user.clubId, coach.level || 'No Qualification');
       if (!rate) {
         return res.status(500).json({ message: "Coaching rates not configured for this qualification level" });
       }
@@ -1707,13 +1712,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
 
       // Get all sessions for this month
-      const allSessions = await storage.getSessions();
+      const allSessions = await storage.getSessions(req.user.clubId);
       const monthSessions = allSessions.filter(s => 
         s.sessionDate >= startDate && s.sessionDate <= endDate
       );
 
       // Get all squads for name lookup
-      const allSquads = await storage.getSquads();
+      const allSquads = await storage.getSquads(req.user.clubId);
       const squadMap = new Map(allSquads.map(squad => [squad.id, squad]));
 
       const allSessionSquads = await storage.getAllSessionSquads();
@@ -1772,9 +1777,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Get all competitions and locations for name lookup
-      const allCompetitions = await storage.getCompetitions();
+      const allCompetitions = await storage.getCompetitions(req.user.clubId);
       const competitionMap = new Map(allCompetitions.map(comp => [comp.id, comp]));
-      const allLocations = await storage.getLocations();
+      const allLocations = await storage.getLocations(req.user.clubId);
       const locationMap = new Map(allLocations.map(loc => [loc.id, loc]));
 
       const competitionDetails = competitionCoachingThisMonth.map(c => {
@@ -1863,9 +1868,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all feedback (for analytics)
-  app.get("/api/feedback", requireAuth, async (req, res) => {
+  app.get("/api/feedback", requireAuth, async (req: any, res) => {
     try {
-      const feedback = await storage.getAllFeedback();
+      const feedback = await storage.getAllFeedback(req.user.clubId);
       res.json(feedback);
     } catch (error) {
       console.error("Error fetching all feedback:", error);
@@ -1904,17 +1909,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Get analytics data with filters
-  app.get("/api/feedback/analytics", requireAuth, async (req, res) => {
+  app.get("/api/feedback/analytics", requireAuth, async (req: any, res) => {
     try {
       const { squadId, coachId, startDate, endDate } = req.query;
 
       // Fetch all feedback
-      const allFeedback = await storage.getAllFeedback();
+      const allFeedback = await storage.getAllFeedback(req.user.clubId);
       
       // Fetch sessions and squads for filtering
-      const allSessions = await storage.getSessions();
-      const allSquads = await storage.getSquads();
-      const allCoaches = await storage.getCoaches();
+      const allSessions = await storage.getSessions(req.user.clubId);
+      const allSquads = await storage.getSquads(req.user.clubId);
+      const allCoaches = await storage.getCoaches(req.user.clubId);
       const allSessionSquads = await storage.getAllSessionSquads();
 
       // Build session-to-squads lookup (multi-squad support)
@@ -2201,7 +2206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session Attributes Analytics endpoint
-  app.get("/api/feedback/analytics/attributes", async (req, res) => {
+  app.get("/api/feedback/analytics/attributes", requireAuth, async (req: any, res) => {
     try {
       const { attribute, category, squadId, coachId } = req.query;
       
@@ -2222,9 +2227,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch all feedback with their sessions
-      const allFeedback = await storage.getAllFeedback();
-      const allSessions = await storage.getSessions();
-      const allSquads = await storage.getSquads();
+      const allFeedback = await storage.getAllFeedback(req.user.clubId);
+      const allSessions = await storage.getSessions(req.user.clubId);
+      const allSquads = await storage.getSquads(req.user.clubId);
       const allSessionSquads = await storage.getAllSessionSquads();
       
       // Build session-to-squads lookup (multi-squad support)
@@ -2369,15 +2374,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const INSIGHTS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   // AI-Powered Insights endpoint
-  app.get("/api/feedback/analytics/insights", requireAuth, async (req, res) => {
+  app.get("/api/feedback/analytics/insights", requireAuth, async (req: any, res) => {
     try {
       const { squadId, coachId, forceRefresh } = req.query;
       
       // Fetch all data
-      const allFeedback = await storage.getAllFeedback();
-      const allSessions = await storage.getSessions();
-      const allSquads = await storage.getSquads();
-      const allCoaches = await storage.getCoaches();
+      const allFeedback = await storage.getAllFeedback(req.user.clubId);
+      const allSessions = await storage.getSessions(req.user.clubId);
+      const allSquads = await storage.getSquads(req.user.clubId);
+      const allCoaches = await storage.getCoaches(req.user.clubId);
       const allSessionSquads = await storage.getAllSessionSquads();
       
       // Build session-to-squads lookup (multi-squad support)
@@ -2670,7 +2675,7 @@ CRITICAL RULES:
   const SESSION_HELPER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   // Session Writer Helper - Non-AI data endpoint
-  app.get("/api/feedback/session-helper/:squadId/:sessionFocus?", requireAuth, async (req, res) => {
+  app.get("/api/feedback/session-helper/:squadId/:sessionFocus?", requireAuth, async (req: any, res) => {
     try {
       const { squadId, sessionFocus } = req.params;
       
@@ -2678,8 +2683,8 @@ CRITICAL RULES:
         return res.status(400).json({ message: "squadId is required" });
       }
 
-      const allFeedback = await storage.getAllFeedback();
-      const allSessions = await storage.getSessions();
+      const allFeedback = await storage.getAllFeedback(req.user.clubId);
+      const allSessions = await storage.getSessions(req.user.clubId);
       const allSessionSquads = await storage.getAllSessionSquads();
       
       // Build session-to-squads lookup (multi-squad support)
@@ -2790,7 +2795,7 @@ CRITICAL RULES:
   });
 
   // Session Writer Helper - AI Insights endpoint
-  app.get("/api/feedback/session-helper/insights/:squadId/:sessionFocus?", requireAuth, async (req, res) => {
+  app.get("/api/feedback/session-helper/insights/:squadId/:sessionFocus?", requireAuth, async (req: any, res) => {
     try {
       const { squadId, sessionFocus } = req.params;
       const { forceRefresh } = req.query;
@@ -2799,9 +2804,9 @@ CRITICAL RULES:
         return res.status(400).json({ message: "squadId is required" });
       }
 
-      const allFeedback = await storage.getAllFeedback();
-      const allSessions = await storage.getSessions();
-      const allSquads = await storage.getSquads();
+      const allFeedback = await storage.getAllFeedback(req.user.clubId);
+      const allSessions = await storage.getSessions(req.user.clubId);
+      const allSquads = await storage.getSquads(req.user.clubId);
       const allSessionSquads = await storage.getAllSessionSquads();
       
       // Build session-to-squads lookup (multi-squad support)
@@ -3126,7 +3131,7 @@ CRITICAL RULES:
       if (!coachId || typeof coachId !== "string") {
         return res.status(400).json({ message: "coachId query param is required" });
       }
-      const notes = await storage.getCoachNotes(coachId);
+      const notes = await storage.getCoachNotes(coachId, req.user.clubId);
       res.json(notes);
     } catch (error: any) {
       console.error("Error fetching coach notes:", error);
@@ -3142,7 +3147,7 @@ CRITICAL RULES:
         return res.status(400).json({ message: "title, type, creatorId, and at least one squadId are required" });
       }
       const note = await storage.createCoachNote(
-        { title, type, content: content || null, status: status || "open", creatorId },
+        { title, type, content: content || null, status: status || "open", creatorId, clubId: req.user.clubId },
         items || [],
         squadIds,
       );

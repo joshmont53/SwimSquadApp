@@ -6,7 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginInput } from '@shared/schema';
@@ -204,6 +204,17 @@ export default function LoginPage() {
               >
                 Forgot your password?
               </button>
+            </div>
+
+            <div className="mt-4 pt-4 border-t text-center">
+              <p className="text-sm text-muted-foreground mb-1">New to the platform?</p>
+              <Link
+                data-testid="link-register-club"
+                href="/register-club"
+                className="text-sm font-medium text-[#059467] hover:underline transition-all"
+              >
+                Register your club
+              </Link>
             </div>
           </div>
         </motion.div>

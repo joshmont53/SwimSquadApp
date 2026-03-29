@@ -1,6 +1,7 @@
 // Referenced from javascript_database and javascript_log_in_with_replit blueprints
 import {
   users,
+  clubs,
   coaches,
   squads,
   swimmers,
@@ -21,6 +22,8 @@ import {
   coachNotes,
   coachNoteItems,
   coachNoteSquads,
+  type Club,
+  type InsertClub,
   type CoachNote,
   type InsertCoachNote,
   type CoachNoteItem,
@@ -66,7 +69,7 @@ import {
 import { db } from "./db";
 import { eq, and, inArray } from "drizzle-orm";
 
-export type { CoachNote, InsertCoachNote, CoachNoteItem, InsertCoachNoteItem, CoachNoteSquad };
+export type { Club, InsertClub, CoachNote, InsertCoachNote, CoachNoteItem, InsertCoachNoteItem, CoachNoteSquad };
 
 export interface IStorage {
   // User operations (required for Replit Auth + Email/Password Auth)
@@ -74,9 +77,16 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
+
+  // Club operations (Multi-club support)
+  getClub(id: string): Promise<Club | undefined>;
+  getClubByCoachId(coachId: string): Promise<Club | undefined>;
+  createClub(club: InsertClub): Promise<Club>;
+  updateClub(id: string, club: Partial<InsertClub>): Promise<Club>;
+  seedClubCoachingRates(clubId: string): Promise<void>;
   
   // Coach operations
-  getCoaches(): Promise<Coach[]>;
+  getCoaches(clubId: string): Promise<Coach[]>;
   getCoach(id: string): Promise<Coach | undefined>;
   getCoachByUserId(userId: string): Promise<Coach | undefined>;
   createCoach(coach: InsertCoach): Promise<Coach>;
@@ -85,14 +95,14 @@ export interface IStorage {
   deleteCoach(id: string): Promise<void>;
   
   // Squad operations
-  getSquads(): Promise<Squad[]>;
+  getSquads(clubId: string): Promise<Squad[]>;
   getSquad(id: string): Promise<Squad | undefined>;
   createSquad(squad: InsertSquad): Promise<Squad>;
   updateSquad(id: string, squad: Partial<InsertSquad>): Promise<Squad>;
   deleteSquad(id: string): Promise<void>;
   
   // Swimmer operations
-  getSwimmers(): Promise<Swimmer[]>;
+  getSwimmers(clubId: string): Promise<Swimmer[]>;
   getSwimmer(id: string): Promise<Swimmer | undefined>;
   createSwimmer(swimmer: InsertSwimmer): Promise<Swimmer>;
   updateSwimmer(id: string, swimmer: Partial<InsertSwimmer>): Promise<Swimmer>;
@@ -100,23 +110,23 @@ export interface IStorage {
   bulkUpdateSwimmerSquad(swimmerIds: string[], newSquadId: string): Promise<Swimmer[]>;
   
   // Location operations
-  getLocations(): Promise<Location[]>;
+  getLocations(clubId: string): Promise<Location[]>;
   getLocation(id: string): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
   updateLocation(id: string, location: Partial<InsertLocation>): Promise<Location>;
   deleteLocation(id: string): Promise<void>;
   
   // Session operations
-  getSessions(): Promise<SwimmingSession[]>;
+  getSessions(clubId: string): Promise<SwimmingSession[]>;
   getSession(id: string): Promise<SwimmingSession | undefined>;
-  getSessionsByDate(date: string): Promise<SwimmingSession[]>;
+  getSessionsByDate(date: string, clubId?: string): Promise<SwimmingSession[]>;
   getSessionWithAttendance(id: string): Promise<{ session: SwimmingSession; attendance: Attendance[] } | undefined>;
   createSession(session: InsertSwimmingSession): Promise<SwimmingSession>;
   updateSession(id: string, session: Partial<InsertSwimmingSession>): Promise<SwimmingSession>;
   deleteSession(id: string): Promise<void>;
   
   // Attendance operations
-  getAllAttendance(): Promise<Attendance[]>;
+  getAllAttendance(clubId: string): Promise<Attendance[]>;
   getAttendanceBySession(sessionId: string): Promise<Attendance[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   deleteAttendanceBySession(sessionId: string): Promise<void>;
@@ -128,7 +138,7 @@ export interface IStorage {
   updateInvitationStatus(id: string, status: string, acceptedAt?: Date): Promise<AuthorizedInvitation>;
   claimInvitation(id: string): Promise<AuthorizedInvitation>;
   revertInvitationToPending(id: string): Promise<void>;
-  getAllInvitations(): Promise<AuthorizedInvitation[]>;
+  getAllInvitations(clubId: string): Promise<AuthorizedInvitation[]>;
   
   // Email verification operations
   createVerificationToken(token: InsertEmailVerificationToken): Promise<EmailVerificationToken>;
@@ -136,64 +146,64 @@ export interface IStorage {
   deleteVerificationToken(id: string): Promise<void>;
   deleteVerificationTokensForUser(userId: string): Promise<void>;
   
-  // Competition operations (NEW - No impact on existing functionality)
-  getCompetitions(): Promise<Competition[]>;
+  // Competition operations
+  getCompetitions(clubId: string): Promise<Competition[]>;
   getCompetition(id: string): Promise<Competition | undefined>;
   createCompetition(competition: InsertCompetition): Promise<Competition>;
   updateCompetition(id: string, competition: Partial<InsertCompetition>): Promise<Competition>;
   deleteCompetition(id: string): Promise<void>;
   
-  // Competition Coaching operations (NEW - No impact on existing functionality)
+  // Competition Coaching operations
   getCompetitionCoachingByCompetition(competitionId: string): Promise<CompetitionCoaching[]>;
   getAllCompetitionCoaching(): Promise<CompetitionCoaching[]>;
   createCompetitionCoaching(coaching: InsertCompetitionCoaching): Promise<CompetitionCoaching>;
   deleteCompetitionCoachingByCompetition(competitionId: string): Promise<void>;
   deleteCompetitionCoaching(id: string): Promise<void>;
   
-  // Coaching Rates operations (NEW - No impact on existing functionality)
-  getAllCoachingRates(): Promise<CoachingRate[]>;
-  getCoachingRate(qualificationLevel: string): Promise<CoachingRate | undefined>;
-  updateCoachingRate(qualificationLevel: string, rate: Partial<InsertCoachingRate>): Promise<CoachingRate>;
+  // Coaching Rates operations (now club-scoped)
+  getAllCoachingRates(clubId: string): Promise<CoachingRate[]>;
+  getCoachingRate(clubId: string, qualificationLevel: string): Promise<CoachingRate | undefined>;
+  updateCoachingRate(clubId: string, qualificationLevel: string, rate: Partial<InsertCoachingRate>): Promise<CoachingRate>;
   
-  // Session Template operations (Session Library Feature - No impact on existing functionality)
-  getSessionTemplates(): Promise<SessionTemplate[]>;
+  // Session Template operations
+  getSessionTemplates(clubId: string): Promise<SessionTemplate[]>;
   getSessionTemplate(id: string): Promise<SessionTemplate | undefined>;
   createSessionTemplate(template: InsertSessionTemplate): Promise<SessionTemplate>;
   updateSessionTemplate(id: string, template: Partial<InsertSessionTemplate>): Promise<SessionTemplate>;
   deleteSessionTemplate(id: string): Promise<void>;
   
-  // Drill operations (Drills Library Feature - No impact on existing functionality)
-  getDrills(): Promise<Drill[]>;
+  // Drill operations
+  getDrills(clubId: string): Promise<Drill[]>;
   getDrill(id: string): Promise<Drill | undefined>;
   createDrill(drill: InsertDrill): Promise<Drill>;
   updateDrill(id: string, drill: Partial<InsertDrill>): Promise<Drill>;
   deleteDrill(id: string): Promise<void>;
   
-  // Session Squads operations (Multi-Squad Sessions Feature)
+  // Session Squads operations
   getAllSessionSquads(): Promise<SessionSquad[]>;
   getSessionSquads(sessionId: string): Promise<SessionSquad[]>;
   createSessionSquad(sessionSquad: InsertSessionSquad): Promise<SessionSquad>;
   deactivateSessionSquad(sessionId: string, squadId: string): Promise<void>;
 
-  // Session Feedback operations (Feedback Feature - No impact on existing functionality)
+  // Session Feedback operations
   getFeedbackBySession(sessionId: string): Promise<SessionFeedback | undefined>;
-  getAllFeedback(): Promise<SessionFeedback[]>;
+  getAllFeedback(clubId: string): Promise<SessionFeedback[]>;
   createOrUpdateFeedback(feedback: InsertSessionFeedback): Promise<SessionFeedback>;
   deleteFeedback(id: string): Promise<void>;
   
-  // Device Token operations (Push Notifications Feature - No impact on existing functionality)
+  // Device Token operations
   getDeviceTokensByCoach(coachId: string): Promise<DeviceToken[]>;
   getDeviceTokenByToken(token: string): Promise<DeviceToken | undefined>;
   createOrUpdateDeviceToken(coachId: string, deviceToken: string, platform?: string): Promise<DeviceToken>;
   deleteDeviceToken(deviceToken: string): Promise<void>;
   deactivateDeviceToken(deviceToken: string): Promise<void>;
   
-  // Notification Log operations (Push Notifications Feature - No impact on existing functionality)
+  // Notification Log operations
   getNotificationLog(sessionId: string, coachId: string, reminderNumber: number): Promise<NotificationLog | undefined>;
   createNotificationLog(log: InsertNotificationLog): Promise<NotificationLog>;
 
-  // Coach Notes operations (Handbook Notes Feature)
-  getCoachNotes(coachId: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] })[]>;
+  // Coach Notes operations
+  getCoachNotes(coachId: string, clubId: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] })[]>;
   getCoachNote(id: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] }) | undefined>;
   createCoachNote(note: InsertCoachNote, itemTexts: string[], squadIds: string[]): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }>;
   updateCoachNote(id: string, note: Partial<InsertCoachNote>, itemTexts?: { id?: string; text: string; completed: boolean; sortOrder: number }[], squadIds?: string[]): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }>;
@@ -243,9 +253,41 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // Club operations
+  async getClub(id: string): Promise<Club | undefined> {
+    const [club] = await db.select().from(clubs).where(eq(clubs.id, id));
+    return club;
+  }
+
+  async getClubByCoachId(coachId: string): Promise<Club | undefined> {
+    const [club] = await db.select().from(clubs).where(eq(clubs.primaryCoachId, coachId));
+    return club;
+  }
+
+  async createClub(club: InsertClub): Promise<Club> {
+    const [newClub] = await db.insert(clubs).values(club).returning();
+    return newClub;
+  }
+
+  async updateClub(id: string, club: Partial<InsertClub>): Promise<Club> {
+    const [updatedClub] = await db.update(clubs).set(club).where(eq(clubs.id, id)).returning();
+    if (!updatedClub) throw new Error("Club not found");
+    return updatedClub;
+  }
+
+  async seedClubCoachingRates(clubId: string): Promise<void> {
+    const defaultRates = [
+      { clubId, qualificationLevel: 'Level 1', hourlyRate: '15.00', sessionWritingRate: '5.00' },
+      { clubId, qualificationLevel: 'Level 2', hourlyRate: '17.50', sessionWritingRate: '6.00' },
+      { clubId, qualificationLevel: 'Level 3', hourlyRate: '20.00', sessionWritingRate: '7.50' },
+      { clubId, qualificationLevel: 'Level 4', hourlyRate: '25.00', sessionWritingRate: '10.00' },
+    ];
+    await db.insert(coachingRates).values(defaultRates).onConflictDoNothing();
+  }
+
   // Coach operations
-  async getCoaches(): Promise<Coach[]> {
-    return await db.select().from(coaches).where(eq(coaches.recordStatus, 'active'));
+  async getCoaches(clubId: string): Promise<Coach[]> {
+    return await db.select().from(coaches).where(and(eq(coaches.clubId, clubId), eq(coaches.recordStatus, 'active')));
   }
 
   async getCoach(id: string): Promise<Coach | undefined> {
@@ -298,8 +340,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Squad operations
-  async getSquads(): Promise<Squad[]> {
-    return await db.select().from(squads).where(eq(squads.recordStatus, 'active'));
+  async getSquads(clubId: string): Promise<Squad[]> {
+    return await db.select().from(squads).where(and(eq(squads.clubId, clubId), eq(squads.recordStatus, 'active')));
   }
 
   async getSquad(id: string): Promise<Squad | undefined> {
@@ -336,8 +378,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Swimmer operations
-  async getSwimmers(): Promise<Swimmer[]> {
-    return await db.select().from(swimmers).where(eq(swimmers.recordStatus, 'active'));
+  async getSwimmers(clubId: string): Promise<Swimmer[]> {
+    return await db.select().from(swimmers).where(and(eq(swimmers.clubId, clubId), eq(swimmers.recordStatus, 'active')));
   }
 
   async getSwimmer(id: string): Promise<Swimmer | undefined> {
@@ -386,8 +428,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Location operations
-  async getLocations(): Promise<Location[]> {
-    return await db.select().from(locations).where(eq(locations.recordStatus, 'active'));
+  async getLocations(clubId: string): Promise<Location[]> {
+    return await db.select().from(locations).where(and(eq(locations.clubId, clubId), eq(locations.recordStatus, 'active')));
   }
 
   async getLocation(id: string): Promise<Location | undefined> {
@@ -424,8 +466,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Session operations
-  async getSessions(): Promise<SwimmingSession[]> {
-    return await db.select().from(swimmingSessions).where(eq(swimmingSessions.recordStatus, 'active'));
+  async getSessions(clubId: string): Promise<SwimmingSession[]> {
+    return await db.select().from(swimmingSessions).where(and(eq(swimmingSessions.clubId, clubId), eq(swimmingSessions.recordStatus, 'active')));
   }
 
   async getSession(id: string): Promise<SwimmingSession | undefined> {
@@ -433,7 +475,12 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
-  async getSessionsByDate(date: string): Promise<SwimmingSession[]> {
+  async getSessionsByDate(date: string, clubId?: string): Promise<SwimmingSession[]> {
+    if (clubId) {
+      return await db.select().from(swimmingSessions).where(
+        and(eq(swimmingSessions.sessionDate, date), eq(swimmingSessions.clubId, clubId), eq(swimmingSessions.recordStatus, 'active'))
+      );
+    }
     return await db.select().from(swimmingSessions).where(
       and(eq(swimmingSessions.sessionDate, date), eq(swimmingSessions.recordStatus, 'active'))
     );
@@ -484,8 +531,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Attendance operations
-  async getAllAttendance(): Promise<Attendance[]> {
-    return await db.select().from(attendance).where(eq(attendance.recordStatus, 'active'));
+  async getAllAttendance(clubId: string): Promise<Attendance[]> {
+    const clubSessions = await db.select({ id: swimmingSessions.id }).from(swimmingSessions).where(
+      and(eq(swimmingSessions.clubId, clubId), eq(swimmingSessions.recordStatus, 'active'))
+    );
+    if (clubSessions.length === 0) return [];
+    const sessionIds = clubSessions.map(s => s.id);
+    return await db.select().from(attendance).where(
+      and(inArray(attendance.sessionId, sessionIds), eq(attendance.recordStatus, 'active'))
+    );
   }
 
   async getAttendanceBySession(sessionId: string): Promise<Attendance[]> {
@@ -572,8 +626,8 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
-  async getAllInvitations(): Promise<AuthorizedInvitation[]> {
-    return await db.select().from(authorizedInvitations);
+  async getAllInvitations(clubId: string): Promise<AuthorizedInvitation[]> {
+    return await db.select().from(authorizedInvitations).where(eq(authorizedInvitations.clubId, clubId));
   }
 
   // Email verification operations
@@ -599,8 +653,8 @@ export class DatabaseStorage implements IStorage {
   // Competition operations (NEW - No impact on existing functionality)
   // ============================================================================
 
-  async getCompetitions(): Promise<Competition[]> {
-    return await db.select().from(competitions).where(eq(competitions.recordStatus, 'active'));
+  async getCompetitions(clubId: string): Promise<Competition[]> {
+    return await db.select().from(competitions).where(and(eq(competitions.clubId, clubId), eq(competitions.recordStatus, 'active')));
   }
 
   async getCompetition(id: string): Promise<Competition | undefined> {
@@ -679,23 +733,25 @@ export class DatabaseStorage implements IStorage {
   // Coaching Rates operations (NEW - No impact on existing functionality)
   // ============================================================================
 
-  async getAllCoachingRates(): Promise<CoachingRate[]> {
-    return await db.select().from(coachingRates);
+  async getAllCoachingRates(clubId: string): Promise<CoachingRate[]> {
+    return await db.select().from(coachingRates).where(eq(coachingRates.clubId, clubId));
   }
 
-  async getCoachingRate(qualificationLevel: string): Promise<CoachingRate | undefined> {
-    const [rate] = await db.select().from(coachingRates).where(eq(coachingRates.qualificationLevel, qualificationLevel));
+  async getCoachingRate(clubId: string, qualificationLevel: string): Promise<CoachingRate | undefined> {
+    const [rate] = await db.select().from(coachingRates).where(
+      and(eq(coachingRates.clubId, clubId), eq(coachingRates.qualificationLevel, qualificationLevel))
+    );
     return rate;
   }
 
-  async updateCoachingRate(qualificationLevel: string, rate: Partial<InsertCoachingRate>): Promise<CoachingRate> {
+  async updateCoachingRate(clubId: string, qualificationLevel: string, rate: Partial<InsertCoachingRate>): Promise<CoachingRate> {
     const [updatedRate] = await db
       .update(coachingRates)
       .set({
         ...rate,
         updatedAt: new Date(),
       })
-      .where(eq(coachingRates.qualificationLevel, qualificationLevel))
+      .where(and(eq(coachingRates.clubId, clubId), eq(coachingRates.qualificationLevel, qualificationLevel)))
       .returning();
     if (!updatedRate) {
       throw new Error("Coaching rate not found");
@@ -707,8 +763,8 @@ export class DatabaseStorage implements IStorage {
   // Session Template operations (Session Library Feature - No impact on existing functionality)
   // ============================================================================
 
-  async getSessionTemplates(): Promise<SessionTemplate[]> {
-    return await db.select().from(sessionTemplates).where(eq(sessionTemplates.recordStatus, 'active'));
+  async getSessionTemplates(clubId: string): Promise<SessionTemplate[]> {
+    return await db.select().from(sessionTemplates).where(and(eq(sessionTemplates.clubId, clubId), eq(sessionTemplates.recordStatus, 'active')));
   }
 
   async getSessionTemplate(id: string): Promise<SessionTemplate | undefined> {
@@ -748,8 +804,8 @@ export class DatabaseStorage implements IStorage {
   // Drill operations (Drills Library Feature - No impact on existing functionality)
   // ============================================================================
 
-  async getDrills(): Promise<Drill[]> {
-    return await db.select().from(drills).where(eq(drills.recordStatus, 'active'));
+  async getDrills(clubId: string): Promise<Drill[]> {
+    return await db.select().from(drills).where(and(eq(drills.clubId, clubId), eq(drills.recordStatus, 'active')));
   }
 
   async getDrill(id: string): Promise<Drill | undefined> {
@@ -851,8 +907,8 @@ export class DatabaseStorage implements IStorage {
     return feedback;
   }
 
-  async getAllFeedback(): Promise<SessionFeedback[]> {
-    return await db.select().from(sessionFeedback);
+  async getAllFeedback(clubId: string): Promise<SessionFeedback[]> {
+    return await db.select().from(sessionFeedback).where(eq(sessionFeedback.clubId, clubId));
   }
 
   async createOrUpdateFeedback(feedback: InsertSessionFeedback): Promise<SessionFeedback> {
@@ -964,8 +1020,8 @@ export class DatabaseStorage implements IStorage {
     return { ...note, items, squadIds: squadsRows.map(r => r.squadId) };
   }
 
-  async getCoachNotes(coachId: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] })[]> {
-    const notes = await db.select().from(coachNotes).where(eq(coachNotes.creatorId, coachId));
+  async getCoachNotes(coachId: string, clubId: string): Promise<(CoachNote & { items: CoachNoteItem[]; squadIds: string[] })[]> {
+    const notes = await db.select().from(coachNotes).where(and(eq(coachNotes.creatorId, coachId), eq(coachNotes.clubId, clubId)));
     return Promise.all(notes.map(n => this._enrichNote(n)));
   }
 

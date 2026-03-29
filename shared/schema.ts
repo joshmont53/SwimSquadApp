@@ -4,6 +4,7 @@ import {
   index,
   jsonb,
   pgTable,
+  primaryKey,
   timestamp,
   varchar,
   integer,
@@ -16,6 +17,20 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// ============================================================================
+// Clubs table - Top-level entity for multi-club support
+// ============================================================================
+export const clubs = pgTable("clubs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubName: varchar("club_name").notNull(),
+  createdOn: timestamp("created_on").defaultNow(),
+  primaryCoachId: varchar("primary_coach_id"), // Set after first coach is created
+});
+
+export type Club = typeof clubs.$inferSelect;
+export const insertClubSchema = createInsertSchema(clubs).omit({ id: true, createdOn: true });
+export type InsertClub = z.infer<typeof insertClubSchema>;
 
 // Session storage table - Required for Replit Auth
 export const sessions = pgTable(
@@ -51,6 +66,7 @@ export type User = typeof users.$inferSelect;
 export const coaches = pgTable("coaches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").unique().references(() => users.id), // Made unique - one user per coach
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   level: varchar("level").notNull(), // "Level 3" | "Level 2" | "Level 1" | "No qualification"
@@ -83,6 +99,7 @@ export type UpdateCoachWithUser = z.infer<typeof updateCoachWithUserSchema>;
 // Squads table
 export const squads = pgTable("squads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   squadName: varchar("squad_name").notNull(),
   color: varchar("color").notNull().default("#3B82F6"),
   primaryCoachId: varchar("primary_coach_id").references(() => coaches.id),
@@ -109,6 +126,7 @@ export type InsertSquad = z.infer<typeof insertSquadSchema>;
 // Swimmers table
 export const swimmers = pgTable("swimmers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   squadId: varchar("squad_id").references(() => squads.id).notNull(),
@@ -134,6 +152,7 @@ export type InsertSwimmer = z.infer<typeof insertSwimmerSchema>;
 // Locations table
 export const locations = pgTable("locations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   poolName: varchar("pool_name").notNull(),
   poolType: varchar("pool_type").notNull(), // "SC" (Short Course/25m) | "LC" (Long Course/50m)
   recordStatus: varchar("record_status").notNull().default("active"), // "active" | "inactive"
@@ -152,6 +171,7 @@ export type InsertLocation = z.infer<typeof insertLocationSchema>;
 // Swimming Sessions table
 export const swimmingSessions = pgTable("swimming_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   sessionDate: date("session_date").notNull(),
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
@@ -328,6 +348,7 @@ export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 // Authorized Invitations table - For invite-based registration
 export const authorizedInvitations = pgTable("authorized_invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club: which club this invite belongs to
   email: varchar("email").notNull().unique(), // Email invited
   coachId: varchar("coach_id").notNull().unique().references(() => coaches.id), // Pre-linked coach
   inviteToken: varchar("invite_token").notNull().unique(), // Unique token for registration link
@@ -433,6 +454,7 @@ export type RegistrationInput = z.infer<typeof registrationSchema>;
 // Competitions table
 export const competitions = pgTable("competitions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   competitionName: varchar("competition_name").notNull(),
   locationId: varchar("location_id").references(() => locations.id).notNull(),
   startDate: date("start_date", { mode: "string" }).notNull(),
@@ -494,14 +516,18 @@ export type InsertCompetitionCoaching = z.infer<typeof insertCompetitionCoaching
 // Coaching Rates - NEW TABLE (No impact on existing functionality)
 // ============================================================================
 
-// Coaching Rates table - Stores hourly rates and session writing rates for each qualification level
+// Coaching Rates table - Stores hourly rates and session writing rates for each qualification level per club
+// Composite PK (clubId + qualificationLevel) — each club has its own set of rates
 export const coachingRates = pgTable("coaching_rates", {
-  qualificationLevel: varchar("qualification_level").primaryKey(), // "No Qualification" | "Level 1" | "Level 2" | "Level 3"
+  clubId: varchar("club_id").references(() => clubs.id).notNull(), // Multi-club support
+  qualificationLevel: varchar("qualification_level").notNull(), // "No Qualification" | "Level 1" | "Level 2" | "Level 3"
   hourlyRate: decimal("hourly_rate", { precision: 6, scale: 2 }).notNull(), // Hourly rate for coaching sessions and competitions
   sessionWritingRate: decimal("session_writing_rate", { precision: 6, scale: 2 }).notNull(), // Rate per session written
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  primaryKey({ columns: [table.clubId, table.qualificationLevel] }),
+]);
 
 export type CoachingRate = typeof coachingRates.$inferSelect;
 export const insertCoachingRateSchema = createInsertSchema(coachingRates).omit({ 
@@ -525,6 +551,7 @@ export type UpdateCoachingRate = z.infer<typeof updateCoachingRateSchema>;
 // Session Templates table - Stores reusable session templates for coaches
 export const sessionTemplates = pgTable("session_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   coachId: varchar("coach_id").references(() => coaches.id).notNull(), // Creator of the template
   templateName: varchar("template_name").notNull(),
   templateDescription: text("template_description"),
@@ -556,6 +583,7 @@ export type InsertSessionTemplate = z.infer<typeof insertSessionTemplateSchema>;
 // Drills table - Stores swimming drills with videos for coaches
 export const drills = pgTable("drills", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   coachId: varchar("coach_id").references(() => coaches.id).notNull(), // Creator of the drill
   drillName: varchar("drill_name").notNull(),
   strokeType: varchar("stroke_type").notNull(), // "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "Starts" | "Turns"
@@ -587,6 +615,7 @@ export type InsertDrill = z.infer<typeof insertDrillSchema>;
 // Session Feedback table - Stores coach feedback for swimming sessions (1 per session)
 export const sessionFeedback = pgTable("session_feedback", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   sessionId: varchar("session_id").references(() => swimmingSessions.id, { onDelete: 'cascade' }).notNull().unique(), // One feedback per session
   coachId: varchar("coach_id").references(() => coaches.id).notNull(), // Coach who submitted the feedback
   
@@ -698,6 +727,7 @@ export type InsertNotificationLog = z.infer<typeof insertNotificationLogSchema>;
 
 export const coachNotes = pgTable("coach_notes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support
   title: varchar("title").notNull(),
   type: varchar("type").notNull(), // 'text' | 'checklist'
   content: text("content"), // populated only when type = 'text'
@@ -759,3 +789,35 @@ export const insertCoachNoteItemSchema = createInsertSchema(coachNoteItems).omit
 
 export type CoachNoteSquad = typeof coachNoteSquads.$inferSelect;
 export type InsertCoachNoteSquad = typeof coachNoteSquads.$inferInsert;
+
+// ============================================================================
+// Club Registration Schema (for new club self-registration flow)
+// ============================================================================
+
+export const clubRegistrationSchema = z.object({
+  clubName: z.string().min(2, 'Club name must be at least 2 characters'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  dob: z.string().min(1, 'Date of birth is required'),
+  level: z.enum(["No Qualification", "Level 1", "Level 2", "Level 3"], {
+    required_error: 'Qualification level is required',
+  }),
+  email: z.string().email('Invalid email address'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password must contain at least one special character'),
+  passwordConfirm: z.string(),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.passwordConfirm) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Passwords do not match',
+      path: ['passwordConfirm'],
+    });
+  }
+});
+
+export type ClubRegistrationInput = z.infer<typeof clubRegistrationSchema>;

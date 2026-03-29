@@ -5,7 +5,7 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import { storage } from './storage';
 import { db } from './db';
-import { users, coaches, authorizedInvitations, emailVerificationTokens } from '@shared/schema';
+import { users, coaches, clubs, authorizedInvitations, emailVerificationTokens } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from './passwordUtils';
 import { generateSecureToken, getInvitationExpiry, getVerificationExpiry, isTokenExpired } from './tokenUtils';
@@ -257,6 +257,123 @@ export function setupNewAuth(app: Express) {
     }
   });
   
+  // Club self-registration endpoint - creates club + primary coach + user in one step
+  app.post('/api/auth/register-club', async (req, res) => {
+    try {
+      const { clubName, firstName, lastName, email, password, passwordConfirm, level, dob } = req.body;
+
+      // Validate required fields
+      if (!clubName || !firstName || !lastName || !email || !password || !passwordConfirm || !dob) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      if (password !== passwordConfirm) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+      }
+
+      if (password.length < 12) {
+        return res.status(400).json({ message: 'Password must be at least 12 characters' });
+      }
+
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+      if (!hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
+        return res.status(400).json({
+          message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+        });
+      }
+
+      // Check email not already in use
+      const existingUser = await storage.getUserByEmail(email.toLowerCase());
+      if (existingUser) {
+        return res.status(400).json({ message: 'An account with this email already exists' });
+      }
+
+      const passwordHash = await hashPassword(password);
+      const userId = crypto.randomUUID();
+      const isDevelopment = process.env.NODE_ENV === 'development';
+
+      const result = await db.transaction(async (tx) => {
+        // 1. Create club
+        const [club] = await tx.insert(clubs).values({ clubName }).returning();
+
+        // 2. Create coach (admin of the club)
+        const [coach] = await tx.insert(coaches).values({
+          clubId: club.id,
+          firstName,
+          lastName,
+          level: level || 'No Qualification',
+          dob,
+          recordStatus: 'active',
+        }).returning();
+
+        // 3. Update club primaryCoachId
+        await tx.update(clubs).set({ primaryCoachId: coach.id }).where(eq(clubs.id, club.id));
+
+        // 4. Create user account with admin role
+        const [user] = await tx.insert(users).values({
+          id: userId,
+          email: email.toLowerCase(),
+          firstName,
+          lastName,
+          passwordHash,
+          isEmailVerified: isDevelopment,
+          accountStatus: isDevelopment ? 'active' : 'pending',
+          role: 'admin',
+        }).returning();
+
+        // 5. Link user to coach
+        await tx.update(coaches).set({ userId: user.id }).where(eq(coaches.id, coach.id));
+
+        // 6. Generate verification token
+        const verificationToken = generateSecureToken();
+        await tx.insert(emailVerificationTokens).values({
+          userId: user.id,
+          token: verificationToken,
+          expiresAt: getVerificationExpiry(),
+        });
+
+        return { user, club, coach, verificationToken };
+      });
+
+      // Seed coaching rates for the new club (after transaction)
+      try {
+        await storage.seedClubCoachingRates(result.club.id);
+      } catch (seedError) {
+        console.error('Failed to seed coaching rates for new club:', seedError);
+        // Non-fatal - club is still created
+      }
+
+      // Send verification email (non-fatal)
+      let emailSent = false;
+      if (!isDevelopment) {
+        try {
+          await sendVerificationEmail(result.user.email!, result.verificationToken, firstName);
+          emailSent = true;
+        } catch (emailError) {
+          console.error('Failed to send verification email for club registration:', emailError);
+        }
+      }
+
+      res.status(201).json({
+        message: isDevelopment
+          ? 'Club registered successfully! Your account is ready.'
+          : emailSent
+          ? 'Club registered! Please check your email to verify your account.'
+          : 'Club registered, but we could not send the verification email. Please contact support.',
+        clubId: result.club.id,
+        userId: result.user.id,
+        emailSent,
+      });
+    } catch (error: any) {
+      console.error('Club registration error:', error);
+      res.status(500).json({ message: error.message || 'Club registration failed' });
+    }
+  });
+
   // Email verification endpoint
   app.get('/api/auth/verify-email', async (req, res) => {
     try {
@@ -514,12 +631,18 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       return res.status(403).json({ message: 'Account is not active' });
     }
     
+    // Look up coach profile to get clubId
+    const coach = await storage.getCoachByUserId(user.id);
+    const clubId = coach?.clubId ?? null;
+
     // Attach user to request for downstream handlers
     // Structure is backward-compatible with old Replit OAuth routes that expect req.user.claims.sub
     (req as any).user = {
       id: user.id,
       email: user.email,
       role: user.role,
+      coachId: coach?.id ?? null,
+      clubId,
       claims: {
         sub: user.id  // Backward compatibility for routes that use req.user.claims.sub
       }
