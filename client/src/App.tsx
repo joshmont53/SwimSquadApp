@@ -598,8 +598,9 @@ function CalendarApp() {
               <Home 
                 className={cn(
                   "h-4 w-4 mr-3 ml-2 transition-colors",
-                  isActive('home') ? "text-foreground" : "text-muted-foreground"
+                  "text-muted-foreground"
                 )}
+                style={{ color: isActive('home') ? 'var(--club-primary)' : undefined }}
               />
               <span className="flex-1 text-left">Home</span>
             </Button>
@@ -631,8 +632,9 @@ function CalendarApp() {
                 <CalendarDays 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('calendar') ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: isActive('calendar') ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Calendar</span>
                 {todaysSessions > 0 && (
@@ -660,8 +662,9 @@ function CalendarApp() {
                 <FileText 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('sessionLibrary') ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: isActive('sessionLibrary') ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Session Library</span>
                 <Badge variant="secondary" className="ml-auto text-xs">
@@ -687,8 +690,9 @@ function CalendarApp() {
                 <Target 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('drillsLibrary') ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: isActive('drillsLibrary') ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Drills Library</span>
                 <Badge variant="secondary" className="ml-auto text-xs">
@@ -725,8 +729,9 @@ function CalendarApp() {
                   <UserCog 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('coaches') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('coaches') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Coaches</span>
                   <Badge variant="secondary" className="ml-auto text-xs">
@@ -752,8 +757,9 @@ function CalendarApp() {
                   <Shield 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('squads') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('squads') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Squads</span>
                   <Badge variant="secondary" className="ml-auto text-xs">
@@ -779,8 +785,9 @@ function CalendarApp() {
                   <Users 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('swimmers') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('swimmers') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Swimmers</span>
                   <Badge variant="secondary" className="ml-auto text-xs">
@@ -806,8 +813,9 @@ function CalendarApp() {
                   <MapPin 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('locations') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('locations') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Locations</span>
                   <Badge variant="secondary" className="ml-auto text-xs">
@@ -833,8 +841,9 @@ function CalendarApp() {
                   <Trophy 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('competitions') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('competitions') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Competitions</span>
                   <Badge variant="secondary" className="ml-auto text-xs">
@@ -860,8 +869,9 @@ function CalendarApp() {
                   <Mail 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('invitations') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('invitations') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Coach Invitations</span>
                 </Button>
@@ -884,8 +894,9 @@ function CalendarApp() {
                   <PoundSterling 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('coachingRates') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('coachingRates') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Coaching Rates</span>
                 </Button>
@@ -908,8 +919,9 @@ function CalendarApp() {
                   <Settings 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
-                      isActive('clubSettings') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('clubSettings') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Club Settings</span>
                 </Button>
@@ -943,8 +955,9 @@ function CalendarApp() {
                 <Receipt 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('invoices') ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: isActive('invoices') ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Invoice Tracker</span>
               </Button>
@@ -967,8 +980,9 @@ function CalendarApp() {
                 <BarChart3 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('feedbackAnalytics') ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: isActive('feedbackAnalytics') ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Feedback Analytics</span>
               </Button>
@@ -991,8 +1005,9 @@ function CalendarApp() {
                 <UserCog 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Swimmer Profiles</span>
               </Button>
@@ -1015,8 +1030,9 @@ function CalendarApp() {
                 <BookOpen 
                   className={cn(
                     "h-4 w-4 mr-3 ml-2 transition-colors",
-                    isActive('handbook') ? "text-foreground" : "text-muted-foreground"
+                    "text-muted-foreground"
                   )}
+                  style={{ color: isActive('handbook') ? 'var(--club-primary)' : undefined }}
                 />
                 <span className="flex-1 text-left">Handbook</span>
               </Button>

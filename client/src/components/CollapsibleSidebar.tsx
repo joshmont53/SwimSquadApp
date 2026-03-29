@@ -139,8 +139,9 @@ export function CollapsibleSidebar({
                     className={cn(
                       "h-4 w-4 transition-colors",
                       collapsed ? "" : "mr-3 ml-2",
-                      isActive('home') ? "text-foreground" : "text-muted-foreground"
+                      "text-muted-foreground"
                     )}
+                    style={{ color: isActive('home') ? 'var(--club-primary)' : undefined }}
                   />
                   {!collapsed && <span className="flex-1 text-left">Home</span>}
                 </Button>
@@ -184,8 +185,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('calendar') ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: isActive('calendar') ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <>
@@ -229,8 +231,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('sessionLibrary') ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: isActive('sessionLibrary') ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <>
@@ -272,8 +275,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('drillsLibrary') ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: isActive('drillsLibrary') ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <>
@@ -329,8 +333,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('coaches') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('coaches') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <>
@@ -372,8 +377,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('squads') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('squads') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <>
@@ -415,8 +421,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('swimmers') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('swimmers') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <>
@@ -458,8 +465,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('locations') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('locations') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <>
@@ -501,8 +509,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('competitions') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('competitions') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <>
@@ -544,8 +553,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('invitations') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('invitations') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <span className="flex-1 text-left">Coach Invitations</span>
@@ -582,8 +592,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('coachingRates') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('coachingRates') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <span className="flex-1 text-left">Coaching Rates</span>
@@ -620,8 +631,9 @@ export function CollapsibleSidebar({
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
-                          isActive('clubSettings') ? "text-foreground" : "text-muted-foreground"
+                          "text-muted-foreground"
                         )}
+                        style={{ color: isActive('clubSettings') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <span className="flex-1 text-left">Club Settings</span>
@@ -672,8 +684,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('invoices') ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: isActive('invoices') ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <span className="flex-1 text-left">Invoice Tracker</span>
@@ -710,8 +723,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('feedbackAnalytics') ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: isActive('feedbackAnalytics') ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <span className="flex-1 text-left">Feedback Analytics</span>
@@ -786,8 +800,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        isActive('handbook') ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: isActive('handbook') ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <span className="flex-1 text-left">Handbook</span>
