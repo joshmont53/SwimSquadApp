@@ -762,8 +762,9 @@ export function CollapsibleSidebar({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         collapsed ? "" : "mr-3 ml-2",
-                        (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? "text-foreground" : "text-muted-foreground"
+                        "text-muted-foreground"
                       )}
+                      style={{ color: (isActive('swimmerProfiles') || isActive('swimmerProfile')) ? 'var(--club-primary)' : undefined }}
                     />
                     {!collapsed && (
                       <span className="flex-1 text-left">Swimmer Profiles</span>
