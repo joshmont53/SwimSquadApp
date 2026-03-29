@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
+import { registerPrivacyRoutes } from "./privacyRoutes";
 import { setupNewAuth, requireAuth, requireAdmin } from "./newAuth";
 import {
   insertCoachSchema,
@@ -33,6 +34,9 @@ function sanitizeInvitation(invitation: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Privacy policy routes (public, no auth required)
+  registerPrivacyRoutes(app);
+
   // Email/password authentication
   setupNewAuth(app);
 

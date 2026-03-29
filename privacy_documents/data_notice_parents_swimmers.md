@@ -1,62 +1,63 @@
-# Hart Swimming Club — Data Notice for Parents, Guardians, and Swimmers
+# Swim Squad — Data Notice for Parents, Guardians, and Swimmers
 
-**Document Reference:** Swimmer Data Notice  
+**Document Reference:** Swimmer and Parent Data Notice  
 **Version:** 1.0  
-**Last Updated:** [DATE]  
-**Issued by:** Hart Swimming Club
+**Last Updated:** 29 March 2026  
+**Issued by:** Swim Squad on behalf of your swimming club
 
 ---
 
 ## A Message to Parents and Guardians
 
-Hart Swimming Club uses a digital coaching management platform — the **Hart SC Coaches Platform** — to help our coaching team organise training sessions, track attendance, and improve the quality of our programme.
+Your swimming club uses a digital coaching management platform called **Swim Squad** to help coaches organise training sessions, track attendance, and improve the quality of the club's programme.
 
-As part of running the club, we need to hold some basic information about your child. This notice explains exactly what information we hold, why we hold it, how we use it, and what your rights are. We want to be completely open about this, particularly because we know that many of our swimmers are children.
+As part of running the club, we need to hold some basic information about your child. This notice explains exactly what information we hold, why we hold it, how we use it, and what your rights are. We want to be completely open about this — particularly because we know that most of our swimmers are under 18.
 
-**Please read this notice carefully and keep a copy for your records.** If you have any questions, please speak to your Club administrator or contact us using the details at the end of this notice.
+**Please read this notice carefully and keep a copy for your records.** If you have any questions, please speak to your club's coach or administrator, or contact us using the details at the end of this notice.
 
 ---
 
-## 1. Who Is Responsible for Your Child's Data?
+## 1. Who is Responsible for Your Child's Information?
 
-**Hart Swimming Club** is the Data Controller for all personal information about your child that is held in the coaching platform. This means we decide what information we collect and how it is used.
+**Your swimming club** is responsible for the personal information about your child that is entered into the Swim Squad platform. Your club's administrator controls what information is stored and who can see it.
 
-Contact for data matters:  
-**[Club Data Protection Lead Name]**  
-**[Email Address]**  
-**[Postal Address]**
+The Swim Squad platform is provided by **Josh Montgomery** (Swim Squad), who acts as a data processor on behalf of your club. This means Swim Squad stores and processes the information, but always on instruction from your club.
+
+For questions about your data, your first point of contact should be your club's administrator. You can also contact Swim Squad directly:
+
+**Josh Montgomery — Swim Squad**  
+**privacy@swimsquad.app** *(update before publishing)*
 
 ---
 
 ## 2. What Information Do We Hold About Your Child?
 
-We hold the following information about each swimmer registered with the Club:
+Your club's coaches enter and manage the following information about each swimmer:
 
 | Information | Why We Hold It |
 |---|---|
 | **First name and last name** | To identify your child within the coaching system |
-| **Date of birth** | To ensure they are in an age-appropriate training group and to help coaches tailor training to the right level |
+| **Date of birth** | To ensure they are in the right age group and to help coaches tailor training appropriately |
 | **Gender** | For training record categorisation |
-| **Swim England (ASA) registration number** | To link our records with your child's national swimming registration |
+| **Swim England (ASA) registration number** | To match our records with your child's national swimming registration |
 | **Squad assignment** | To place your child in the correct training group |
 
 We do **not** hold:
-- Home addresses
-- Phone numbers
-- Medical information (this is held separately under the Club's safeguarding records)
-- School or other education information
-- Any financial information about families
+- Home addresses or phone numbers
+- Medical information (this is held separately under your club's safeguarding procedures)
+- School information
+- Any financial details about your family
 
 ---
 
 ## 3. What Do We Record During Training?
 
-Each time your child attends (or misses) a session, we record:
+Each time your child attends — or misses — a session, coaches record:
 
-- **Attendance status** — Whether they were present, absent, or attended part of a session
-- **Lateness** — If they arrived late, this may be noted (e.g., "Late" or "Very Late")
+- **Attendance** — whether they were present, absent, or attended only part of a session
+- **Lateness** — if they arrived late, this may be noted (e.g., "Late" or "Very Late")
 
-These records help coaches monitor engagement, plan training loads, and fulfil their duty of care obligations.
+These records help coaches monitor engagement and plan training, and they support the club's duty of care responsibilities.
 
 ---
 
@@ -64,136 +65,136 @@ These records help coaches monitor engagement, plan training loads, and fulfil t
 
 Your child's information is accessible to:
 
-- **All active coaches at Hart Swimming Club** who use the coaching platform — this includes all coaches, not just those who coach your child's squad
-- **The Club administrator** who manages the platform
+- **All active coaches at your swimming club** who use the Swim Squad platform
+- **Your club's administrator**, who manages the system
 
 Your child's information is **not** shared with:
-- Other swimmers or their parents
-- External organisations (except as described in Section 5 below)
-- Any commercial third parties
+- Parents or guardians of other swimmers
+- Coaches or clubs not affiliated with your club
+- Any commercial third parties for marketing purposes
+
+Swim Squad serves multiple swimming clubs. Each club's data is kept completely separate — coaches from other clubs cannot see your child's information.
 
 ---
 
 ## 5. Do We Use Artificial Intelligence (AI) With This Data?
 
-The coaching platform includes AI-powered features designed to help coaches plan better training sessions. We want to be completely transparent about how this works.
+The Swim Squad platform includes AI features that help coaches plan better training sessions. We believe it is important to be clear about exactly how this works, especially regarding children's information.
 
-### What the AI is used for
+### What the AI does
 
-Our coaching platform uses AI to:
+The AI is used for two purposes:
 
-1. **Automatically calculate training distances** — When a coach writes a training set (e.g., "4 x 100m freestyle"), the AI calculates the exact distances covered in each swimming stroke. This helps coaches track training loads over time.
+1. **Calculating training distances** — When a coach writes a training set (for example, "4 x 100m freestyle"), the AI calculates the distances covered in each stroke. This helps coaches monitor training workloads over time.
 
-2. **Assist coaches with session planning** — Coaches can ask the AI for suggestions when designing training sessions. The AI uses context about the squad to make relevant recommendations.
+2. **Helping coaches plan sessions** — Coaches can ask the AI for suggestions when designing training. The AI uses information about the squad to make relevant recommendations.
 
-### What information is sent to the AI
+### What information is sent to the AI?
 
-When the AI is used, the following information may be included in the request sent to the AI system:
+When the AI is used, the following information may be included:
 
 - **The squad's name** (e.g., "Junior Development")
 - **The number of swimmers in the squad**
-- **The age range and average age of swimmers in the squad** (for example, "ages 11–14, average age 12.5") — this is calculated from dates of birth but **no individual's date of birth is transmitted**
-- **The training content** written by the coach (swimming sets and drills)
-- **A summary of recent training sessions** for the squad (dates, session focus areas, and total distances only)
+- **The age range and average age of swimmers** (for example, "ages 11–14, average age 12.5") — this is calculated from dates of birth, but **no individual's date of birth is transmitted to the AI**
+- **The training content** written by the coach (swimming sets and drills — for example, "4 x 200m IM")
+- **A summary of recent sessions** (dates, training focus, and total distances — no personal swimmer details)
 
-**Your child's name, date of birth, Swim England number, gender, or individual attendance records are never sent to the AI system.**
+**Your child's name, individual date of birth, Swim England number, gender, and personal attendance records are never sent to the AI.**
 
-### Who provides the AI?
+### Who runs the AI?
 
-The AI is provided by **OpenAI** (the company behind ChatGPT), using their professional API service. Under OpenAI's API terms, data submitted through the API is **not used to train their AI models**. The Club has reviewed OpenAI's data handling policies and is satisfied that this use is appropriate and proportionate.
+The AI is provided by **OpenAI** (the company behind ChatGPT), using their professional business API. Under OpenAI's API terms, data sent through the business API is **not used to train their AI models**. Swim Squad has reviewed OpenAI's data handling commitments and is satisfied that this use is appropriate, proportionate, and does not put your child's personal information at risk.
 
 ---
 
-## 6. Why Are We Allowed to Hold This Information? (Legal Basis)
+## 6. Why Are We Allowed to Hold This Information?
 
-Under UK data protection law (UK GDPR), we must have a lawful reason to hold and use personal information. We hold your child's information on the basis of our **legitimate interests** as a sports club providing a structured swimming programme.
+Under UK data protection law (UK GDPR), organisations must have a lawful reason to hold and use personal information.
 
-These legitimate interests include:
+We hold your child's information on the basis of our **legitimate interests** as a sports club providing a structured swimming programme. These legitimate interests include:
 
-- Running a safe and well-organised training programme
-- Monitoring attendance as part of our duty of care
+- Running a safe, well-organised, and effective training programme
+- Monitoring attendance as part of our duty of care to each swimmer
 - Ensuring training is appropriate for each swimmer's age and ability
 - Planning and improving the quality of coaching
 
-We have assessed that these legitimate interests do not override the rights of your child, and we have applied appropriate safeguards given that many swimmers are under 18.
+We have assessed that these purposes are fair and proportionate, and that they do not override the rights of your child.
 
 ---
 
 ## 7. How Long Do We Keep This Information?
 
-We keep your child's information for as long as they are an active member of Hart Swimming Club, and for a period thereafter in line with our Club safeguarding and record-keeping obligations.
+We keep your child's information for as long as they are an active member of your club. After a swimmer leaves the club, their information is retained for **7 years** in line with standard safeguarding and record-keeping obligations for sports organisations in the United Kingdom.
 
-If your child leaves the Club and you would like their information removed from the coaching platform, please contact us using the details at the end of this notice.
-
----
-
-## 8. Keeping This Information Safe
-
-We take the security of your child's information seriously. The coaching platform:
-
-- Is a **closed, invitation-only system** — only authorised coaches can access it
-- Uses **encrypted connections** for all data transfer
-- Stores data in a **secure, managed database**
-- Does **not** make any swimmer information publicly accessible
+After this period, personal data is deleted. If you would like your child's information removed earlier, please contact your club administrator.
 
 ---
 
-## 9. Your Rights (and Your Child's Rights)
+## 8. Keeping Information Safe
 
-Under UK GDPR, you and your child have the following rights in relation to the personal information we hold:
+The Swim Squad platform takes the security of your child's information seriously:
+
+- It is a **closed, invitation-only system** — only authorised coaches with a verified account can access it
+- All information is transmitted using **encrypted connections**
+- Data is stored in a **secure, managed database**
+- No swimmer information is ever publicly accessible
+
+---
+
+## 9. Your Rights — and Your Child's Rights
+
+Under UK GDPR, you and your child have the following rights:
 
 **Right to be informed**  
-You have the right to know what information we hold, which this notice explains.
+You have the right to know what information is held — which this notice explains.
 
 **Right of access**  
-You may request a copy of the information we hold about your child. We will provide this within one calendar month.
+You can ask for a copy of all information held about your child. We will provide this within one calendar month.
 
 **Right to rectification**  
-If any information about your child is incorrect, you can ask us to correct it.
+If any information about your child is wrong, you can ask us to correct it.
 
-**Right to erasure**  
-You may ask us to delete your child's information. We will do so unless we are legally required to retain it (for example, for safeguarding records).
+**Right to erasure ("right to be forgotten")**  
+You can ask us to delete your child's information. We will do so unless we are legally required to retain it (for example, for safeguarding purposes).
 
 **Right to restrict processing**  
-You may ask us to limit how we use your child's information in certain circumstances.
+You can ask us to limit how we use your child's information in certain circumstances.
 
 **Right to object**  
-You may object to us using your child's information where we rely on legitimate interests.
+You can object to us using your child's information where we rely on legitimate interests.
 
-### How to Exercise Your Rights
+### How to exercise your rights
 
-To make a request, please contact:
+Please contact your club administrator in the first instance. You can also contact Swim Squad directly:
 
-**[Club Data Protection Lead Name]**  
-Hart Swimming Club  
-**[Email Address]**  
-**[Postal Address]**
+**Josh Montgomery — Swim Squad**  
+**privacy@swimsquad.app** *(update before publishing)*
 
-We will respond within **one calendar month**. There is no charge for making a request.
+We will respond to all requests within **one calendar month**. There is no charge for making a request.
 
-If you are unhappy with how we have handled your request, you have the right to complain to the **Information Commissioner's Office (ICO)**:
+### If you are not satisfied
 
-Website: [https://ico.org.uk](https://ico.org.uk)  
-Telephone: 0303 123 1113  
-Post: Information Commissioner's Office, Wycliffe House, Water Lane, Wilmslow, Cheshire, SK9 5AF
+If you are unhappy with how your request has been handled, you can contact the **Information Commissioner's Office (ICO)**:
+
+- **Website:** [https://ico.org.uk](https://ico.org.uk)
+- **Telephone:** 0303 123 1113
+- **Post:** Information Commissioner's Office, Wycliffe House, Water Lane, Wilmslow, Cheshire, SK9 5AF
 
 ---
 
 ## 10. Changes to This Notice
 
-We may update this notice from time to time. If we make significant changes to how we use your child's information, we will let you know. The current version of this notice is always available from the Club administrator.
+We may update this notice from time to time. Your club administrator will let you know if significant changes are made to how your child's information is used.
 
 ---
 
 ## 11. Contact Us
 
-If you have any questions about this notice, or about how Hart Swimming Club uses your child's information, please contact:
+**Josh Montgomery — Swim Squad**  
+**privacy@swimsquad.app** *(update before publishing)*
 
-**[Club Data Protection Lead Name]**  
-Hart Swimming Club  
-**[Email Address]**  
-**[Postal Address]**
+For questions specific to how your club manages its data, please contact your club's administrator directly.
 
 ---
 
-*Hart Swimming Club — Swimmer and Parent Data Notice, Version 1.0*
+*Swim Squad — Data Notice for Parents and Swimmers — Version 1.0 — 29 March 2026*

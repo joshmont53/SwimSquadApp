@@ -810,10 +810,31 @@ export function CollapsibleSidebar({
           )}
         </Button>
         
-        {/* Version */}
+        {/* Version and legal links */}
         {!collapsed && (
-          <div className="text-xs text-center text-muted-foreground" data-testid="text-version">
-            v2.1.0 • Hart SC
+          <div className="text-xs text-center text-muted-foreground space-y-1.5" data-testid="text-version">
+            <div>v2.1.0 &bull; Swim Squad</div>
+            <div className="flex items-center justify-center gap-2">
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors underline underline-offset-2"
+                data-testid="link-privacy-policy"
+              >
+                Privacy Policy
+              </a>
+              <span>&bull;</span>
+              <a
+                href="/privacy/swimmers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors underline underline-offset-2"
+                data-testid="link-swimmer-notice"
+              >
+                Swimmer Notice
+              </a>
+            </div>
           </div>
         )}
       </div>

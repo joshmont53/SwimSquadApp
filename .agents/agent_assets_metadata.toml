@@ -5,10 +5,10 @@ generated = []
 id = "XSm8V6ISKOIsbN6s9PyxG"
 uri = "file://privacy_documents/privacy_policy_coaches.md"
 type = "text"
-title = "Document 1: Privacy Policy (Coach-Facing)"
+title = "Updated: Privacy Policy (Swim Squad, Coach-Facing)"
 
 [[outputs]]
 id = "yc1-CQp_FZrhtnW-Y7H3p"
 uri = "file://privacy_documents/data_notice_parents_swimmers.md"
 type = "text"
-title = "Document 2: Data Notice for Parents and Swimmers"
+title = "Updated: Data Notice for Parents and Swimmers"
