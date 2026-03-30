@@ -32,8 +32,16 @@ export class WebhookHandlers {
     }
 
     const sync = await getStripeSync();
-    // Verifies signature and syncs raw Stripe data to the stripe schema
-    await sync.processWebhook(payload, signature);
+    // Verifies signature and syncs raw Stripe data to the stripe schema.
+    // We isolate this in a try/catch so that a sync failure (e.g. missing
+    // line items on testmode sessions) does not prevent our own business
+    // logic from running — the webhook is already signature-verified above.
+    try {
+      await sync.processWebhook(payload, signature);
+    } catch (syncErr: unknown) {
+      const msg = syncErr instanceof Error ? syncErr.message : String(syncErr);
+      console.warn('[Webhook] StripeSync.processWebhook non-fatal error (continuing):', msg);
+    }
 
     // Parse the (now verified) payload for our own business logic
     let event: Stripe.Event;
