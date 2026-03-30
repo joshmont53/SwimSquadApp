@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
+import type Stripe from "stripe";
 import { storage } from "./storage";
 import { registerPrivacyRoutes } from "./privacyRoutes";
 import { setupNewAuth, requireAuth, requireAdmin } from "./newAuth";
@@ -344,16 +345,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/coaches/:id", requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
       const existing = await storage.getCoachAnyStatus(req.params.id);
       if (!existing) return res.status(404).json({ message: "Coach not found" });
       if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       await storage.deleteCoach(req.params.id);
-      // Recount active users and sync Stripe subscription quantity
       const clubId = req.user.clubId as string;
       await storage.recalculateActiveUsers(clubId);
-      await syncSubscriptionQuantity(storage, clubId);
-      res.json({ message: "Coach deleted successfully" });
+      let billingWarning: string | undefined;
+      try {
+        await syncSubscriptionQuantity(storage, clubId);
+      } catch (stripeErr: any) {
+        console.error("Billing sync failed after coach delete:", stripeErr?.message ?? stripeErr);
+        billingWarning = "Coach deleted but billing sync failed — please contact support.";
+      }
+      res.json({ message: "Coach deleted successfully", billingWarning });
     } catch (error: any) {
       console.error("Error deleting coach:", error);
       res.status(500).json({ message: "Failed to delete coach" });
@@ -363,16 +368,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach deactivate (admin only)
   app.patch("/api/coaches/:id/deactivate", requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
       const existing = await storage.getCoachAnyStatus(req.params.id);
       if (!existing) return res.status(404).json({ message: "Coach not found" });
       if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       const { coach, userId } = await storage.deactivateCoach(req.params.id);
-      // Recount active users and sync Stripe subscription quantity
       const clubId = req.user.clubId as string;
       await storage.recalculateActiveUsers(clubId);
-      await syncSubscriptionQuantity(storage, clubId);
-      res.json({ coach, userId });
+      let billingWarning: string | undefined;
+      try {
+        await syncSubscriptionQuantity(storage, clubId);
+      } catch (stripeErr: any) {
+        console.error("Billing sync failed after coach deactivation:", stripeErr?.message ?? stripeErr);
+        billingWarning = "Coach deactivated but billing sync failed — please contact support.";
+      }
+      res.json({ coach, userId, billingWarning });
     } catch (error: any) {
       console.error("Error deactivating coach:", error);
       res.status(500).json({ message: error.message || "Failed to deactivate coach" });
@@ -382,16 +391,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach reactivate (admin only)
   app.patch("/api/coaches/:id/reactivate", requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
       const existing = await storage.getCoachAnyStatus(req.params.id);
       if (!existing) return res.status(404).json({ message: "Coach not found" });
       if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       const { coach, userId } = await storage.reactivateCoach(req.params.id);
-      // Recount active users and sync Stripe subscription quantity
       const clubId = req.user.clubId as string;
       await storage.recalculateActiveUsers(clubId);
-      await syncSubscriptionQuantity(storage, clubId);
-      res.json({ coach, userId });
+      let billingWarning: string | undefined;
+      try {
+        await syncSubscriptionQuantity(storage, clubId);
+      } catch (stripeErr: any) {
+        console.error("Billing sync failed after coach reactivation:", stripeErr?.message ?? stripeErr);
+        billingWarning = "Coach reactivated but billing sync failed — please contact support.";
+      }
+      res.json({ coach, userId, billingWarning });
     } catch (error: any) {
       console.error("Error reactivating coach:", error);
       res.status(500).json({ message: error.message || "Failed to reactivate coach" });
@@ -409,9 +422,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
       const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId, {
         expand: ['items.data.price'],
-      }) as any;
-      const item = subscription.items?.data?.[0];
-      const price = item?.price as any;
+      });
+      const item = subscription.items.data[0];
+      const price = item?.price as Stripe.Price | undefined;
+      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: Stripe.PriceTier[] }).tiers : null;
       res.json({
         hasSubscription: true,
         status: subscription.status,
@@ -423,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         unitAmount: price?.unit_amount ?? null,
         billingScheme: price?.billing_scheme ?? null,
         tiersMode: price?.tiers_mode ?? null,
-        tiers: price?.tiers ?? null,
+        tiers: priceTiers ?? null,
         stripeCustomerId: club.stripeCustomerId,
       });
     } catch (error: any) {
