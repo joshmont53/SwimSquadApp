@@ -425,12 +425,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const item = subscription.items.data[0];
       const price = item?.price as Stripe.Price | undefined;
-      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: Stripe.PriceTier[] }).tiers : null;
+      type LegacyTier = Stripe.Price.Tier;
+      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: LegacyTier[] }).tiers : null;
+      type SubWithPeriod = typeof subscription & { current_period_end: number };
+      const legacySub = subscription as SubWithPeriod;
       res.json({
         hasSubscription: true,
-        status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        status: legacySub.status,
+        currentPeriodEnd: legacySub.current_period_end,
+        cancelAtPeriodEnd: legacySub.cancel_at_period_end,
         quantity: item?.quantity ?? club.activeUsers,
         activeUsers: club.activeUsers ?? 0,
         currency: price?.currency ?? 'gbp',
@@ -469,6 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Billing: get subscription info for a specific club (admin only) — task-specified contract
   app.get("/api/clubs/:id/billing", requireAuth, requireAdmin, async (req: any, res) => {
+    type TierLineItem = { label: string; users: number; unit_pence: number; subtotal_pence: number };
     try {
       const clubId = req.params.id;
       if (clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
@@ -476,70 +480,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!club) return res.status(404).json({ message: "Club not found" });
       if (!club.stripeSubscriptionId || !club.stripeCustomerId) {
         return res.json({
-          hasSubscription: false,
-          activeUsers: club.activeUsers ?? 0,
-          clubStatus: club.clubStatus ?? 'active',
-          estimatedBreakdown: null,
-          estimatedMonthlyTotal: 0,
+          has_subscription: false,
+          active_users: club.activeUsers ?? 0,
+          club_status: club.clubStatus ?? 'active',
+          estimated_breakdown: null,
+          estimated_monthly_total: 0,
         });
       }
       const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
       const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId, {
         expand: ['items.data.price'],
       });
+      // The Stripe SDK typedefs for the newer API version omit current_period_end;
+      // the field still exists in the API response so we widen with an intersection.
+      type SubscriptionWithPeriod = typeof subscription & { current_period_end: number };
+      const sub = subscription as SubscriptionWithPeriod;
       const item = subscription.items.data[0];
       const price = item?.price as Stripe.Price | undefined;
-      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: any[] }).tiers : null;
+      // Stripe tiers are only present on graduated/volume prices; the SDK
+      // types them as Price.Tier[] (namespace under Stripe.Price).
+      type PriceTierShape = Stripe.Price.Tier;
+      const priceTiers: PriceTierShape[] | null =
+        price && 'tiers' in price && Array.isArray((price as Stripe.Price & { tiers?: PriceTierShape[] }).tiers)
+          ? ((price as Stripe.Price & { tiers: PriceTierShape[] }).tiers)
+          : null;
 
       // Server-side graduated pricing estimate
       const activeUsers = club.activeUsers ?? 0;
-      let estimatedBreakdown: { label: string; users: number; unitPence: number; subtotalPence: number }[] | null = null;
-      let estimatedMonthlyTotal = 0;
+      let estimated_breakdown: TierLineItem[] | null = null;
+      let estimated_monthly_total = 0;
       if (priceTiers && price?.tiers_mode === 'graduated' && activeUsers > 0) {
-        const parts: { label: string; users: number; unitPence: number; subtotalPence: number }[] = [];
+        const parts: TierLineItem[] = [];
         let remaining = activeUsers;
         let prevUpTo = 0;
         for (const tier of priceTiers) {
           if (remaining <= 0) break;
-          const tierCapacity = tier.up_to == null ? remaining : (tier.up_to - prevUpTo);
-          const usersInThisTier = Math.min(remaining, tierCapacity);
-          const unitPence: number = tier.unit_amount != null
-            ? tier.unit_amount
-            : Math.round(parseFloat(tier.unit_amount_decimal ?? '0'));
+          const tierCap = tier.up_to == null ? remaining : (tier.up_to - prevUpTo);
+          const usersInTier = Math.min(remaining, tierCap);
+          const unitPence: number =
+            tier.unit_amount != null
+              ? tier.unit_amount
+              : Math.round(parseFloat(tier.unit_amount_decimal ?? '0'));
           const rangeEnd = tier.up_to ?? null;
           parts.push({
             label: rangeEnd ? `${prevUpTo + 1}–${rangeEnd}` : `${prevUpTo + 1}+`,
-            users: usersInThisTier,
-            unitPence,
-            subtotalPence: usersInThisTier * unitPence,
+            users: usersInTier,
+            unit_pence: unitPence,
+            subtotal_pence: usersInTier * unitPence,
           });
-          remaining -= usersInThisTier;
+          remaining -= usersInTier;
           prevUpTo = tier.up_to ?? prevUpTo;
         }
-        estimatedMonthlyTotal = parts.reduce((s, p) => s + p.subtotalPence, 0);
-        estimatedBreakdown = parts;
+        estimated_monthly_total = parts.reduce((s, p) => s + p.subtotal_pence, 0);
+        estimated_breakdown = parts;
       }
 
       res.json({
-        hasSubscription: true,
-        status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        has_subscription: true,
+        status: sub.status,
+        current_period_end: sub.current_period_end,
+        cancel_at_period_end: sub.cancel_at_period_end,
         quantity: item?.quantity ?? club.activeUsers,
-        activeUsers,
-        clubStatus: club.clubStatus ?? 'active',
+        active_users: activeUsers,
+        club_status: club.clubStatus ?? 'active',
         currency: price?.currency ?? 'gbp',
-        unitAmount: price?.unit_amount ?? null,
-        billingScheme: price?.billing_scheme ?? null,
-        tiersMode: price?.tiers_mode ?? null,
+        billing_scheme: price?.billing_scheme ?? null,
+        tiers_mode: price?.tiers_mode ?? null,
         tiers: priceTiers ?? null,
-        stripeCustomerId: club.stripeCustomerId,
-        estimatedBreakdown,
-        estimatedMonthlyTotal,
+        stripe_customer_id: club.stripeCustomerId,
+        estimated_breakdown,
+        estimated_monthly_total,
       });
-    } catch (error: any) {
-      console.error("Error fetching club billing info:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch billing info" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to fetch billing info";
+      console.error("Error fetching club billing info:", err);
+      res.status(500).json({ message });
     }
   });
 

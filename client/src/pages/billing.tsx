@@ -18,29 +18,36 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-interface EstimateLineItem {
+interface TierLineItem {
   label: string;
   users: number;
-  unitPence: number;
-  subtotalPence: number;
+  unit_pence: number;
+  subtotal_pence: number;
+}
+
+interface StripePriceTier {
+  up_to: number | null;
+  unit_amount: number | null;
+  unit_amount_decimal: string | null;
+  flat_amount: number | null;
+  flat_amount_decimal: string | null;
 }
 
 interface BillingData {
-  hasSubscription: boolean;
+  has_subscription: boolean;
   status?: string;
-  currentPeriodEnd?: number;
-  cancelAtPeriodEnd?: boolean;
+  current_period_end?: number;
+  cancel_at_period_end?: boolean;
   quantity?: number;
-  activeUsers: number;
-  clubStatus: string;
+  active_users: number;
+  club_status: string;
   currency?: string;
-  unitAmount?: number;
-  billingScheme?: string;
-  tiersMode?: string;
-  tiers?: any[];
-  stripeCustomerId?: string;
-  estimatedBreakdown: EstimateLineItem[] | null;
-  estimatedMonthlyTotal: number;
+  billing_scheme?: string;
+  tiers_mode?: string;
+  tiers?: StripePriceTier[];
+  stripe_customer_id?: string;
+  estimated_breakdown: TierLineItem[] | null;
+  estimated_monthly_total: number;
 }
 
 export function BillingPage() {
@@ -57,7 +64,7 @@ export function BillingPage() {
     queryFn: async () => {
       const res = await fetch(`/api/clubs/${clubId}/billing`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch billing info');
-      return res.json();
+      return res.json() as Promise<BillingData>;
     },
     enabled: !!clubId,
     retry: false,
@@ -83,11 +90,12 @@ export function BillingPage() {
     setPortalLoading(true);
     try {
       const res = await apiRequest('POST', `/api/clubs/${clubId}/billing/portal`, {});
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to open billing portal');
-      window.location.href = data.url;
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      const data = await res.json() as { url?: string; message?: string };
+      if (!res.ok) throw new Error(data.message ?? 'Failed to open billing portal');
+      if (data.url) window.location.href = data.url;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to open billing portal';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
       setPortalLoading(false);
     }
   };
@@ -118,9 +126,8 @@ export function BillingPage() {
     return 'secondary';
   };
 
-  // Use server-calculated estimate — avoids client-side tier computation
-  const estimatedBreakdown = billing?.estimatedBreakdown ?? null;
-  const estimatedMonthlyTotal = billing?.estimatedMonthlyTotal ?? 0;
+  const estimatedBreakdown = billing?.estimated_breakdown ?? null;
+  const estimatedMonthlyTotal = billing?.estimated_monthly_total ?? 0;
 
   return (
     <div className="max-w-lg mx-auto space-y-6 p-4">
@@ -148,7 +155,7 @@ export function BillingPage() {
           <div className="h-20 rounded-md bg-muted animate-pulse" />
           <div className="h-20 rounded-md bg-muted animate-pulse" />
         </div>
-      ) : !billing?.hasSubscription ? (
+      ) : !billing?.has_subscription ? (
         <div className="rounded-md border p-4 text-sm text-muted-foreground">
           No active subscription found for this club.
         </div>
@@ -165,24 +172,24 @@ export function BillingPage() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm font-medium text-muted-foreground">Club status</span>
               <Badge
-                variant={billing.clubStatus === 'active' ? 'default' : 'destructive'}
+                variant={billing.club_status === 'active' ? 'default' : 'destructive'}
                 data-testid="badge-club-status"
               >
-                {billing.clubStatus === 'active' ? 'Active' : 'Inactive'}
+                {billing.club_status === 'active' ? 'Active' : 'Inactive'}
               </Badge>
             </div>
-            {billing.cancelAtPeriodEnd && (
+            {billing.cancel_at_period_end && (
               <p className="text-sm text-destructive">
                 Subscription will cancel at the end of the current period.
               </p>
             )}
-            {billing.currentPeriodEnd && (
+            {billing.current_period_end && (
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="text-sm font-medium text-muted-foreground">
-                  {billing.cancelAtPeriodEnd ? 'Cancels on' : 'Next billing date'}
+                  {billing.cancel_at_period_end ? 'Cancels on' : 'Next billing date'}
                 </span>
                 <span className="text-sm" data-testid="text-billing-period-end">
-                  {formatDate(billing.currentPeriodEnd)}
+                  {formatDate(billing.current_period_end)}
                 </span>
               </div>
             )}
@@ -192,7 +199,7 @@ export function BillingPage() {
           <div className="rounded-md border p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm font-medium text-muted-foreground">Active coaches</span>
-              <span className="text-sm font-semibold" data-testid="text-active-users">{billing.activeUsers}</span>
+              <span className="text-sm font-semibold" data-testid="text-active-users">{billing.active_users}</span>
             </div>
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm font-medium text-muted-foreground">Billed quantity</span>
@@ -211,9 +218,9 @@ export function BillingPage() {
                   data-testid={`billing-tier-row-${i}`}
                 >
                   <span className="text-muted-foreground">
-                    {part.users} user{part.users !== 1 ? 's' : ''} × {formatGBP(part.unitPence)}/user (tier {part.label})
+                    {part.users} user{part.users !== 1 ? 's' : ''} × {formatGBP(part.unit_pence)}/user (tier {part.label})
                   </span>
-                  <span className="font-medium">{formatGBP(part.subtotalPence)}</span>
+                  <span className="font-medium">{formatGBP(part.subtotal_pence)}</span>
                 </div>
               ))}
               <div className="flex items-center justify-between text-sm font-semibold border-t pt-2 flex-wrap gap-1">
@@ -224,10 +231,10 @@ export function BillingPage() {
           )}
 
           {/* Pricing tiers reference */}
-          {billing.tiersMode === 'graduated' && billing.tiers && billing.tiers.length > 0 && (
+          {billing.tiers_mode === 'graduated' && billing.tiers && billing.tiers.length > 0 && (
             <div className="rounded-md border p-4 space-y-2">
               <p className="text-sm font-medium text-muted-foreground mb-1">Pricing tiers (graduated)</p>
-              {billing.tiers.map((tier: any, i: number) => (
+              {billing.tiers.map((tier, i) => (
                 <div key={i} className="flex items-center justify-between text-sm flex-wrap gap-1">
                   <span>
                     {i === 0
@@ -252,7 +259,7 @@ export function BillingPage() {
       <div className="pt-2">
         <Button
           onClick={openPortal}
-          disabled={portalLoading || !billing?.hasSubscription}
+          disabled={portalLoading || !billing?.has_subscription}
           data-testid="button-open-billing-portal"
         >
           <CreditCard className="h-4 w-4 mr-2" />
