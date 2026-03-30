@@ -64,6 +64,7 @@ import {
   BookOpen,
   Settings,
   CreditCard,
+  ArrowLeft,
 } from 'lucide-react';
 import { CollapsibleSidebar } from './components/CollapsibleSidebar';
 import { Badge } from './components/ui/badge';
@@ -201,17 +202,21 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 p-2">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-club-settings">
-          <Settings className="h-4 w-4 mr-2" />
-          Club Settings
-        </Button>
+    <div className="flex flex-col h-full bg-background overflow-hidden">
+      <div className="flex-shrink-0 sticky top-0 z-10 bg-background">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b px-2 pt-2">
+            <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 shrink-0" data-testid="button-back-club-settings">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base truncate">Club Settings</h1>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Club Branding</h2>
-        <p className="text-sm text-muted-foreground">Choose a brand colour that represents your club. This colour appears throughout the app.</p>
-      </div>
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-lg mx-auto space-y-6 p-2">
       <div className="space-y-3">
         <div className="flex items-center gap-4">
           <div className="flex flex-col gap-1.5">
@@ -287,6 +292,8 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
+      </div>
     </div>
   );
 }
@@ -401,21 +408,21 @@ function BillingView({ onBack }: { onBack: () => void }) {
   })();
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 p-2">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-billing">
-          <CreditCard className="h-4 w-4 mr-2" />
-          Billing
-        </Button>
+    <div className="flex flex-col h-full bg-background overflow-hidden">
+      <div className="flex-shrink-0 sticky top-0 z-10 bg-background">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b px-2 pt-2">
+            <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 shrink-0" data-testid="button-back-billing">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base truncate">Billing</h1>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Subscription & Billing</h2>
-        <p className="text-sm text-muted-foreground">
-          View your current plan, active user count, and manage payment details via the Stripe Customer Portal.
-        </p>
-      </div>
-
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-lg mx-auto space-y-6 p-2">
       {isLoading ? (
         <div className="space-y-3">
           <div className="h-20 rounded-md bg-muted animate-pulse" />
@@ -560,6 +567,8 @@ function BillingView({ onBack }: { onBack: () => void }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
+      </div>
     </div>
   );
 }
