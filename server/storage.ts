@@ -456,10 +456,10 @@ export class DatabaseStorage implements IStorage {
     // Set all locations to inactive
     await db.update(locations).set({ recordStatus: 'inactive' }).where(eq(locations.clubId, clubId));
 
-    // Set the club itself to inactive with 0 active users
+    // Set the club itself to inactive with 0 active users and clear the subscription ID
     await db
       .update(clubs)
-      .set({ clubStatus: 'inactive', activeUsers: 0 })
+      .set({ clubStatus: 'inactive', activeUsers: 0, stripeSubscriptionId: null })
       .where(eq(clubs.id, clubId));
   }
 

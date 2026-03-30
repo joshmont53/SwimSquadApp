@@ -3,7 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import type { QualificationLevel } from '../lib/typeAdapters';
+import type { Coach as AdaptedCoach, QualificationLevel } from '../lib/typeAdapters';
 import type { InsertCoach } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,7 @@ import {
 import { ArrowLeft, Plus, Pencil, Trash2, UserMinus, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Use Backend Coach type directly (record_status aware)
+// Backend coach shape — includes fields not present in the adapted type
 interface BackendCoach {
   id: string;
   firstName: string;
@@ -47,11 +47,12 @@ interface BackendCoach {
   dob: string;
   clubId?: string | null;
   recordStatus?: string | null;
-  [key: string]: unknown;
 }
 
+// The component receives the adapted Coach[] from App.tsx for type compatibility,
+// but always fetches backend coaches directly (to access dob, recordStatus, etc.).
 interface ManageCoachesProps {
-  coaches: BackendCoach[];
+  coaches: AdaptedCoach[];
   onBack: () => void;
 }
 
@@ -62,7 +63,7 @@ const qualificationLevels: QualificationLevel[] = [
   'Level 3',
 ];
 
-export function ManageCoaches({ coaches: _propCoaches, onBack }: ManageCoachesProps) {
+export function ManageCoaches({ onBack }: ManageCoachesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === 'admin';
@@ -93,8 +94,8 @@ export function ManageCoaches({ coaches: _propCoaches, onBack }: ManageCoachesPr
 
   // Admins see all coaches (active + inactive), others see active only
   const coaches: BackendCoach[] = isAdmin
-    ? (allCoaches ?? activeCoaches ?? _propCoaches ?? [])
-    : (activeCoaches ?? _propCoaches ?? []);
+    ? (allCoaches ?? activeCoaches ?? [])
+    : (activeCoaches ?? []);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertCoach) => {
