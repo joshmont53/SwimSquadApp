@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import type { Coach, QualificationLevel } from '../lib/typeAdapters';
-import type { Coach as BackendCoach, InsertCoach } from '@shared/schema';
+import { useAuth } from '@/hooks/useAuth';
+import type { QualificationLevel } from '../lib/typeAdapters';
+import type { InsertCoach } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -15,6 +16,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -24,10 +35,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Pencil, Trash2, Menu } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, UserMinus, UserCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// Use Backend Coach type directly (record_status aware)
+interface BackendCoach {
+  id: string;
+  firstName: string;
+  lastName: string;
+  level: string;
+  dob: string;
+  clubId?: string | null;
+  recordStatus?: string | null;
+  [key: string]: unknown;
+}
 
 interface ManageCoachesProps {
-  coaches: Coach[];
+  coaches: BackendCoach[];
   onBack: () => void;
 }
 
@@ -38,18 +62,39 @@ const qualificationLevels: QualificationLevel[] = [
   'Level 3',
 ];
 
-export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
+export function ManageCoaches({ coaches: _propCoaches, onBack }: ManageCoachesProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const isAdmin = user?.role === 'admin';
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingCoach, setEditingCoach] = useState<Coach | null>(null);
-  const [deletingCoach, setDeletingCoach] = useState<Coach | null>(null);
+  const [editingCoach, setEditingCoach] = useState<BackendCoach | null>(null);
+  const [deletingCoach, setDeletingCoach] = useState<BackendCoach | null>(null);
+  const [deactivatingCoach, setDeactivatingCoach] = useState<BackendCoach | null>(null);
+  const [reactivatingCoach, setReactivatingCoach] = useState<BackendCoach | null>(null);
 
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     level: 'Level 1' as QualificationLevel,
-    dateOfBirth: '',
+    dob: '',
   });
+
+  // All coaches including inactive — admin only
+  const { data: allCoaches } = useQuery<BackendCoach[]>({
+    queryKey: ['/api/coaches/all'],
+    enabled: isAdmin,
+  });
+
+  // Active coaches — for non-admins or as fallback
+  const { data: activeCoaches } = useQuery<BackendCoach[]>({
+    queryKey: ['/api/coaches'],
+  });
+
+  // Admins see all coaches (active + inactive), others see active only
+  const coaches: BackendCoach[] = isAdmin
+    ? (allCoaches ?? activeCoaches ?? _propCoaches ?? [])
+    : (activeCoaches ?? _propCoaches ?? []);
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertCoach) => {
@@ -57,15 +102,12 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/coaches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches/all'] });
       setIsAddDialogOpen(false);
-      setFormData({ firstName: '', lastName: '', level: 'Level 1' as QualificationLevel, dateOfBirth: '' });
+      setFormData({ firstName: '', lastName: '', level: 'Level 1' as QualificationLevel, dob: '' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to add coach',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to add coach', variant: 'destructive' });
     },
   });
 
@@ -75,15 +117,12 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/coaches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches/all'] });
       setEditingCoach(null);
-      setFormData({ firstName: '', lastName: '', level: 'Level 1' as QualificationLevel, dateOfBirth: '' });
+      setFormData({ firstName: '', lastName: '', level: 'Level 1' as QualificationLevel, dob: '' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update coach',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to update coach', variant: 'destructive' });
     },
   });
 
@@ -93,76 +132,82 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/coaches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches/all'] });
       setDeletingCoach(null);
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete coach',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message || 'Failed to delete coach', variant: 'destructive' });
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest('PATCH', `/api/coaches/${id}/deactivate`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches/all'] });
+      toast({ title: 'Coach deactivated', description: 'The coach and their login have been deactivated. Billing updated.' });
+      setDeactivatingCoach(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to deactivate coach', variant: 'destructive' });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest('PATCH', `/api/coaches/${id}/reactivate`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/coaches/all'] });
+      toast({ title: 'Coach reactivated', description: 'The coach has been reactivated. Billing updated.' });
+      setReactivatingCoach(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to reactivate coach', variant: 'destructive' });
     },
   });
 
   const handleAdd = () => {
-    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
+    if (!formData.firstName || !formData.lastName || !formData.dob) {
+      toast({ title: 'Validation Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
-
-    const coachData: InsertCoach = {
+    createMutation.mutate({
       firstName: formData.firstName,
       lastName: formData.lastName,
       level: formData.level,
-      dob: formData.dateOfBirth,
-    };
-
-    createMutation.mutate(coachData);
+      dob: formData.dob,
+    });
   };
 
-  const handleEdit = (coach: Coach) => {
+  const handleEdit = (coach: BackendCoach) => {
     setEditingCoach(coach);
     setFormData({
       firstName: coach.firstName,
       lastName: coach.lastName,
-      level: coach.level,
-      dateOfBirth: coach.dateOfBirth.toISOString().split('T')[0],
+      level: coach.level as QualificationLevel,
+      dob: coach.dob,
     });
   };
 
   const handleSaveEdit = () => {
     if (!editingCoach) return;
-
-    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
+    if (!formData.firstName || !formData.lastName || !formData.dob) {
+      toast({ title: 'Validation Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
-
-    const coachData: InsertCoach = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      level: formData.level,
-      dob: formData.dateOfBirth,
-    };
-
-    updateMutation.mutate({ id: editingCoach.id, data: coachData });
-  };
-
-  const handleDelete = (coach: Coach) => {
-    setDeletingCoach(coach);
-  };
-
-  const confirmDelete = () => {
-    if (!deletingCoach) return;
-    deleteMutation.mutate(deletingCoach.id);
+    updateMutation.mutate({
+      id: editingCoach.id,
+      data: {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        level: formData.level,
+        dob: formData.dob,
+      },
+    });
   };
 
   return (
@@ -182,10 +227,12 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
             <div className="flex-1 min-w-0">
               <h1 className="text-base truncate">Coaches</h1>
             </div>
-            <Button size="sm" onClick={() => setIsAddDialogOpen(true)} className="shrink-0" data-testid="button-add-coach">
-              <Plus className="h-4 w-4 mr-1.5" />
-              Add
-            </Button>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setIsAddDialogOpen(true)} className="shrink-0" data-testid="button-add-coach">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -198,55 +245,96 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
                 <p className="text-muted-foreground">No coaches found. Add your first coach to get started.</p>
               </Card>
             ) : (
-              coaches.map((coach) => (
-                <Card
-                  key={coach.id}
-                  className="p-4"
-                  data-testid={`coach-card-${coach.id}`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium mb-2">{coach.name}</h3>
-                      <div className="flex items-center gap-3">
-                        <Badge 
-                          variant={coach.level === 'Level 3' ? 'default' : 'secondary'}
-                          className="flex-shrink-0"
-                        >
-                          {coach.level}
-                        </Badge>
-                        <p className="text-sm text-muted-foreground whitespace-nowrap">
-                          DOB: {coach.dateOfBirth.toLocaleDateString('en-CA')}
-                        </p>
+              coaches.map((coach) => {
+                const isInactive = coach.recordStatus === 'inactive';
+                return (
+                  <Card
+                    key={coach.id}
+                    className={cn('p-4', isInactive && 'opacity-50')}
+                    data-testid={`coach-card-${coach.id}`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="font-medium">{coach.firstName} {coach.lastName}</h3>
+                          {isInactive && (
+                            <Badge variant="outline" className="text-xs" data-testid={`badge-inactive-${coach.id}`}>
+                              Inactive
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge
+                            variant={coach.level === 'Level 3' ? 'default' : 'secondary'}
+                            className="flex-shrink-0"
+                          >
+                            {coach.level}
+                          </Badge>
+                          <p className="text-sm text-muted-foreground whitespace-nowrap">
+                            DOB: {coach.dob}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                        {/* Edit — only for active coaches */}
+                        {!isInactive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(coach)}
+                            data-testid={`button-edit-coach-${coach.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        )}
+                        {/* Deactivate — admin only, active coaches */}
+                        {isAdmin && !isInactive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeactivatingCoach(coach)}
+                            data-testid={`button-deactivate-coach-${coach.id}`}
+                          >
+                            <UserMinus className="h-4 w-4 mr-1" />
+                            Deactivate
+                          </Button>
+                        )}
+                        {/* Reactivate — admin only, inactive coaches */}
+                        {isAdmin && isInactive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setReactivatingCoach(coach)}
+                            data-testid={`button-reactivate-coach-${coach.id}`}
+                          >
+                            <UserCheck className="h-4 w-4 mr-1" />
+                            Reactivate
+                          </Button>
+                        )}
+                        {/* Delete — admin only, active coaches */}
+                        {isAdmin && !isInactive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingCoach(coach)}
+                            data-testid={`button-delete-coach-${coach.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(coach)}
-                        data-testid={`button-edit-coach-${coach.id}`}
-                      >
-                        <Pencil className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(coach)}
-                        data-testid={`button-delete-coach-${coach.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))
+                  </Card>
+                );
+              })
             )}
           </div>
         </div>
       </div>
 
+      {/* Add Coach Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent data-testid="dialog-add-coach">
           <DialogHeader>
@@ -273,12 +361,12 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
               />
             </div>
             <div>
-              <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+              <Label htmlFor="dob">Date of Birth *</Label>
               <Input
-                id="dateOfBirth"
+                id="dob"
                 type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                 data-testid="input-date-of-birth"
               />
             </div>
@@ -293,25 +381,22 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {qualificationLevels.map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {level}
-                    </SelectItem>
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAdd} data-testid="button-save-coach">
-              Add Coach
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAdd} disabled={createMutation.isPending} data-testid="button-save-coach">
+              {createMutation.isPending ? 'Adding…' : 'Add Coach'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Coach Dialog */}
       <Dialog open={!!editingCoach} onOpenChange={(open) => !open && setEditingCoach(null)}>
         <DialogContent data-testid="dialog-edit-coach">
           <DialogHeader>
@@ -338,12 +423,12 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
               />
             </div>
             <div>
-              <Label htmlFor="edit-dateOfBirth">Date of Birth *</Label>
+              <Label htmlFor="edit-dob">Date of Birth *</Label>
               <Input
-                id="edit-dateOfBirth"
+                id="edit-dob"
                 type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                 data-testid="input-edit-date-of-birth"
               />
             </div>
@@ -358,43 +443,87 @@ export function ManageCoaches({ coaches, onBack }: ManageCoachesProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {qualificationLevels.map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {level}
-                    </SelectItem>
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingCoach(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEdit} data-testid="button-update-coach">
-              Save Changes
+            <Button variant="outline" onClick={() => setEditingCoach(null)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending} data-testid="button-update-coach">
+              {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deletingCoach} onOpenChange={(open) => !open && setDeletingCoach(null)}>
-        <DialogContent data-testid="dialog-delete-coach">
-          <DialogHeader>
-            <DialogTitle>Delete Coach</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {deletingCoach?.name}? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingCoach(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} data-testid="button-confirm-delete-coach">
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Coach Confirmation */}
+      <AlertDialog open={!!deletingCoach} onOpenChange={(open) => !open && setDeletingCoach(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Coach</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deletingCoach?.firstName} {deletingCoach?.lastName}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-coach">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending}
+              onClick={() => deletingCoach && deleteMutation.mutate(deletingCoach.id)}
+              data-testid="button-confirm-delete-coach"
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Deactivate Coach Confirmation */}
+      <AlertDialog open={!!deactivatingCoach} onOpenChange={(open) => !open && setDeactivatingCoach(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Coach</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate {deactivatingCoach?.firstName} {deactivatingCoach?.lastName}?
+              They will no longer be able to log in and will be removed from your active billing count.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-deactivate">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deactivateMutation.isPending}
+              onClick={() => deactivatingCoach && deactivateMutation.mutate(deactivatingCoach.id)}
+              data-testid="button-confirm-deactivate"
+            >
+              {deactivateMutation.isPending ? 'Deactivating…' : 'Deactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate Coach Confirmation */}
+      <AlertDialog open={!!reactivatingCoach} onOpenChange={(open) => !open && setReactivatingCoach(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reactivate Coach</AlertDialogTitle>
+            <AlertDialogDescription>
+              Reactivate {reactivatingCoach?.firstName} {reactivatingCoach?.lastName}? They will regain access and will be included in your active billing count again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-reactivate">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={reactivateMutation.isPending}
+              onClick={() => reactivatingCoach && reactivateMutation.mutate(reactivatingCoach.id)}
+              data-testid="button-confirm-reactivate"
+            >
+              {reactivateMutation.isPending ? 'Reactivating…' : 'Reactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
