@@ -27,6 +27,11 @@ export const clubs = pgTable("clubs", {
   createdOn: timestamp("created_on").defaultNow(),
   primaryCoachId: varchar("primary_coach_id"), // Set after first coach is created
   clubColor: varchar("club_color").default('#4B9A4A'), // Brand colour hex string
+  // Stripe billing columns
+  stripeCustomerId: varchar("stripe_customer_id"), // Stripe Customer ID for this club
+  stripeSubscriptionId: varchar("stripe_subscription_id"), // Active Stripe Subscription ID
+  activeUsers: integer("active_users").notNull().default(0), // Count of active users in the club
+  clubStatus: varchar("club_status").notNull().default("active"), // "active" | "inactive"
 });
 
 export type Club = typeof clubs.$inferSelect;

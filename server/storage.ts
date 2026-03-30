@@ -67,7 +67,7 @@ import {
   type InsertNotificationLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, count } from "drizzle-orm";
 
 export type { Club, InsertClub, CoachNote, InsertCoachNote, CoachNoteItem, InsertCoachNoteItem, CoachNoteSquad };
 
@@ -84,6 +84,7 @@ export interface IStorage {
   createClub(club: InsertClub): Promise<Club>;
   updateClub(id: string, club: Partial<InsertClub>): Promise<Club>;
   seedClubCoachingRates(clubId: string): Promise<void>;
+  recalculateActiveUsers(clubId: string): Promise<number>;
   
   // Coach operations
   getCoaches(clubId: string): Promise<Coach[]>;
@@ -283,6 +284,31 @@ export class DatabaseStorage implements IStorage {
       { clubId, qualificationLevel: 'Level 4', hourlyRate: '25.00', sessionWritingRate: '10.00' },
     ];
     await db.insert(coachingRates).values(defaultRates).onConflictDoNothing();
+  }
+
+  async recalculateActiveUsers(clubId: string): Promise<number> {
+    // Count users who have an active coach in the given club AND whose accountStatus is 'active'
+    const [result] = await db
+      .select({ count: count() })
+      .from(users)
+      .innerJoin(coaches, eq(coaches.userId, users.id))
+      .where(
+        and(
+          eq(coaches.clubId, clubId),
+          eq(coaches.recordStatus, 'active'),
+          eq(users.accountStatus, 'active'),
+        )
+      );
+
+    const activeCount = result?.count ?? 0;
+
+    // Persist the updated count on the club record
+    await db
+      .update(clubs)
+      .set({ activeUsers: activeCount })
+      .where(eq(clubs.id, clubId));
+
+    return activeCount;
   }
 
   // Coach operations
