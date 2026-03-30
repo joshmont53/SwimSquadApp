@@ -348,6 +348,10 @@ export function setupNewAuth(app: Express) {
         },
       });
 
+      if (!session.url) {
+        console.error('[Auth] Stripe returned a checkout session without a URL:', session.id);
+        throw new Error('Stripe checkout session URL is missing — please try again');
+      }
       res.status(200).json({ checkoutUrl: session.url });
     } catch (error: any) {
       console.error('Club registration error:', error);
