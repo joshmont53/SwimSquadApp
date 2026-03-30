@@ -84,6 +84,7 @@ export interface IStorage {
   // Club operations (Multi-club support)
   getClub(id: string): Promise<Club | undefined>;
   getClubByCoachId(coachId: string): Promise<Club | undefined>;
+  getClubByStripeCustomerId(stripeCustomerId: string): Promise<Club | undefined>;
   createClub(club: InsertClub): Promise<Club>;
   updateClub(id: string, club: Partial<InsertClub>): Promise<Club>;
   seedClubCoachingRates(clubId: string): Promise<void>;
@@ -270,6 +271,11 @@ export class DatabaseStorage implements IStorage {
 
   async getClubByCoachId(coachId: string): Promise<Club | undefined> {
     const [club] = await db.select().from(clubs).where(eq(clubs.primaryCoachId, coachId));
+    return club;
+  }
+
+  async getClubByStripeCustomerId(stripeCustomerId: string): Promise<Club | undefined> {
+    const [club] = await db.select().from(clubs).where(eq(clubs.stripeCustomerId, stripeCustomerId));
     return club;
   }
 

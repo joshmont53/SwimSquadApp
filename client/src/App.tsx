@@ -1454,9 +1454,10 @@ function Router() {
     <Switch>
       {/* Longer paths MUST come first to avoid "/" prefix matching */}
       <Route path="/login" component={LoginPage} />
-      <Route path="/register" component={RegistrationPage} />
+      {/* /register/success and /register/cancelled MUST come before /register to avoid prefix-match */}
       <Route path="/register/success" component={RegisterSuccessPage} />
       <Route path="/register/cancelled" component={RegisterCancelledPage} />
+      <Route path="/register" component={RegistrationPage} />
       <Route path="/register-club" component={RegisterClubPage} />
       <Route path="/app">
         <ProtectedRoute>
