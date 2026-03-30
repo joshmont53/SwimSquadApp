@@ -96,8 +96,13 @@ async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
-    console.warn('DATABASE_URL not set — skipping Stripe initialization');
+    console.warn('[Stripe] DATABASE_URL not set — skipping Stripe initialization');
     return;
+  }
+
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
+  if (!replitDomain) {
+    console.error('[Stripe] REPLIT_DOMAINS not set — webhook registration will be skipped. Payments will not function until this is resolved.');
   }
 
   try {
@@ -107,17 +112,21 @@ async function initStripe() {
 
     const stripeSync = await getStripeSync();
 
-    log('Setting up managed Stripe webhook...');
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
-    await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
-    log('Stripe webhook configured');
+    if (replitDomain) {
+      log('Setting up managed Stripe webhook...');
+      const webhookUrl = `https://${replitDomain}/api/stripe/webhook`;
+      await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+      log('Stripe webhook configured');
+    } else {
+      console.warn('[Stripe] Skipping webhook registration — REPLIT_DOMAINS is not set');
+    }
 
     // Run syncBackfill in the background — don't block server startup
     stripeSync.syncBackfill()
       .then(() => log('Stripe data backfill complete'))
-      .catch((err: any) => console.error('Stripe syncBackfill error:', err));
+      .catch((err: any) => console.error('[Stripe] syncBackfill error:', err));
   } catch (error) {
-    console.error('Failed to initialize Stripe:', error);
+    console.error('[Stripe] CRITICAL: Failed to initialize Stripe — payments will not function until resolved:', error);
     // Don't throw — allow server to start even if Stripe init fails
   }
 }
