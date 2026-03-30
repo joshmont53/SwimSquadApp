@@ -411,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Billing: get current subscription info for admin billing page
+  // Billing: get current subscription info for admin billing page (legacy path)
   app.get("/api/billing/subscription", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const club = await storage.getClub(req.user.clubId);
@@ -446,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Billing: create Stripe Customer Portal session (admin only)
+  // Billing: create Stripe Customer Portal session (admin only, legacy path)
   app.post("/api/billing/portal", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const club = await storage.getClub(req.user.clubId);
@@ -458,11 +458,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: club.stripeCustomerId,
-        return_url: `${appBaseUrl}/app`,
+        return_url: `${appBaseUrl}/billing`,
       });
       res.json({ url: portalSession.url });
     } catch (error: any) {
       console.error("Error creating portal session:", error);
+      res.status(500).json({ message: error.message || "Failed to create billing portal session" });
+    }
+  });
+
+  // Billing: get subscription info for a specific club (admin only) — task-specified contract
+  app.get("/api/clubs/:id/billing", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const clubId = req.params.id;
+      if (clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
+      const club = await storage.getClub(clubId);
+      if (!club) return res.status(404).json({ message: "Club not found" });
+      if (!club.stripeSubscriptionId || !club.stripeCustomerId) {
+        return res.json({ hasSubscription: false, activeUsers: club.activeUsers ?? 0 });
+      }
+      const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId, {
+        expand: ['items.data.price'],
+      });
+      const item = subscription.items.data[0];
+      const price = item?.price as Stripe.Price | undefined;
+      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: Stripe.PriceTier[] }).tiers : null;
+      res.json({
+        hasSubscription: true,
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        quantity: item?.quantity ?? club.activeUsers,
+        activeUsers: club.activeUsers ?? 0,
+        currency: price?.currency ?? 'gbp',
+        unitAmount: price?.unit_amount ?? null,
+        billingScheme: price?.billing_scheme ?? null,
+        tiersMode: price?.tiers_mode ?? null,
+        tiers: priceTiers ?? null,
+        stripeCustomerId: club.stripeCustomerId,
+      });
+    } catch (error: any) {
+      console.error("Error fetching club billing info:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch billing info" });
+    }
+  });
+
+  // Billing: create Stripe Customer Portal session for a specific club (admin only) — task-specified contract
+  app.post("/api/clubs/:id/billing/portal", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const clubId = req.params.id;
+      if (clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
+      const club = await storage.getClub(clubId);
+      if (!club) return res.status(404).json({ message: "Club not found" });
+      if (!club.stripeCustomerId) {
+        return res.status(400).json({ message: "No Stripe customer associated with this club" });
+      }
+      const appBaseUrl = process.env.APP_BASE_URL || `https://${req.headers.host}`;
+      const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: club.stripeCustomerId,
+        return_url: `${appBaseUrl}/billing`,
+      });
+      res.json({ url: portalSession.url });
+    } catch (error: any) {
+      console.error("Error creating club billing portal session:", error);
       res.status(500).json({ message: error.message || "Failed to create billing portal session" });
     }
   });

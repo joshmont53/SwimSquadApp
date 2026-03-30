@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useLocation } from 'wouter';
 import type { Session, Squad, Location, Coach, Swimmer } from '@/lib/typeAdapters';
 
 type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
@@ -47,6 +48,7 @@ export function CollapsibleSidebar({
   competitionsCount,
   isAdmin,
 }: CollapsibleSidebarProps) {
+  const [, setLocation] = useLocation();
   const isActive = (view: string) => managementView === view;
   
   const todaysSessions = sessions.filter(s => 
@@ -654,25 +656,17 @@ export function CollapsibleSidebar({
                       variant="ghost"
                       className={cn(
                         "w-full py-2.5 relative transition-all duration-200",
-                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
-                        isActive('billing') && "bg-accent/50"
+                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]"
                       )}
-                      onClick={() => onNavigate('billing')}
+                      onClick={() => setLocation('/billing')}
                       data-testid="button-nav-billing"
                     >
-                      {isActive('billing') && (
-                        <div 
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: 'var(--club-primary)' }}
-                        />
-                      )}
                       <CreditCard 
                         className={cn(
                           "h-4 w-4 transition-colors",
                           collapsed ? "" : "mr-3 ml-2",
                           "text-muted-foreground"
                         )}
-                        style={{ color: isActive('billing') ? 'var(--club-primary)' : undefined }}
                       />
                       {!collapsed && (
                         <span className="flex-1 text-left">Billing</span>

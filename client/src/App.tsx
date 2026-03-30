@@ -30,6 +30,7 @@ import { SessionLibrary } from '@/pages/session-library';
 import { DrillsLibrary } from '@/pages/drills-library';
 import { FeedbackAnalytics } from '@/pages/feedback-analytics';
 import { Handbook } from '@/pages/handbook';
+import { BillingPage } from '@/pages/billing';
 import { CompetitionDetailModal } from '@/components/CompetitionDetailModal';
 import { HomePage } from '@/components/HomePage';
 import { SwimmerProfiles } from '@/components/SwimmerProfiles';
@@ -596,6 +597,7 @@ function LandingPage() {
 function CalendarApp() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // Inject CSS variables for club colour whenever the user/club colour changes
   useEffect(() => {
@@ -1309,24 +1311,16 @@ function CalendarApp() {
                 <Button
                   variant="ghost"
                   className={cn(
-                    "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
-                    isActive('billing') && "bg-accent/50"
+                    "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]"
                   )}
-                  onClick={() => handleManagementClick('billing')}
+                  onClick={() => { setLocation('/billing'); }}
                   data-testid="button-billing-mobile"
                 >
-                  {isActive('billing') && (
-                    <div 
-                      className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ backgroundColor: 'var(--club-primary)' }}
-                    />
-                  )}
                   <CreditCard 
                     className={cn(
                       "h-4 w-4 mr-3 ml-2 transition-colors",
                       "text-muted-foreground"
                     )}
-                    style={{ color: isActive('billing') ? 'var(--club-primary)' : undefined }}
                   />
                   <span className="flex-1 text-left">Billing</span>
                 </Button>
@@ -1811,6 +1805,35 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        setLocation('/login');
+      } else if (user?.role !== 'admin') {
+        setLocation('/app');
+      }
+    }
+  }, [isLoading, isAuthenticated, user, setLocation]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || user?.role !== 'admin') {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -1821,6 +1844,12 @@ function Router() {
       <Route path="/register/cancelled" component={RegisterCancelledPage} />
       <Route path="/register" component={RegistrationPage} />
       <Route path="/register-club" component={RegisterClubPage} />
+      {/* Billing — admin-only dedicated route */}
+      <Route path="/billing">
+        <AdminRoute>
+          <BillingPage />
+        </AdminRoute>
+      </Route>
       <Route path="/app">
         <ProtectedRoute>
           <CalendarApp />
