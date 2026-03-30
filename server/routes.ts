@@ -354,17 +354,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach deactivate (admin only)
   app.patch("/api/coaches/:id/deactivate", requireAuth, requireAdmin, async (req: any, res) => {
     try {
+      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
+      const existing = await storage.getCoachAnyStatus(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Coach not found" });
+      if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       const { coach, userId } = await storage.deactivateCoach(req.params.id);
       // Recount active users and sync Stripe subscription quantity
-      const clubId = coach.clubId ?? req.user.clubId;
-      if (clubId) {
-        await storage.recalculateActiveUsers(clubId);
-        await syncSubscriptionQuantity(storage, clubId);
-      }
+      const clubId = req.user.clubId as string;
+      await storage.recalculateActiveUsers(clubId);
+      await syncSubscriptionQuantity(storage, clubId);
       res.json({ coach, userId });
     } catch (error: any) {
       console.error("Error deactivating coach:", error);
-      if (error.message === "Coach not found") return res.status(404).json({ message: error.message });
       res.status(500).json({ message: error.message || "Failed to deactivate coach" });
     }
   });
@@ -372,17 +373,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach reactivate (admin only)
   app.patch("/api/coaches/:id/reactivate", requireAuth, requireAdmin, async (req: any, res) => {
     try {
+      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
+      const existing = await storage.getCoachAnyStatus(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Coach not found" });
+      if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       const { coach, userId } = await storage.reactivateCoach(req.params.id);
       // Recount active users and sync Stripe subscription quantity
-      const clubId = coach.clubId ?? req.user.clubId;
-      if (clubId) {
-        await storage.recalculateActiveUsers(clubId);
-        await syncSubscriptionQuantity(storage, clubId);
-      }
+      const clubId = req.user.clubId as string;
+      await storage.recalculateActiveUsers(clubId);
+      await syncSubscriptionQuantity(storage, clubId);
       res.json({ coach, userId });
     } catch (error: any) {
       console.error("Error reactivating coach:", error);
-      if (error.message === "Coach not found") return res.status(404).json({ message: error.message });
       res.status(500).json({ message: error.message || "Failed to reactivate coach" });
     }
   });

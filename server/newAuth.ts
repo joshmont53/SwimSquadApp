@@ -10,7 +10,7 @@ import { eq, and } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from './passwordUtils';
 import { generateSecureToken, getInvitationExpiry, getVerificationExpiry, isTokenExpired } from './tokenUtils';
 import { sendInvitationEmail, sendVerificationEmail } from './emailService';
-import { getUncachableStripeClient } from './stripeClient';
+import { getUncachableStripeClient, syncSubscriptionQuantity } from './stripeClient';
 import crypto from 'crypto';
 
 /**
@@ -418,6 +418,18 @@ export function setupNewAuth(app: Express) {
       
       // Delete used verification token
       await storage.deleteVerificationToken(verificationToken.id);
+
+      // Sync active_users count and Stripe subscription quantity now that a user is activated
+      try {
+        const coach = await storage.getCoachByUserId(user.id);
+        if (coach?.clubId) {
+          await storage.recalculateActiveUsers(coach.clubId);
+          await syncSubscriptionQuantity(storage, coach.clubId);
+        }
+      } catch (syncErr: any) {
+        // Non-fatal: log but do not fail the verification response
+        console.error('[verify-email] Failed to sync active_users/Stripe after activation:', syncErr?.message ?? syncErr);
+      }
       
       res.json({ 
         message: 'Email verified successfully. You can now log in.',
