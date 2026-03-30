@@ -292,8 +292,10 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
 
 // Billing View component (admin only)
 function BillingView({ onBack }: { onBack: () => void }) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const { data: billing, isLoading } = useQuery<{
     hasSubscription: boolean;
@@ -311,6 +313,22 @@ function BillingView({ onBack }: { onBack: () => void }) {
   }>({
     queryKey: ['/api/billing/subscription'],
     retry: false,
+  });
+
+  const cancelClubMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/clubs/${user?.clubId}/cancel`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Club cancelled', description: 'Your club has been cancelled. You will be signed out.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/status'] });
+      setShowCancelConfirm(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Error', description: err.message || 'Failed to cancel club', variant: 'destructive' });
+      setShowCancelConfirm(false);
+    },
   });
 
   const openPortal = async () => {
@@ -352,6 +370,34 @@ function BillingView({ onBack }: { onBack: () => void }) {
     if (s === 'canceled' || s === 'incomplete_expired') return 'destructive';
     return 'secondary';
   };
+
+  // Compute estimated monthly charge breakdown for graduated pricing
+  const estimatedBreakdown = (() => {
+    if (!billing?.tiers || billing.tiersMode !== 'graduated' || !billing.activeUsers) return null;
+    const tiers = billing.tiers;
+    const n = billing.activeUsers;
+    const parts: { label: string; users: number; unitPence: number; subtotalPence: number }[] = [];
+    let remaining = n;
+    let prevUpTo = 0;
+    for (const tier of tiers) {
+      if (remaining <= 0) break;
+      const tierCapacity = tier.up_to == null ? remaining : (tier.up_to - prevUpTo);
+      const usersInThisTier = Math.min(remaining, tierCapacity);
+      const unitPence: number = tier.unit_amount ?? Math.round(parseFloat(tier.unit_amount_decimal ?? '0'));
+      const rangeStart = prevUpTo + 1;
+      const rangeEnd = tier.up_to ?? null;
+      parts.push({
+        label: rangeEnd ? `${rangeStart}–${rangeEnd}` : `${rangeStart}+`,
+        users: usersInThisTier,
+        unitPence,
+        subtotalPence: usersInThisTier * unitPence,
+      });
+      remaining -= usersInThisTier;
+      prevUpTo = tier.up_to ?? prevUpTo;
+    }
+    const totalPence = parts.reduce((s, p) => s + p.subtotalPence, 0);
+    return { parts, totalPence };
+  })();
 
   return (
     <div className="max-w-lg mx-auto space-y-6 p-2">
@@ -417,7 +463,26 @@ function BillingView({ onBack }: { onBack: () => void }) {
             </div>
           </div>
 
-          {/* Pricing card */}
+          {/* Estimated monthly charge breakdown */}
+          {estimatedBreakdown && estimatedBreakdown.parts.length > 0 && (
+            <div className="rounded-md border p-4 space-y-2">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Estimated monthly charge</p>
+              {estimatedBreakdown.parts.map((part, i) => (
+                <div key={i} className="flex items-center justify-between text-sm flex-wrap gap-1" data-testid={`billing-tier-row-${i}`}>
+                  <span className="text-muted-foreground">
+                    {part.users} user{part.users !== 1 ? 's' : ''} × {formatGBP(part.unitPence)}/user (tier {part.label})
+                  </span>
+                  <span className="font-medium">{formatGBP(part.subtotalPence)}</span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between text-sm font-semibold border-t pt-2 flex-wrap gap-1">
+                <span>Total</span>
+                <span data-testid="text-estimated-total">{formatGBP(estimatedBreakdown.totalPence)}/month</span>
+              </div>
+            </div>
+          )}
+
+          {/* Pricing tiers reference */}
           {billing.tiersMode === 'graduated' && billing.tiers && billing.tiers.length > 0 && (
             <div className="rounded-md border p-4 space-y-2">
               <p className="text-sm font-medium text-muted-foreground mb-1">Pricing tiers (graduated)</p>
@@ -454,6 +519,46 @@ function BillingView({ onBack }: { onBack: () => void }) {
           Opens the Stripe Customer Portal where you can update payment methods, download invoices, and manage your subscription.
         </p>
       </div>
+
+      {/* Cancel Club — destructive section */}
+      <div className="border-t pt-6 space-y-3">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-destructive">Cancel Club</h2>
+          <p className="text-sm text-muted-foreground">
+            Cancelling your club will immediately cancel your Stripe subscription, deactivate all coaches and users, and disable access to the app. All data is preserved in the database. This action cannot be undone from within the app.
+          </p>
+        </div>
+        <Button
+          variant="destructive"
+          onClick={() => setShowCancelConfirm(true)}
+          data-testid="button-cancel-club-billing"
+        >
+          Cancel Club
+        </Button>
+      </div>
+
+      {/* Cancel Club confirmation dialog */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately cancel your Stripe subscription and deactivate all accounts associated with your club. You will be signed out and will not be able to log back in. All data is preserved but the club cannot be reactivated through the app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-club-billing-back">Go back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelClubMutation.isPending}
+              onClick={() => cancelClubMutation.mutate()}
+              data-testid="button-confirm-cancel-club-billing"
+            >
+              {cancelClubMutation.isPending ? 'Cancelling…' : 'Yes, cancel my club'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1521,7 +1626,7 @@ function CalendarApp() {
             />
           ) : managementView === 'clubSettings' ? (
             <ClubSettingsView onBack={handleBackToHome} />
-          ) : managementView === 'billing' ? (
+          ) : managementView === 'billing' && isAdmin ? (
             <BillingView onBack={handleBackToHome} />
           ) : managementView === 'home' ? (
             currentCoach ? (
