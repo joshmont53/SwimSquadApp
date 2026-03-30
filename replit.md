@@ -38,6 +38,19 @@ The system utilizes a PostgreSQL database hosted on Neon Serverless, with Drizzl
 ### Authentication & Authorization
 The authentication system is a production-ready, standalone Email/Password authentication with an admin-controlled invitation flow, eliminating external OAuth dependencies. It features a single-email invitation process where the token proves email ownership. Key security features include bcrypt hashing, crypto-secure tokens, atomic database transactions, and role-based access control with `requireAdmin` middleware. The system supports a robust invitation flow from admin creation to coach registration and login, with comprehensive error handling and recovery mechanisms.
 
+## Stripe Billing (SaaS Subscription)
+The platform uses Stripe for club subscription billing. Key components:
+- **Registration flow**: `POST /api/register/checkout` creates a Stripe Checkout session and a `pending_registrations` record. Webhook `checkout.session.completed` finalises registration (creates club, admin user, coach record).
+- **Pricing**: Graduated GBP tiers — £20/user for 1–5, £15 for 6–10, £10 for 11+; monthly recurring. Product ID: `prod_UFGxJEbEgEpM7P`; price ID: `price_1TGmPvD28dJq0fFqF8LLozlx`.
+- **Subscription quantity sync**: `syncSubscriptionQuantity()` in `server/stripeClient.ts` updates the Stripe subscription item quantity whenever active users change (deactivate/reactivate coach). Non-fatal; logs errors and swallows them.
+- **Billing admin UI**: Admin-only "Billing" page (`BillingView` in `App.tsx`) shows subscription status, active user count, billed quantity, and pricing tiers. Includes a "Manage billing in Stripe" button that opens the Stripe Customer Portal.
+- **Stripe Customer Portal**: `POST /api/billing/portal` creates a portal session for the club's Stripe customer. Return URL is `/app`.
+- **Cancel Club**: `POST /api/clubs/:id/cancel` (admin only) cancels the Stripe subscription and marks all club data (coaches, users, swimmers, squads, sessions, locations) as inactive. Available in Club Settings with a confirmation dialog.
+- **Webhooks**: Raw body required before `express.json()` middleware. Configured via `STRIPE_WEBHOOK_SECRET` env var.
+- **Env vars**: `STRIPE_SUBSCRIPTION_PRICE_ID`, `STRIPE_PRODUCT_ID`, `APP_BASE_URL`, `STRIPE_WEBHOOK_SECRET`.
+- **Schema**: `clubs` table has `stripe_customer_id`, `stripe_subscription_id`, `active_users` columns.
+- **`pending_registrations` table**: Stores Stripe checkout session ID + registration data before webhook confirmation.
+
 ## External Dependencies
 
 ### Third-Party Services
@@ -45,6 +58,7 @@ The authentication system is a production-ready, standalone Email/Password authe
 -   **Font Delivery**: Google Fonts CDN
 -   **AI Integration**: Replit AI (GPT-4o-mini)
 -   **Email Service**: Resend API
+-   **Payments & Billing**: Stripe (subscriptions, Customer Portal, webhooks)
 
 ### Key NPM Packages
 -   **Frontend**: `react`, `react-dom`, `wouter`, `@tanstack/react-query`, `react-hook-form`, `zod`, `@radix-ui/*`, `tailwindcss`, `class-variance-authority`, `lucide-react`, `react-dnd`, `react-dnd-html5-backend`.

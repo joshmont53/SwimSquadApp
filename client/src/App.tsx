@@ -39,6 +39,7 @@ import { Button } from './components/ui/button';
 import { Switch as ToggleSwitch } from './components/ui/switch';
 import { Label } from './components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import {
   Users,
   MapPin,
@@ -61,6 +62,7 @@ import {
   X,
   BookOpen,
   Settings,
+  CreditCard,
 } from 'lucide-react';
 import { CollapsibleSidebar } from './components/CollapsibleSidebar';
 import { Badge } from './components/ui/badge';
@@ -91,7 +93,7 @@ import type {
 
 type View = 'month' | 'day';
 type MobileView = 'calendar' | 'list' | 'search';
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
 
 // Global storage for pending session ID from notification deep link
 // This is set before CalendarApp mounts and read when it does
@@ -160,6 +162,24 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
   const [colour, setColour] = useState(user?.clubColor || '#4B9A4A');
   const [saving, setSaving] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const cancelClubMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/clubs/${user?.clubId}/cancel`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Club cancelled', description: 'Your club has been cancelled. You will be signed out.' });
+      // Invalidate auth status so user gets redirected
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/status'] });
+      setShowCancelConfirm(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: 'Error', description: err.message || 'Failed to cancel club', variant: 'destructive' });
+      setShowCancelConfirm(false);
+    },
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -224,6 +244,216 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
       <Button onClick={handleSave} disabled={saving} data-testid="button-save-club-colour">
         {saving ? 'Saving…' : 'Save colour'}
       </Button>
+
+      {/* Cancel Club — admin only, destructive section */}
+      {user?.role === 'admin' && (
+        <div className="border-t pt-6 space-y-3">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-destructive">Cancel Club</h2>
+            <p className="text-sm text-muted-foreground">
+              Cancelling your club will immediately cancel your Stripe subscription, deactivate all coaches and users, and disable access to the app. All data is preserved in the database. This action cannot be undone from within the app.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={() => setShowCancelConfirm(true)}
+            data-testid="button-cancel-club"
+          >
+            Cancel Club
+          </Button>
+        </div>
+      )}
+
+      {/* Cancel Club confirmation dialog */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately cancel your Stripe subscription and deactivate all accounts associated with your club. You will be signed out and will not be able to log back in. All data is preserved but the club cannot be reactivated through the app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-club-back">Go back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cancelClubMutation.isPending}
+              onClick={() => cancelClubMutation.mutate()}
+              data-testid="button-confirm-cancel-club"
+            >
+              {cancelClubMutation.isPending ? 'Cancelling…' : 'Yes, cancel my club'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// Billing View component (admin only)
+function BillingView({ onBack }: { onBack: () => void }) {
+  const { toast } = useToast();
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const { data: billing, isLoading } = useQuery<{
+    hasSubscription: boolean;
+    status?: string;
+    currentPeriodEnd?: number;
+    cancelAtPeriodEnd?: boolean;
+    quantity?: number;
+    activeUsers: number;
+    currency?: string;
+    unitAmount?: number;
+    billingScheme?: string;
+    tiersMode?: string;
+    tiers?: any[];
+    stripeCustomerId?: string;
+  }>({
+    queryKey: ['/api/billing/subscription'],
+    retry: false,
+  });
+
+  const openPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/billing/portal', {});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to open billing portal');
+      window.location.href = data.url;
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      setPortalLoading(false);
+    }
+  };
+
+  const formatDate = (ts: number) => {
+    return new Date(ts * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const formatGBP = (pence: number) => `£${(pence / 100).toFixed(2)}`;
+
+  const statusLabel = (s?: string) => {
+    if (!s) return null;
+    const map: Record<string, string> = {
+      active: 'Active',
+      trialing: 'Trialing',
+      past_due: 'Past due',
+      canceled: 'Cancelled',
+      unpaid: 'Unpaid',
+      incomplete: 'Incomplete',
+      incomplete_expired: 'Expired',
+      paused: 'Paused',
+    };
+    return map[s] ?? s;
+  };
+
+  const statusVariant = (s?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    if (s === 'active' || s === 'trialing') return 'default';
+    if (s === 'canceled' || s === 'incomplete_expired') return 'destructive';
+    return 'secondary';
+  };
+
+  return (
+    <div className="max-w-lg mx-auto space-y-6 p-2">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-billing">
+          <CreditCard className="h-4 w-4 mr-2" />
+          Billing
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">Subscription & Billing</h2>
+        <p className="text-sm text-muted-foreground">
+          View your current plan, active user count, and manage payment details via the Stripe Customer Portal.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          <div className="h-20 rounded-md bg-muted animate-pulse" />
+          <div className="h-20 rounded-md bg-muted animate-pulse" />
+        </div>
+      ) : !billing?.hasSubscription ? (
+        <div className="rounded-md border p-4 text-sm text-muted-foreground">
+          No active subscription found for this club.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Status card */}
+          <div className="rounded-md border p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Status</span>
+              <Badge variant={statusVariant(billing.status)} data-testid="badge-billing-status">
+                {statusLabel(billing.status)}
+              </Badge>
+            </div>
+            {billing.cancelAtPeriodEnd && (
+              <p className="text-sm text-destructive">
+                Subscription will cancel at the end of the current period.
+              </p>
+            )}
+            {billing.currentPeriodEnd && (
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {billing.cancelAtPeriodEnd ? 'Cancels on' : 'Next billing date'}
+                </span>
+                <span className="text-sm" data-testid="text-billing-period-end">
+                  {formatDate(billing.currentPeriodEnd)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Usage card */}
+          <div className="rounded-md border p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Active coaches</span>
+              <span className="text-sm font-semibold" data-testid="text-active-users">{billing.activeUsers}</span>
+            </div>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Billed quantity</span>
+              <span className="text-sm" data-testid="text-billed-quantity">{billing.quantity}</span>
+            </div>
+          </div>
+
+          {/* Pricing card */}
+          {billing.tiersMode === 'graduated' && billing.tiers && billing.tiers.length > 0 && (
+            <div className="rounded-md border p-4 space-y-2">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Pricing tiers (graduated)</p>
+              {billing.tiers.map((tier: any, i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm flex-wrap gap-1">
+                  <span>
+                    {i === 0
+                      ? `1–${tier.up_to ?? '∞'} users`
+                      : tier.up_to
+                      ? `${(billing.tiers![i - 1]?.up_to ?? 0) + 1}–${tier.up_to} users`
+                      : `${(billing.tiers![i - 1]?.up_to ?? 0) + 1}+ users`}
+                  </span>
+                  <span className="font-medium">
+                    {tier.unit_amount != null ? formatGBP(tier.unit_amount) : formatGBP(tier.unit_amount_decimal ?? 0)}/user/month
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stripe Customer Portal button */}
+      <div className="pt-2">
+        <Button
+          onClick={openPortal}
+          disabled={portalLoading || !billing?.hasSubscription}
+          data-testid="button-open-billing-portal"
+        >
+          <CreditCard className="h-4 w-4 mr-2" />
+          {portalLoading ? 'Opening portal…' : 'Manage billing in Stripe'}
+        </Button>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Opens the Stripe Customer Portal where you can update payment methods, download invoices, and manage your subscription.
+        </p>
+      </div>
     </div>
   );
 }
@@ -970,6 +1200,31 @@ function CalendarApp() {
                   />
                   <span className="flex-1 text-left">Club Settings</span>
                 </Button>
+
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
+                    isActive('billing') && "bg-accent/50"
+                  )}
+                  onClick={() => handleManagementClick('billing')}
+                  data-testid="button-billing-mobile"
+                >
+                  {isActive('billing') && (
+                    <div 
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                      style={{ backgroundColor: 'var(--club-primary)' }}
+                    />
+                  )}
+                  <CreditCard 
+                    className={cn(
+                      "h-4 w-4 mr-3 ml-2 transition-colors",
+                      "text-muted-foreground"
+                    )}
+                    style={{ color: isActive('billing') ? 'var(--club-primary)' : undefined }}
+                  />
+                  <span className="flex-1 text-left">Billing</span>
+                </Button>
               </div>
             </div>
           )}
@@ -1266,6 +1521,8 @@ function CalendarApp() {
             />
           ) : managementView === 'clubSettings' ? (
             <ClubSettingsView onBack={handleBackToHome} />
+          ) : managementView === 'billing' ? (
+            <BillingView onBack={handleBackToHome} />
           ) : managementView === 'home' ? (
             currentCoach ? (
               <div className="px-2 pt-2 pb-4 overflow-y-auto">

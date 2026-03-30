@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Plus, Users, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Users, Pencil, Trash2, UserMinus, UserCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Coach } from "@shared/schema";
 import { useState } from "react";
@@ -33,16 +33,36 @@ const coachFormSchema = z.object({
 
 type CoachFormValues = z.infer<typeof coachFormSchema>;
 
+interface AuthUser {
+  role?: string;
+}
+
 export default function Coaches() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCoach, setEditingCoach] = useState<Coach | null>(null);
   const [deletingCoach, setDeletingCoach] = useState<Coach | null>(null);
+  const [deactivatingCoach, setDeactivatingCoach] = useState<Coach | null>(null);
+  const [reactivatingCoach, setReactivatingCoach] = useState<Coach | null>(null);
 
-  const { data: coaches, isLoading } = useQuery<Coach[]>({
+  const { data: currentUser } = useQuery<AuthUser>({ queryKey: ["/api/auth/user"] });
+  const isAdmin = currentUser?.role === "admin";
+
+  // Active coaches (standard endpoint)
+  const { data: activeCoaches, isLoading: isLoadingActive } = useQuery<Coach[]>({
     queryKey: ["/api/coaches"],
   });
+
+  // All coaches including inactive (admin only)
+  const { data: allCoaches, isLoading: isLoadingAll } = useQuery<Coach[]>({
+    queryKey: ["/api/coaches/all"],
+    enabled: isAdmin,
+  });
+
+  // Use all coaches for admins (to show inactive ones), active-only for others
+  const coaches = isAdmin ? (allCoaches ?? activeCoaches ?? []) : (activeCoaches ?? []);
+  const isLoading = isAdmin ? isLoadingAll : isLoadingActive;
 
   const form = useForm<CoachFormValues>({
     resolver: zodResolver(coachFormSchema),
@@ -60,6 +80,7 @@ export default function Coaches() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coaches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches/all"] });
       setDialogOpen(false);
       form.reset();
     },
@@ -78,6 +99,7 @@ export default function Coaches() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coaches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches/all"] });
       setEditingCoach(null);
       setDialogOpen(false);
       form.reset();
@@ -97,18 +119,42 @@ export default function Coaches() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coaches"] });
-      toast({
-        title: "Success",
-        description: "Coach deleted successfully",
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches/all"] });
+      toast({ title: "Success", description: "Coach deleted successfully" });
       setDeletingCoach(null);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete coach",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to delete coach", variant: "destructive" });
+    },
+  });
+
+  const deactivateCoachMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("PATCH", `/api/coaches/${id}/deactivate`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches/all"] });
+      toast({ title: "Coach deactivated", description: "The coach and their login have been deactivated. Billing updated." });
+      setDeactivatingCoach(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to deactivate coach", variant: "destructive" });
+    },
+  });
+
+  const reactivateCoachMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("PATCH", `/api/coaches/${id}/reactivate`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coaches/all"] });
+      toast({ title: "Coach reactivated", description: "The coach has been reactivated. Billing updated." });
+      setReactivatingCoach(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to reactivate coach", variant: "destructive" });
     },
   });
 
@@ -134,12 +180,7 @@ export default function Coaches() {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingCoach(null);
-    form.reset({
-      firstName: "",
-      lastName: "",
-      level: undefined,
-      dob: "",
-    });
+    form.reset({ firstName: "", lastName: "", level: undefined, dob: "" });
   };
 
   const getLevelColor = (level: string) => {
@@ -167,9 +208,7 @@ export default function Coaches() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold">Coaches</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage coaching staff
-                </p>
+                <p className="text-sm text-muted-foreground">Manage coaching staff</p>
               </div>
             </div>
             <Dialog open={dialogOpen} onOpenChange={(open) => { if (open) setDialogOpen(true); else handleCloseDialog(); }}>
@@ -195,9 +234,7 @@ export default function Coaches() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-first-name" />
-                            </FormControl>
+                            <FormControl><Input {...field} data-testid="input-first-name" /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -208,9 +245,7 @@ export default function Coaches() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} data-testid="input-last-name" />
-                            </FormControl>
+                            <FormControl><Input {...field} data-testid="input-last-name" /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -245,30 +280,21 @@ export default function Coaches() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Date of Birth</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-dob" />
-                          </FormControl>
+                          <FormControl><Input type="date" {...field} data-testid="input-dob" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                     <div className="flex justify-end gap-3 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCloseDialog}
-                      >
-                        Cancel
-                      </Button>
+                      <Button type="button" variant="outline" onClick={handleCloseDialog}>Cancel</Button>
                       <Button
                         type="submit"
                         disabled={createCoachMutation.isPending || updateCoachMutation.isPending}
                         data-testid="button-submit-coach"
                       >
-                        {editingCoach 
+                        {editingCoach
                           ? (updateCoachMutation.isPending ? "Updating..." : "Update Coach")
-                          : (createCoachMutation.isPending ? "Adding..." : "Add Coach")
-                        }
+                          : (createCoachMutation.isPending ? "Adding..." : "Add Coach")}
                       </Button>
                     </div>
                   </form>
@@ -282,67 +308,100 @@ export default function Coaches() {
       <div className="container mx-auto px-4 py-6">
         {isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="h-32" />
-            ))}
+            {[...Array(6)].map((_, i) => <Card key={i} className="h-32" />)}
           </div>
         ) : coaches && coaches.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {coaches.map((coach) => (
-              <Card key={coach.id} className="hover-elevate">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-lg">
-                        {coach.firstName} {coach.lastName}
-                      </CardTitle>
-                      <CardDescription className="text-sm mt-1">
-                        DOB: {coach.dob}
-                      </CardDescription>
+            {coaches.map((coach) => {
+              const isInactive = coach.recordStatus === "inactive";
+              return (
+                <Card
+                  key={coach.id}
+                  className={isInactive ? "opacity-50" : "hover-elevate"}
+                  data-testid={`card-coach-${coach.id}`}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-lg">
+                          {coach.firstName} {coach.lastName}
+                        </CardTitle>
+                        <CardDescription className="text-sm mt-1">DOB: {coach.dob}</CardDescription>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant={getLevelColor(coach.level) as any}>{coach.level}</Badge>
+                        {isInactive && (
+                          <Badge variant="outline" className="text-xs" data-testid={`badge-inactive-${coach.id}`}>
+                            Inactive
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <Badge variant={getLevelColor(coach.level) as any}>
-                      {coach.level}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleEdit(coach)}
-                      data-testid={`button-edit-coach-${coach.id}`}
-                    >
-                      <Pencil className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setDeletingCoach(coach)}
-                      data-testid={`button-delete-coach-${coach.id}`}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex flex-wrap gap-2">
+                      {!isInactive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(coach)}
+                          data-testid={`button-edit-coach-${coach.id}`}
+                        >
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                      {isAdmin && !isInactive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeactivatingCoach(coach)}
+                          data-testid={`button-deactivate-coach-${coach.id}`}
+                        >
+                          <UserMinus className="w-4 h-4 mr-1" />
+                          Deactivate
+                        </Button>
+                      )}
+                      {isAdmin && isInactive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setReactivatingCoach(coach)}
+                          data-testid={`button-reactivate-coach-${coach.id}`}
+                        >
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Reactivate
+                        </Button>
+                      )}
+                      {!isInactive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeletingCoach(coach)}
+                          data-testid={`button-delete-coach-${coach.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="bg-muted/30">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Users className="w-12 h-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No coaches added yet</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Click "Add Coach" to get started
-              </p>
+              <p className="text-sm text-muted-foreground mt-2">Click "Add Coach" to get started</p>
             </CardContent>
           </Card>
         )}
       </div>
 
+      {/* Delete coach dialog */}
       <AlertDialog open={!!deletingCoach} onOpenChange={() => setDeletingCoach(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -358,6 +417,51 @@ export default function Coaches() {
               data-testid="button-confirm-delete"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Deactivate coach dialog */}
+      <AlertDialog open={!!deactivatingCoach} onOpenChange={() => setDeactivatingCoach(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Coach</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate {deactivatingCoach?.firstName} {deactivatingCoach?.lastName}?
+              They will no longer be able to log in and will be removed from your active billing count.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-deactivate">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deactivateCoachMutation.isPending}
+              onClick={() => deactivatingCoach && deactivateCoachMutation.mutate(deactivatingCoach.id)}
+              data-testid="button-confirm-deactivate"
+            >
+              {deactivateCoachMutation.isPending ? "Deactivating..." : "Deactivate"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate coach dialog */}
+      <AlertDialog open={!!reactivatingCoach} onOpenChange={() => setReactivatingCoach(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reactivate Coach</AlertDialogTitle>
+            <AlertDialogDescription>
+              Reactivate {reactivatingCoach?.firstName} {reactivatingCoach?.lastName}? They will regain access and will be included in your active billing count again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-reactivate">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={reactivateCoachMutation.isPending}
+              onClick={() => reactivatingCoach && reactivateCoachMutation.mutate(reactivatingCoach.id)}
+              data-testid="button-confirm-reactivate"
+            >
+              {reactivateCoachMutation.isPending ? "Reactivating..." : "Reactivate"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

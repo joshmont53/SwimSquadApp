@@ -4,13 +4,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { 
   CalendarDays, FileText, Target, Receipt, BarChart3, 
   UserCog, Users, Shield, MapPin, Trophy, LogOut, ChevronLeft, ChevronRight,
-  Mail, PoundSterling, Home, BookOpen, Settings
+  Mail, PoundSterling, Home, BookOpen, Settings, CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { Session, Squad, Location, Coach, Swimmer } from '@/lib/typeAdapters';
 
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
 
 interface CollapsibleSidebarProps {
   collapsed: boolean;
@@ -643,6 +643,45 @@ export function CollapsibleSidebar({
                   {collapsed && (
                     <TooltipContent side="right">
                       Club Settings
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+
+                {/* Billing */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full py-2.5 relative transition-all duration-200",
+                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
+                        isActive('billing') && "bg-accent/50"
+                      )}
+                      onClick={() => onNavigate('billing')}
+                      data-testid="button-nav-billing"
+                    >
+                      {isActive('billing') && (
+                        <div 
+                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                          style={{ backgroundColor: 'var(--club-primary)' }}
+                        />
+                      )}
+                      <CreditCard 
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          collapsed ? "" : "mr-3 ml-2",
+                          "text-muted-foreground"
+                        )}
+                        style={{ color: isActive('billing') ? 'var(--club-primary)' : undefined }}
+                      />
+                      {!collapsed && (
+                        <span className="flex-1 text-left">Billing</span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right">
+                      Billing
                     </TooltipContent>
                   )}
                 </Tooltip>

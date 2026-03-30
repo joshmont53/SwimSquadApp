@@ -524,11 +524,13 @@ export function setupNewAuth(app: Express) {
           return res.json({ authenticated: false });
         }
         
-        // Fetch club colour for this user
+        // Fetch club data for this user
         let clubColor: string = '#4B9A4A';
+        let clubId: string | null = null;
         try {
           const coach = await storage.getCoachByUserId(user.id);
           if (coach?.clubId) {
+            clubId = coach.clubId;
             const club = await storage.getClub(coach.clubId);
             if (club?.clubColor) clubColor = club.clubColor;
           }
@@ -543,6 +545,7 @@ export function setupNewAuth(app: Express) {
             lastName: user.lastName,
             role: user.role,
             clubColor,
+            clubId,
           },
         });
       }

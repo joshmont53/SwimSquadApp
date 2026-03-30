@@ -26,6 +26,7 @@ import { randomBytes } from "crypto";
 import { calculateSessionDistancesAI, validateDistances, detectDrillsInSession, type DrillReference } from "./aiParser";
 import { parseSessionText } from "@shared/sessionParser";
 import { getNextAvailableColor } from "./squadColors";
+import { syncSubscriptionQuantity, cancelStripeSubscription } from "./stripeClient";
 
 // Helper function to sanitize invitation data (remove sensitive fields)
 function sanitizeInvitation(invitation: any) {
@@ -273,6 +274,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all coaches including inactive (admin only — must be declared before /api/coaches/:id)
+  app.get("/api/coaches/all", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const coachList = await storage.getAllCoachesIncludingInactive(req.user.clubId);
+      res.json(coachList);
+    } catch (error) {
+      console.error("Error fetching all coaches:", error);
+      res.status(500).json({ message: "Failed to fetch coaches" });
+    }
+  });
+
   app.post("/api/coaches/link/:coachId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
@@ -336,6 +348,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: error.message });
       }
       res.status(500).json({ message: "Failed to delete coach" });
+    }
+  });
+
+  // Coach deactivate (admin only)
+  app.patch("/api/coaches/:id/deactivate", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { coach, userId } = await storage.deactivateCoach(req.params.id);
+      // Recount active users and sync Stripe subscription quantity
+      const clubId = coach.clubId ?? req.user.clubId;
+      if (clubId) {
+        await storage.recalculateActiveUsers(clubId);
+        await syncSubscriptionQuantity(storage, clubId);
+      }
+      res.json({ coach, userId });
+    } catch (error: any) {
+      console.error("Error deactivating coach:", error);
+      if (error.message === "Coach not found") return res.status(404).json({ message: error.message });
+      res.status(500).json({ message: error.message || "Failed to deactivate coach" });
+    }
+  });
+
+  // Coach reactivate (admin only)
+  app.patch("/api/coaches/:id/reactivate", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { coach, userId } = await storage.reactivateCoach(req.params.id);
+      // Recount active users and sync Stripe subscription quantity
+      const clubId = coach.clubId ?? req.user.clubId;
+      if (clubId) {
+        await storage.recalculateActiveUsers(clubId);
+        await syncSubscriptionQuantity(storage, clubId);
+      }
+      res.json({ coach, userId });
+    } catch (error: any) {
+      console.error("Error reactivating coach:", error);
+      if (error.message === "Coach not found") return res.status(404).json({ message: error.message });
+      res.status(500).json({ message: error.message || "Failed to reactivate coach" });
+    }
+  });
+
+  // Billing: get current subscription info for admin billing page
+  app.get("/api/billing/subscription", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const club = await storage.getClub(req.user.clubId);
+      if (!club) return res.status(404).json({ message: "Club not found" });
+      if (!club.stripeSubscriptionId || !club.stripeCustomerId) {
+        return res.json({ hasSubscription: false, activeUsers: club.activeUsers ?? 0 });
+      }
+      const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId, {
+        expand: ['items.data.price'],
+      }) as any;
+      const item = subscription.items?.data?.[0];
+      const price = item?.price as any;
+      res.json({
+        hasSubscription: true,
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        quantity: item?.quantity ?? club.activeUsers,
+        activeUsers: club.activeUsers ?? 0,
+        currency: price?.currency ?? 'gbp',
+        unitAmount: price?.unit_amount ?? null,
+        billingScheme: price?.billing_scheme ?? null,
+        tiersMode: price?.tiers_mode ?? null,
+        tiers: price?.tiers ?? null,
+        stripeCustomerId: club.stripeCustomerId,
+      });
+    } catch (error: any) {
+      console.error("Error fetching billing info:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch billing info" });
+    }
+  });
+
+  // Billing: create Stripe Customer Portal session (admin only)
+  app.post("/api/billing/portal", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const club = await storage.getClub(req.user.clubId);
+      if (!club) return res.status(404).json({ message: "Club not found" });
+      if (!club.stripeCustomerId) {
+        return res.status(400).json({ message: "No Stripe customer associated with this club" });
+      }
+      const appBaseUrl = process.env.APP_BASE_URL || `https://${req.headers.host}`;
+      const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: club.stripeCustomerId,
+        return_url: `${appBaseUrl}/app`,
+      });
+      res.json({ url: portalSession.url });
+    } catch (error: any) {
+      console.error("Error creating portal session:", error);
+      res.status(500).json({ message: error.message || "Failed to create billing portal session" });
+    }
+  });
+
+  // Club cancel (admin only) — cancels Stripe subscription + marks all data inactive
+  app.post("/api/clubs/:id/cancel", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const clubId = req.params.id;
+      // Ensure the admin is cancelling their own club
+      if (clubId !== req.user.clubId) {
+        return res.status(403).json({ message: "Cannot cancel another club" });
+      }
+      const club = await storage.getClub(clubId);
+      if (!club) return res.status(404).json({ message: "Club not found" });
+      if (club.clubStatus === 'inactive') {
+        return res.status(400).json({ message: "Club is already cancelled" });
+      }
+      // Cancel Stripe subscription first (before marking DB records inactive)
+      if (club.stripeSubscriptionId) {
+        await cancelStripeSubscription(club.stripeSubscriptionId);
+      }
+      // Mark all club data inactive and set active_users = 0
+      await storage.cancelClub(clubId);
+      res.json({ message: "Club cancelled successfully" });
+    } catch (error: any) {
+      console.error("Error cancelling club:", error);
+      res.status(500).json({ message: error.message || "Failed to cancel club" });
     }
   });
 

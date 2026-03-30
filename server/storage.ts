@@ -92,12 +92,17 @@ export interface IStorage {
   
   // Coach operations
   getCoaches(clubId: string): Promise<Coach[]>;
+  getAllCoachesIncludingInactive(clubId: string): Promise<Coach[]>;
   getCoach(id: string): Promise<Coach | undefined>;
+  getCoachAnyStatus(id: string): Promise<Coach | undefined>;
   getCoachByUserId(userId: string): Promise<Coach | undefined>;
   createCoach(coach: InsertCoach): Promise<Coach>;
   updateCoach(id: string, coach: Partial<InsertCoach>): Promise<Coach>;
   linkUserToCoach(coachId: string, userId: string): Promise<void>;
   deleteCoach(id: string): Promise<void>;
+  deactivateCoach(id: string): Promise<{ coach: Coach; userId: string | null }>;
+  reactivateCoach(id: string): Promise<{ coach: Coach; userId: string | null }>;
+  cancelClub(clubId: string): Promise<void>;
   
   // Squad operations
   getSquads(clubId: string): Promise<Squad[]>;
@@ -330,8 +335,17 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(coaches).where(and(eq(coaches.clubId, clubId), eq(coaches.recordStatus, 'active')));
   }
 
+  async getAllCoachesIncludingInactive(clubId: string): Promise<Coach[]> {
+    return await db.select().from(coaches).where(eq(coaches.clubId, clubId));
+  }
+
   async getCoach(id: string): Promise<Coach | undefined> {
     const [coach] = await db.select().from(coaches).where(and(eq(coaches.id, id), eq(coaches.recordStatus, 'active')));
+    return coach;
+  }
+
+  async getCoachAnyStatus(id: string): Promise<Coach | undefined> {
+    const [coach] = await db.select().from(coaches).where(eq(coaches.id, id));
     return coach;
   }
 
@@ -377,6 +391,76 @@ export class DatabaseStorage implements IStorage {
     if (result.length === 0) {
       throw new Error("Coach not found");
     }
+  }
+
+  async deactivateCoach(id: string): Promise<{ coach: Coach; userId: string | null }> {
+    const [coach] = await db
+      .update(coaches)
+      .set({ recordStatus: 'inactive' })
+      .where(eq(coaches.id, id))
+      .returning();
+    if (!coach) throw new Error("Coach not found");
+    // Deactivate linked user if one exists
+    if (coach.userId) {
+      await db
+        .update(users)
+        .set({ accountStatus: 'inactive' })
+        .where(eq(users.id, coach.userId));
+    }
+    return { coach, userId: coach.userId ?? null };
+  }
+
+  async reactivateCoach(id: string): Promise<{ coach: Coach; userId: string | null }> {
+    const [coach] = await db
+      .update(coaches)
+      .set({ recordStatus: 'active' })
+      .where(eq(coaches.id, id))
+      .returning();
+    if (!coach) throw new Error("Coach not found");
+    // Re-activate linked user if one exists
+    if (coach.userId) {
+      await db
+        .update(users)
+        .set({ accountStatus: 'active' })
+        .where(eq(users.id, coach.userId));
+    }
+    return { coach, userId: coach.userId ?? null };
+  }
+
+  async cancelClub(clubId: string): Promise<void> {
+    // Set all coaches to inactive
+    await db
+      .update(coaches)
+      .set({ recordStatus: 'inactive' })
+      .where(eq(coaches.clubId, clubId));
+
+    // Set all users linked to coaches in this club to inactive
+    const clubCoaches = await db.select({ userId: coaches.userId }).from(coaches).where(eq(coaches.clubId, clubId));
+    const userIds = clubCoaches.map(c => c.userId).filter((uid): uid is string => !!uid);
+    if (userIds.length > 0) {
+      await db
+        .update(users)
+        .set({ accountStatus: 'inactive' })
+        .where(inArray(users.id, userIds));
+    }
+
+    // Set all swimmers to inactive
+    await db.update(swimmers).set({ recordStatus: 'inactive' }).where(eq(swimmers.clubId, clubId));
+
+    // Set all squads to inactive
+    await db.update(squads).set({ recordStatus: 'inactive' }).where(eq(squads.clubId, clubId));
+
+    // Set all sessions to inactive
+    await db.update(swimmingSessions).set({ recordStatus: 'inactive' }).where(eq(swimmingSessions.clubId, clubId));
+
+    // Set all locations to inactive
+    await db.update(locations).set({ recordStatus: 'inactive' }).where(eq(locations.clubId, clubId));
+
+    // Set the club itself to inactive with 0 active users
+    await db
+      .update(clubs)
+      .set({ clubStatus: 'inactive', activeUsers: 0 })
+      .where(eq(clubs.id, clubId));
   }
 
   // Squad operations

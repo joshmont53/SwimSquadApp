@@ -62,6 +62,45 @@ export async function getStripeSecretKey() {
   return secretKey;
 }
 
+// ── Subscription quantity sync ────────────────────────────────────────────────
+// Call this whenever active_users changes for a club.
+// Reads the current active_users count from storage and updates the Stripe
+// subscription item quantity to match, so billing is always accurate.
+// Non-fatal: logs and swallows Stripe errors so they never break the main flow.
+export async function syncSubscriptionQuantity(
+  storage: { getClub: (id: string) => Promise<any> },
+  clubId: string,
+): Promise<void> {
+  try {
+    const club = await storage.getClub(clubId);
+    if (!club?.stripeSubscriptionId) {
+      console.log(`[Stripe] Club ${clubId} has no subscription — skipping quantity sync`);
+      return;
+    }
+    const quantity = Math.max(1, club.activeUsers ?? 1); // Subscription quantity must be >= 1
+    const stripe = await getUncachableStripeClient();
+    const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId);
+    const itemId = subscription.items?.data?.[0]?.id;
+    if (!itemId) {
+      console.error(`[Stripe] No subscription item found for subscription ${club.stripeSubscriptionId}`);
+      return;
+    }
+    await stripe.subscriptionItems.update(itemId, { quantity });
+    console.log(`[Stripe] Updated subscription ${club.stripeSubscriptionId} quantity to ${quantity} for club ${clubId}`);
+  } catch (err: any) {
+    // Non-fatal: log the error but don't rethrow — billing discrepancies can be fixed manually
+    console.error(`[Stripe] Failed to sync subscription quantity for club ${clubId}:`, err?.message ?? err);
+  }
+}
+
+// ── Subscription cancellation ─────────────────────────────────────────────────
+// Cancels the Stripe subscription immediately. Called when a club is cancelled.
+export async function cancelStripeSubscription(subscriptionId: string): Promise<void> {
+  const stripe = await getUncachableStripeClient();
+  await stripe.subscriptions.cancel(subscriptionId);
+  console.log(`[Stripe] Cancelled subscription ${subscriptionId}`);
+}
+
 // StripeSync singleton for webhook processing and data sync
 let stripeSync: any = null;
 
