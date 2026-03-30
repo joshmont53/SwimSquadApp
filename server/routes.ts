@@ -324,8 +324,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/coaches/:id", requireAuth, async (req, res) => {
+  app.patch("/api/coaches/:id", requireAuth, requireAdmin, async (req: any, res) => {
     try {
+      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
+      const existing = await storage.getCoachAnyStatus(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Coach not found" });
+      if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       const validatedData = insertCoachSchema.partial().parse(req.body);
       const coach = await storage.updateCoach(req.params.id, validatedData);
       res.json(coach);
@@ -338,15 +342,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/coaches/:id", requireAuth, async (req, res) => {
+  app.delete("/api/coaches/:id", requireAuth, requireAdmin, async (req: any, res) => {
     try {
+      // Verify the coach belongs to the admin's club before acting (prevent cross-tenant IDOR)
+      const existing = await storage.getCoachAnyStatus(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Coach not found" });
+      if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
       await storage.deleteCoach(req.params.id);
+      // Recount active users and sync Stripe subscription quantity
+      const clubId = req.user.clubId as string;
+      await storage.recalculateActiveUsers(clubId);
+      await syncSubscriptionQuantity(storage, clubId);
       res.json({ message: "Coach deleted successfully" });
     } catch (error: any) {
       console.error("Error deleting coach:", error);
-      if (error.message === "Coach not found") {
-        return res.status(404).json({ message: error.message });
-      }
       res.status(500).json({ message: "Failed to delete coach" });
     }
   });

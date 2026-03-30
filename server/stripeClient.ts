@@ -77,7 +77,14 @@ export async function syncSubscriptionQuantity(
       console.log(`[Stripe] Club ${clubId} has no subscription — skipping quantity sync`);
       return;
     }
-    const quantity = Math.max(1, club.activeUsers ?? 1); // Subscription quantity must be >= 1
+    const activeUsers = club.activeUsers ?? 0;
+    if (activeUsers === 0) {
+      // No active users — skip sync. The subscription should be cancelled separately
+      // (club cancellation flow handles this). Forcing qty=1 would cause overbilling.
+      console.log(`[Stripe] Club ${clubId} has 0 active users — skipping quantity sync (cancel club to end subscription)`);
+      return;
+    }
+    const quantity = activeUsers;
     const stripe = await getUncachableStripeClient();
     const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId);
     const itemId = subscription.items?.data?.[0]?.id;
