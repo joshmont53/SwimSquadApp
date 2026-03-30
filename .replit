@@ -40,9 +40,12 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_openai_ai_integrations:1.0.0", "resend:1.0.0"]
+integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_openai_ai_integrations:1.0.0", "resend:1.0.0", "stripe:1.0.0"]
 
 [userenv]
 
 [userenv.production]
 APP_URL = "https://www.hartsccoaches.co.uk/"
+
+[userenv.shared]
+STRIPE_SUBSCRIPTION_PRICE_ID = "price_1TGmPvD28dJq0fFqF8LLozlx"
