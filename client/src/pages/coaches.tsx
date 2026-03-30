@@ -373,7 +373,7 @@ export default function Coaches() {
                           Reactivate
                         </Button>
                       )}
-                      {!isInactive && (
+                      {isAdmin && !isInactive && (
                         <Button
                           variant="outline"
                           size="sm"

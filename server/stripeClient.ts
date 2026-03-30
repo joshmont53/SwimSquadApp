@@ -79,9 +79,10 @@ export async function syncSubscriptionQuantity(
     }
     const activeUsers = club.activeUsers ?? 0;
     if (activeUsers === 0) {
-      // No active users — skip sync. The subscription should be cancelled separately
-      // (club cancellation flow handles this). Forcing qty=1 would cause overbilling.
-      console.log(`[Stripe] Club ${clubId} has 0 active users — skipping quantity sync (cancel club to end subscription)`);
+      // No active users — cancel the Stripe subscription immediately to stay in sync.
+      // Stripe subscriptions require quantity ≥ 1, so 0 active users = cancel.
+      console.log(`[Stripe] Club ${clubId} has 0 active users — cancelling subscription ${club.stripeSubscriptionId}`);
+      await cancelStripeSubscription(club.stripeSubscriptionId);
       return;
     }
     const quantity = activeUsers;
