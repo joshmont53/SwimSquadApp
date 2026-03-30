@@ -43,6 +43,13 @@
       "when": 1770923463628,
       "tag": "0005_panoramic_joseph",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774894245183,
+      "tag": "0006_add_stripe_billing_columns",
+      "breakpoints": true
     }
   ]
 }
