@@ -797,6 +797,19 @@ export type CoachNoteSquad = typeof coachNoteSquads.$inferSelect;
 export type InsertCoachNoteSquad = typeof coachNoteSquads.$inferInsert;
 
 // ============================================================================
+// Pending Registrations table - Temporary store for club registrations awaiting Stripe checkout
+// ============================================================================
+export const pendingRegistrations = pgTable("pending_registrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id").notNull().unique(),
+  formData: jsonb("form_data").notNull(), // Serialised form fields incl. password hash
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type PendingRegistration = typeof pendingRegistrations.$inferSelect;
+export type InsertPendingRegistration = typeof pendingRegistrations.$inferInsert;
+
+// ============================================================================
 // Club Registration Schema (for new club self-registration flow)
 // ============================================================================
 

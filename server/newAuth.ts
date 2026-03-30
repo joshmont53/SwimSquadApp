@@ -10,6 +10,7 @@ import { eq, and } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from './passwordUtils';
 import { generateSecureToken, getInvitationExpiry, getVerificationExpiry, isTokenExpired } from './tokenUtils';
 import { sendInvitationEmail, sendVerificationEmail } from './emailService';
+import { getUncachableStripeClient } from './stripeClient';
 import crypto from 'crypto';
 
 /**
@@ -257,7 +258,8 @@ export function setupNewAuth(app: Express) {
     }
   });
   
-  // Club self-registration endpoint - creates club + primary coach + user in one step
+  // Club self-registration endpoint — validates form, creates Stripe Customer + Checkout session
+  // Club/user/coach records are created by the webhook after payment method is confirmed
   app.post('/api/auth/register-club', async (req, res) => {
     try {
       const { clubName, clubColor, firstName, lastName, email, password, passwordConfirm, level, dob } = req.body;
@@ -292,83 +294,56 @@ export function setupNewAuth(app: Express) {
         return res.status(400).json({ message: 'An account with this email already exists' });
       }
 
+      // Hash password before storing in pending registration
       const passwordHash = await hashPassword(password);
-      const userId = crypto.randomUUID();
-      const isDevelopment = process.env.NODE_ENV === 'development';
 
-      const result = await db.transaction(async (tx) => {
-        // 1. Create club
-        const validColor = clubColor && /^#[0-9a-fA-F]{6}$/.test(clubColor) ? clubColor : '#4B9A4A';
-        const [club] = await tx.insert(clubs).values({ clubName, clubColor: validColor }).returning();
+      // Determine the base URL for success/cancel redirect URLs
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.get('host') || 'localhost:5000';
+      const baseUrl = `${protocol}://${host}`;
 
-        // 2. Create coach (admin of the club)
-        const [coach] = await tx.insert(coaches).values({
-          clubId: club.id,
+      const stripe = await getUncachableStripeClient();
+
+      // Create Stripe Customer for the club admin
+      const customer = await stripe.customers.create({
+        email: email.toLowerCase(),
+        name: `${firstName} ${lastName}`,
+        metadata: { clubName, registrationSource: 'club-self-register' },
+      });
+
+      // Create Stripe Checkout session in "setup" mode to collect payment method
+      // Actual subscription is created by the webhook after this session completes
+      const session = await stripe.checkout.sessions.create({
+        mode: 'setup',
+        customer: customer.id,
+        payment_method_types: ['card'],
+        success_url: `${baseUrl}/register/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/register/cancelled`,
+        custom_text: {
+          submit: {
+            message: 'After saving your card, your club will be created and billed monthly based on active users (£20/user for 1–5, £15 for 6–10, £10 for 11+).',
+          },
+        },
+        metadata: { registrationType: 'club-self-register', clubName },
+      });
+
+      // Store pending registration so webhook can complete the club setup
+      const validColor = clubColor && /^#[0-9a-fA-F]{6}$/.test(clubColor) ? clubColor : '#4B9A4A';
+      await storage.createPendingRegistration({
+        stripeCheckoutSessionId: session.id,
+        formData: {
+          clubName,
+          clubColor: validColor,
           firstName,
           lastName,
-          level: level || 'No Qualification',
-          dob,
-          recordStatus: 'active',
-        }).returning();
-
-        // 3. Update club primaryCoachId
-        await tx.update(clubs).set({ primaryCoachId: coach.id }).where(eq(clubs.id, club.id));
-
-        // 4. Create user account with admin role
-        const [user] = await tx.insert(users).values({
-          id: userId,
           email: email.toLowerCase(),
-          firstName,
-          lastName,
+          dob,
+          level: level || 'No Qualification',
           passwordHash,
-          isEmailVerified: isDevelopment,
-          accountStatus: isDevelopment ? 'active' : 'pending',
-          role: 'admin',
-        }).returning();
-
-        // 5. Link user to coach
-        await tx.update(coaches).set({ userId: user.id }).where(eq(coaches.id, coach.id));
-
-        // 6. Generate verification token
-        const verificationToken = generateSecureToken();
-        await tx.insert(emailVerificationTokens).values({
-          userId: user.id,
-          token: verificationToken,
-          expiresAt: getVerificationExpiry(),
-        });
-
-        return { user, club, coach, verificationToken };
+        },
       });
 
-      // Seed coaching rates for the new club (after transaction)
-      try {
-        await storage.seedClubCoachingRates(result.club.id);
-      } catch (seedError) {
-        console.error('Failed to seed coaching rates for new club:', seedError);
-        // Non-fatal - club is still created
-      }
-
-      // Send verification email (non-fatal)
-      let emailSent = false;
-      if (!isDevelopment) {
-        try {
-          await sendVerificationEmail(result.user.email!, result.verificationToken, firstName);
-          emailSent = true;
-        } catch (emailError) {
-          console.error('Failed to send verification email for club registration:', emailError);
-        }
-      }
-
-      res.status(201).json({
-        message: isDevelopment
-          ? 'Club registered successfully! Your account is ready.'
-          : emailSent
-          ? 'Club registered! Please check your email to verify your account.'
-          : 'Club registered, but we could not send the verification email. Please contact support.',
-        clubId: result.club.id,
-        userId: result.user.id,
-        emailSent,
-      });
+      res.status(200).json({ checkoutUrl: session.url });
     } catch (error: any) {
       console.error('Club registration error:', error);
       res.status(500).json({ message: error.message || 'Club registration failed' });

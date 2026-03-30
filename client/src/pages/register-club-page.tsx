@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
@@ -24,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle } from 'lucide-react';
 
 const registerClubSchema = z.object({
   clubName: z.string().min(2, 'Club name must be at least 2 characters'),
@@ -58,7 +56,6 @@ const QUALIFICATION_LEVELS = [
 export default function RegisterClubPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const form = useForm<RegisterClubInput>({
     resolver: zodResolver(registerClubSchema),
@@ -78,14 +75,17 @@ export default function RegisterClubPage() {
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterClubInput) => {
       const response = await apiRequest('POST', '/api/auth/register-club', data);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Registration failed');
+      }
       return response.json();
     },
     onSuccess: (data) => {
-      setRegistrationSuccess(true);
-      toast({
-        title: 'Club registered!',
-        description: data.message || 'Your club has been registered successfully.',
-      });
+      // Redirect to Stripe Checkout to collect payment method
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
     },
     onError: (error: any) => {
       toast({
@@ -99,37 +99,6 @@ export default function RegisterClubPage() {
   const onSubmit = (data: RegisterClubInput) => {
     registerMutation.mutate(data);
   };
-
-  if (registrationSuccess) {
-    return (
-      <div className="h-full min-h-screen w-full flex items-center justify-center bg-white py-8">
-        <div className="max-w-md w-full px-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="bg-card rounded-2xl shadow-2xl p-8 text-center">
-              <div className="flex justify-center mb-4">
-                <CheckCircle className="w-16 h-16 text-[#059467]" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">Club Registered!</h2>
-              <p className="text-muted-foreground mb-6">
-                Your club has been created. Please check your email to verify your account, then sign in.
-              </p>
-              <Button
-                data-testid="button-go-to-login"
-                className="w-full h-11 bg-[#059467] text-white"
-                onClick={() => setLocation('/login')}
-              >
-                Go to Sign In
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto bg-white py-8">
@@ -352,10 +321,10 @@ export default function RegisterClubPage() {
                 <Button
                   type="submit"
                   data-testid="button-register-club"
-                  className="w-full h-11 bg-[#059467] text-white hover:bg-[#047a55] transition-colors"
+                  className="w-full h-11 bg-[#059467] text-white"
                   disabled={registerMutation.isPending}
                 >
-                  {registerMutation.isPending ? 'Registering...' : 'Register Club'}
+                  {registerMutation.isPending ? 'Redirecting to payment...' : 'Register Club'}
                 </Button>
               </form>
             </Form>

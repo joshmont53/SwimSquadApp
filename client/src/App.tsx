@@ -11,6 +11,8 @@ import LoadingScreen from "@/components/LoadingScreen";
 import LoginPage from "@/pages/login-page";
 import RegistrationPage from "@/pages/registration-page";
 import RegisterClubPage from "@/pages/register-club-page";
+import RegisterSuccessPage from "@/pages/register-success-page";
+import RegisterCancelledPage from "@/pages/register-cancelled-page";
 import { MonthCalendarView } from '@/pages/month-calendar-view';
 import { DayCalendarView } from '@/pages/day-calendar-view';
 import { DayListView } from '@/pages/day-list-view';
@@ -1453,6 +1455,8 @@ function Router() {
       {/* Longer paths MUST come first to avoid "/" prefix matching */}
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegistrationPage} />
+      <Route path="/register/success" component={RegisterSuccessPage} />
+      <Route path="/register/cancelled" component={RegisterCancelledPage} />
       <Route path="/register-club" component={RegisterClubPage} />
       <Route path="/app">
         <ProtectedRoute>

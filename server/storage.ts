@@ -22,6 +22,9 @@ import {
   coachNotes,
   coachNoteItems,
   coachNoteSquads,
+  pendingRegistrations,
+  type PendingRegistration,
+  type InsertPendingRegistration,
   type Club,
   type InsertClub,
   type CoachNote,
@@ -210,6 +213,11 @@ export interface IStorage {
   updateCoachNote(id: string, note: Partial<InsertCoachNote>, itemTexts?: { id?: string; text: string; completed: boolean; sortOrder: number }[], squadIds?: string[]): Promise<CoachNote & { items: CoachNoteItem[]; squadIds: string[] }>;
   deleteCoachNote(id: string): Promise<void>;
   updateCoachNoteItem(itemId: string, completed: boolean): Promise<CoachNoteItem>;
+
+  // Pending Registration operations (for Stripe Checkout flow)
+  createPendingRegistration(data: InsertPendingRegistration): Promise<PendingRegistration>;
+  getPendingRegistrationBySessionId(stripeCheckoutSessionId: string): Promise<PendingRegistration | undefined>;
+  deletePendingRegistration(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1137,6 +1145,24 @@ export class DatabaseStorage implements IStorage {
     }
 
     return updated;
+  }
+
+  // Pending Registration operations
+  async createPendingRegistration(data: InsertPendingRegistration): Promise<PendingRegistration> {
+    const [record] = await db.insert(pendingRegistrations).values(data).returning();
+    return record;
+  }
+
+  async getPendingRegistrationBySessionId(stripeCheckoutSessionId: string): Promise<PendingRegistration | undefined> {
+    const [record] = await db
+      .select()
+      .from(pendingRegistrations)
+      .where(eq(pendingRegistrations.stripeCheckoutSessionId, stripeCheckoutSessionId));
+    return record;
+  }
+
+  async deletePendingRegistration(id: string): Promise<void> {
+    await db.delete(pendingRegistrations).where(eq(pendingRegistrations.id, id));
   }
 }
 
