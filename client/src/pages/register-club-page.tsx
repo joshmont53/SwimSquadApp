@@ -75,10 +75,6 @@ export default function RegisterClubPage() {
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterClubInput) => {
       const response = await apiRequest('POST', '/api/auth/register-club', data);
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Registration failed');
-      }
       return response.json();
     },
     onSuccess: (data) => {

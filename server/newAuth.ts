@@ -355,12 +355,15 @@ export function setupNewAuth(app: Express) {
     }
   });
 
-  // Cancel registration endpoint — immediately cleans up a pending registration when user aborts checkout
+  // Cancel registration endpoint — immediately cleans up a pending registration when user aborts checkout.
+  // This is called by the /register/cancelled page on mount with the session_id from the Stripe redirect.
   app.post('/api/auth/cancel-registration', async (req, res) => {
     try {
       const { sessionId } = req.body;
-      if (!sessionId || typeof sessionId !== 'string') {
-        return res.status(400).json({ message: 'sessionId required' });
+      // Stripe checkout session IDs always start with "cs_" and are high-entropy; validate format
+      // as a lightweight guard against arbitrary deletion of unrelated records.
+      if (!sessionId || typeof sessionId !== 'string' || !sessionId.startsWith('cs_')) {
+        return res.status(400).json({ message: 'Invalid sessionId' });
       }
       const pending = await storage.getPendingRegistrationBySessionId(sessionId);
       if (pending) {

@@ -202,8 +202,12 @@ export class WebhookHandlers {
       if (defaultPaymentMethodId) {
         subscriptionParams.default_payment_method = defaultPaymentMethodId;
       }
-      // This will throw (and Stripe will retry) if subscription creation fails
-      const subscription = await stripe.subscriptions.create(subscriptionParams);
+      // Use a deterministic idempotency key tied to the session so that partial-failure retries
+      // (e.g., subscription created but DB update failed) don't produce duplicate subscriptions.
+      const idempotencyKey = `sub-create-${session.id}`;
+      const subscription = await stripe.subscriptions.create(subscriptionParams, {
+        idempotencyKey,
+      });
 
       await storage.updateClub(clubId, {
         stripeSubscriptionId: subscription.id,
