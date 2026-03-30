@@ -658,7 +658,7 @@ export function CollapsibleSidebar({
                         "w-full py-2.5 relative transition-all duration-200",
                         collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]"
                       )}
-                      onClick={() => setLocation('/billing')}
+                      onClick={() => onNavigate('billing')}
                       data-testid="button-nav-billing"
                     >
                       <CreditCard 

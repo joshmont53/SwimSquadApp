@@ -1313,7 +1313,7 @@ function CalendarApp() {
                   className={cn(
                     "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]"
                   )}
-                  onClick={() => { setLocation('/billing'); }}
+                  onClick={() => { setManagementView('billing'); setSidebarOpen(false); }}
                   data-testid="button-billing-mobile"
                 >
                   <CreditCard 
