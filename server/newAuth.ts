@@ -297,10 +297,15 @@ export function setupNewAuth(app: Express) {
       // Hash password before storing in pending registration
       const passwordHash = await hashPassword(password);
 
-      // Determine the base URL for success/cancel redirect URLs
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-      const host = req.headers['x-forwarded-host'] || req.get('host') || 'localhost:5000';
-      const baseUrl = `${protocol}://${host}`;
+      // Determine the base URL for success/cancel redirect URLs.
+      // Use APP_BASE_URL env var if set (recommended for production to avoid host-header issues);
+      // otherwise fall back to inferring from the trusted request headers.
+      const baseUrl = process.env.APP_BASE_URL ||
+        (() => {
+          const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+          const host = req.headers['x-forwarded-host'] || req.get('host') || 'localhost:5000';
+          return `${protocol}://${host}`;
+        })();
 
       const stripe = await getUncachableStripeClient();
 
