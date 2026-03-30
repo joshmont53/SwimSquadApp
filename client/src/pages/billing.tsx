@@ -18,6 +18,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+interface EstimateLineItem {
+  label: string;
+  users: number;
+  unitPence: number;
+  subtotalPence: number;
+}
+
 interface BillingData {
   hasSubscription: boolean;
   status?: string;
@@ -25,12 +32,15 @@ interface BillingData {
   cancelAtPeriodEnd?: boolean;
   quantity?: number;
   activeUsers: number;
+  clubStatus: string;
   currency?: string;
   unitAmount?: number;
   billingScheme?: string;
   tiersMode?: string;
   tiers?: any[];
   stripeCustomerId?: string;
+  estimatedBreakdown: EstimateLineItem[] | null;
+  estimatedMonthlyTotal: number;
 }
 
 export function BillingPage() {
@@ -108,31 +118,9 @@ export function BillingPage() {
     return 'secondary';
   };
 
-  const estimatedBreakdown = (() => {
-    if (!billing?.tiers || billing.tiersMode !== 'graduated' || !billing.activeUsers) return null;
-    const tiers = billing.tiers;
-    const n = billing.activeUsers;
-    const parts: { label: string; users: number; unitPence: number; subtotalPence: number }[] = [];
-    let remaining = n;
-    let prevUpTo = 0;
-    for (const tier of tiers) {
-      if (remaining <= 0) break;
-      const tierCapacity = tier.up_to == null ? remaining : tier.up_to - prevUpTo;
-      const usersInThisTier = Math.min(remaining, tierCapacity);
-      const unitPence: number = tier.unit_amount ?? Math.round(parseFloat(tier.unit_amount_decimal ?? '0'));
-      const rangeEnd = tier.up_to ?? null;
-      parts.push({
-        label: rangeEnd ? `${prevUpTo + 1}–${rangeEnd}` : `${prevUpTo + 1}+`,
-        users: usersInThisTier,
-        unitPence,
-        subtotalPence: usersInThisTier * unitPence,
-      });
-      remaining -= usersInThisTier;
-      prevUpTo = tier.up_to ?? prevUpTo;
-    }
-    const totalPence = parts.reduce((s, p) => s + p.subtotalPence, 0);
-    return { parts, totalPence };
-  })();
+  // Use server-calculated estimate — avoids client-side tier computation
+  const estimatedBreakdown = billing?.estimatedBreakdown ?? null;
+  const estimatedMonthlyTotal = billing?.estimatedMonthlyTotal ?? 0;
 
   return (
     <div className="max-w-lg mx-auto space-y-6 p-4">
@@ -169,9 +157,18 @@ export function BillingPage() {
           {/* Status card */}
           <div className="rounded-md border p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Status</span>
+              <span className="text-sm font-medium text-muted-foreground">Subscription status</span>
               <Badge variant={statusVariant(billing.status)} data-testid="badge-billing-status">
                 {statusLabel(billing.status)}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Club status</span>
+              <Badge
+                variant={billing.clubStatus === 'active' ? 'default' : 'destructive'}
+                data-testid="badge-club-status"
+              >
+                {billing.clubStatus === 'active' ? 'Active' : 'Inactive'}
               </Badge>
             </div>
             {billing.cancelAtPeriodEnd && (
@@ -203,11 +200,11 @@ export function BillingPage() {
             </div>
           </div>
 
-          {/* Estimated monthly charge breakdown */}
-          {estimatedBreakdown && estimatedBreakdown.parts.length > 0 && (
+          {/* Estimated monthly charge breakdown (server-computed) */}
+          {estimatedBreakdown && estimatedBreakdown.length > 0 && (
             <div className="rounded-md border p-4 space-y-2">
               <p className="text-sm font-medium text-muted-foreground mb-1">Estimated monthly charge</p>
-              {estimatedBreakdown.parts.map((part, i) => (
+              {estimatedBreakdown.map((part, i) => (
                 <div
                   key={i}
                   className="flex items-center justify-between text-sm flex-wrap gap-1"
@@ -221,7 +218,7 @@ export function BillingPage() {
               ))}
               <div className="flex items-center justify-between text-sm font-semibold border-t pt-2 flex-wrap gap-1">
                 <span>Total</span>
-                <span data-testid="text-estimated-total">{formatGBP(estimatedBreakdown.totalPence)}/month</span>
+                <span data-testid="text-estimated-total">{formatGBP(estimatedMonthlyTotal)}/month</span>
               </div>
             </div>
           )}

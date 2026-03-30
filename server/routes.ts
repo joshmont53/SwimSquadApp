@@ -475,7 +475,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const club = await storage.getClub(clubId);
       if (!club) return res.status(404).json({ message: "Club not found" });
       if (!club.stripeSubscriptionId || !club.stripeCustomerId) {
-        return res.json({ hasSubscription: false, activeUsers: club.activeUsers ?? 0 });
+        return res.json({
+          hasSubscription: false,
+          activeUsers: club.activeUsers ?? 0,
+          clubStatus: club.clubStatus ?? 'active',
+          estimatedBreakdown: null,
+          estimatedMonthlyTotal: 0,
+        });
       }
       const stripe = await (await import("./stripeClient")).getUncachableStripeClient();
       const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId, {
@@ -483,20 +489,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const item = subscription.items.data[0];
       const price = item?.price as Stripe.Price | undefined;
-      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: Stripe.PriceTier[] }).tiers : null;
+      const priceTiers = price && 'tiers' in price ? (price as Stripe.Price & { tiers?: any[] }).tiers : null;
+
+      // Server-side graduated pricing estimate
+      const activeUsers = club.activeUsers ?? 0;
+      let estimatedBreakdown: { label: string; users: number; unitPence: number; subtotalPence: number }[] | null = null;
+      let estimatedMonthlyTotal = 0;
+      if (priceTiers && price?.tiers_mode === 'graduated' && activeUsers > 0) {
+        const parts: { label: string; users: number; unitPence: number; subtotalPence: number }[] = [];
+        let remaining = activeUsers;
+        let prevUpTo = 0;
+        for (const tier of priceTiers) {
+          if (remaining <= 0) break;
+          const tierCapacity = tier.up_to == null ? remaining : (tier.up_to - prevUpTo);
+          const usersInThisTier = Math.min(remaining, tierCapacity);
+          const unitPence: number = tier.unit_amount != null
+            ? tier.unit_amount
+            : Math.round(parseFloat(tier.unit_amount_decimal ?? '0'));
+          const rangeEnd = tier.up_to ?? null;
+          parts.push({
+            label: rangeEnd ? `${prevUpTo + 1}–${rangeEnd}` : `${prevUpTo + 1}+`,
+            users: usersInThisTier,
+            unitPence,
+            subtotalPence: usersInThisTier * unitPence,
+          });
+          remaining -= usersInThisTier;
+          prevUpTo = tier.up_to ?? prevUpTo;
+        }
+        estimatedMonthlyTotal = parts.reduce((s, p) => s + p.subtotalPence, 0);
+        estimatedBreakdown = parts;
+      }
+
       res.json({
         hasSubscription: true,
         status: subscription.status,
         currentPeriodEnd: subscription.current_period_end,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         quantity: item?.quantity ?? club.activeUsers,
-        activeUsers: club.activeUsers ?? 0,
+        activeUsers,
+        clubStatus: club.clubStatus ?? 'active',
         currency: price?.currency ?? 'gbp',
         unitAmount: price?.unit_amount ?? null,
         billingScheme: price?.billing_scheme ?? null,
         tiersMode: price?.tiers_mode ?? null,
         tiers: priceTiers ?? null,
         stripeCustomerId: club.stripeCustomerId,
+        estimatedBreakdown,
+        estimatedMonthlyTotal,
       });
     } catch (error: any) {
       console.error("Error fetching club billing info:", error);
