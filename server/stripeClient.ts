@@ -78,14 +78,10 @@ export async function syncSubscriptionQuantity(
       return;
     }
     const activeUsers = club.activeUsers ?? 0;
-    if (activeUsers === 0) {
-      // No active users — cancel the Stripe subscription immediately to stay in sync.
-      // Stripe subscriptions require quantity ≥ 1, so 0 active users = cancel.
-      console.log(`[Stripe] Club ${clubId} has 0 active users — cancelling subscription ${club.stripeSubscriptionId}`);
-      await cancelStripeSubscription(club.stripeSubscriptionId);
-      return;
-    }
-    const quantity = activeUsers;
+    // Stripe requires subscription quantity >= 1. When activeUsers reaches 0,
+    // we set quantity to 1 as a billing floor so the subscription stays valid.
+    // The admin must explicitly cancel the club to end the subscription.
+    const quantity = Math.max(1, activeUsers);
     const stripe = await getUncachableStripeClient();
     const subscription = await stripe.subscriptions.retrieve(club.stripeSubscriptionId);
     const itemId = subscription.items?.data?.[0]?.id;
