@@ -1,10 +1,24 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocation } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
 
 export default function RegisterCancelledPage() {
   const [, setLocation] = useLocation();
+
+  // Immediately clean up the pending registration so it doesn't linger until Stripe expiry.
+  // Stripe appends ?session_id=... to the cancel URL — use it to identify the right record.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (sessionId) {
+      apiRequest('POST', '/api/auth/cancel-registration', { sessionId }).catch((err) => {
+        console.warn('[RegisterCancelled] Could not clean up pending registration:', err);
+      });
+    }
+  }, []);
 
   return (
     <div className="h-full min-h-screen w-full flex items-center justify-center bg-white py-8">

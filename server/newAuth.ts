@@ -318,7 +318,7 @@ export function setupNewAuth(app: Express) {
         customer: customer.id,
         payment_method_types: ['card'],
         success_url: `${baseUrl}/register/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/register/cancelled`,
+        cancel_url: `${baseUrl}/register/cancelled?session_id={CHECKOUT_SESSION_ID}`,
         custom_text: {
           submit: {
             message: 'After saving your card, your club will be created and billed monthly based on active users (£20/user for 1–5, £15 for 6–10, £10 for 11+).',
@@ -347,6 +347,25 @@ export function setupNewAuth(app: Express) {
     } catch (error: any) {
       console.error('Club registration error:', error);
       res.status(500).json({ message: error.message || 'Club registration failed' });
+    }
+  });
+
+  // Cancel registration endpoint — immediately cleans up a pending registration when user aborts checkout
+  app.post('/api/auth/cancel-registration', async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId || typeof sessionId !== 'string') {
+        return res.status(400).json({ message: 'sessionId required' });
+      }
+      const pending = await storage.getPendingRegistrationBySessionId(sessionId);
+      if (pending) {
+        await storage.deletePendingRegistration(pending.id);
+        console.log(`[Auth] Cancelled pending registration for session ${sessionId}`);
+      }
+      res.status(200).json({ ok: true });
+    } catch (error: any) {
+      console.error('Cancel registration error:', error);
+      res.status(500).json({ message: error.message || 'Failed to cancel registration' });
     }
   });
 

@@ -92,7 +92,16 @@ export class WebhookHandlers {
         : setupIntent.payment_method?.id;
 
       if (defaultPaymentMethodId) {
-        await stripe.paymentMethods.attach(defaultPaymentMethodId, { customer: customerId });
+        // Attach the payment method only if not already attached (Stripe may attach it automatically
+        // during setup checkout — re-attaching an already-attached method can throw in some API versions)
+        try {
+          await stripe.paymentMethods.attach(defaultPaymentMethodId, { customer: customerId });
+        } catch (attachErr: any) {
+          const isAlreadyAttached = attachErr?.message?.includes('already been attached') ||
+            attachErr?.code === 'payment_method_already_attached';
+          if (!isAlreadyAttached) throw attachErr;
+          console.log(`[Webhook] Payment method ${defaultPaymentMethodId} already attached — continuing`);
+        }
         await stripe.customers.update(customerId, {
           invoice_settings: { default_payment_method: defaultPaymentMethodId },
         });
