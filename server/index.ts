@@ -5,6 +5,7 @@ import { startNotificationScheduler } from "./notifications/scheduler";
 import { WebhookHandlers } from "./webhookHandlers";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
+import { pool } from "./db";
 
 const app = express();
 
@@ -131,7 +132,32 @@ async function initStripe() {
   }
 }
 
+async function ensurePasswordResetTokensTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token
+        ON password_reset_tokens(token)
+    `);
+    log('password_reset_tokens table ready');
+  } catch (error) {
+    console.error('[Migration] Failed to ensure password_reset_tokens table:', error);
+  }
+}
+
 (async () => {
+  // Ensure auth-related tables exist (idempotent schema migrations)
+  await ensurePasswordResetTokensTable();
+
   // Initialize Stripe schema and webhook before registering routes
   await initStripe();
 
