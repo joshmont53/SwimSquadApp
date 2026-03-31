@@ -37,9 +37,16 @@ export default function ResetPasswordPage() {
     queryKey: ['/api/auth/reset-password/validate', token],
     enabled: tokenResolved && !!token,
     queryFn: async () => {
-      const res = await fetch(`/api/auth/reset-password/validate?token=${encodeURIComponent(token!)}`);
-      const data = await res.json();
-      return data;
+      try {
+        const res = await fetch(`/api/auth/reset-password/validate?token=${encodeURIComponent(token!)}`);
+        if (!res.ok) {
+          return { valid: false, message: 'This reset link is unavailable. Please request a new one.' };
+        }
+        const data = await res.json();
+        return data;
+      } catch {
+        return { valid: false, message: 'Unable to verify reset link. Please request a new one.' };
+      }
     },
     retry: false,
   });
