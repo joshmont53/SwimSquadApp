@@ -107,8 +107,11 @@ export async function syncSubscriptionQuantity(
     if (subscription.status !== 'canceled') {
       const itemId = subscription.items.data[0]?.id;
       if (!itemId) throw new Error(`No subscription item found for ${club.stripeSubscriptionId}`);
-      await stripe.subscriptionItems.update(itemId, { quantity: activeUsers });
-      console.log(`[Stripe] Club ${clubId} subscription quantity updated to ${activeUsers}`);
+      await stripe.subscriptionItems.update(itemId, {
+        quantity: activeUsers,
+        proration_behavior: 'none',
+      });
+      console.log(`[Stripe] Club ${clubId} subscription quantity updated to ${activeUsers} (no proration)`);
       return;
     }
     // Subscription was already cancelled externally — clear the stale ID and fall through
