@@ -619,6 +619,37 @@ export function setupNewAuth(app: Express) {
     }
   });
   
+  // Validate password reset token (called on page load)
+  app.get('/api/auth/reset-password/validate', async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ valid: false, message: 'Missing token' });
+      }
+
+      const resetToken = await storage.getPasswordResetToken(token);
+
+      if (!resetToken) {
+        return res.status(400).json({ valid: false, message: 'Invalid or expired reset link' });
+      }
+
+      if (resetToken.usedAt) {
+        return res.status(400).json({ valid: false, message: 'This reset link has already been used' });
+      }
+
+      if (isTokenExpired(resetToken.expiresAt)) {
+        return res.status(400).json({ valid: false, message: 'This reset link has expired' });
+      }
+
+      res.json({ valid: true });
+
+    } catch (error: any) {
+      console.error('Token validation error:', error);
+      res.status(500).json({ valid: false, message: 'Failed to validate token' });
+    }
+  });
+
   // Forgot password endpoint - sends reset email
   app.post('/api/auth/forgot-password', async (req, res) => {
     try {

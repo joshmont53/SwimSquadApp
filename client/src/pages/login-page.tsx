@@ -26,6 +26,19 @@ export default function LoginPage() {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
 
+  // Show success toast if redirected from password reset
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset') === 'success') {
+      toast({
+        title: 'Password reset successfully',
+        description: 'You can now sign in with your new password.',
+      });
+      // Remove the query param without re-rendering
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [toast]);
+
   // Redirect authenticated users to app
   useEffect(() => {
     if (!isLoading && isAuthenticated) {

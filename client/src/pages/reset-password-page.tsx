@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useLocation } from 'wouter';
@@ -17,19 +17,32 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { CheckCircle, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function ResetPasswordPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [token, setToken] = useState<string | null>(null);
+  const [tokenResolved, setTokenResolved] = useState(false);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get('token');
     setToken(t);
+    setTokenResolved(true);
   }, []);
+
+  const { data: tokenValidation, isLoading: isValidating } = useQuery<{ valid: boolean; message?: string }>({
+    queryKey: ['/api/auth/reset-password/validate', token],
+    enabled: tokenResolved && !!token,
+    queryFn: async () => {
+      const res = await fetch(`/api/auth/reset-password/validate?token=${encodeURIComponent(token!)}`);
+      const data = await res.json();
+      return data;
+    },
+    retry: false,
+  });
 
   const form = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
@@ -53,8 +66,8 @@ export default function ResetPasswordPage() {
     onSuccess: () => {
       setSuccess(true);
       setTimeout(() => {
-        setLocation('/login');
-      }, 3000);
+        setLocation('/login?reset=success');
+      }, 2500);
     },
     onError: (error: any) => {
       toast({
@@ -69,7 +82,16 @@ export default function ResetPasswordPage() {
     resetMutation.mutate(data);
   };
 
-  if (!token) {
+  if (!tokenResolved || (token && isValidating)) {
+    return (
+      <div className="h-full min-h-screen w-full flex items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-[#059467]" />
+      </div>
+    );
+  }
+
+  if (!token || (tokenValidation && !tokenValidation.valid)) {
+    const errorMessage = tokenValidation?.message || 'This password reset link is invalid or has expired.';
     return (
       <div className="h-full min-h-screen w-full flex items-center justify-center overflow-y-auto bg-white py-8">
         <div className="max-w-md w-full px-6">
@@ -79,10 +101,10 @@ export default function ResetPasswordPage() {
             transition={{ duration: 0.5 }}
           >
             <div className="bg-card rounded-2xl shadow-2xl p-6 md:p-8 text-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-              <h2 className="text-xl font-semibold">Invalid reset link</h2>
-              <p className="text-muted-foreground text-sm">
-                This password reset link is invalid or missing. Please request a new one.
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto" data-testid="icon-invalid-token" />
+              <h2 className="text-xl font-semibold">Reset link unavailable</h2>
+              <p className="text-muted-foreground text-sm" data-testid="text-token-error">
+                {errorMessage} Please request a new one.
               </p>
               <Link href="/forgot-password">
                 <Button
@@ -92,6 +114,15 @@ export default function ResetPasswordPage() {
                 >
                   Request a new reset link
                 </Button>
+              </Link>
+              <Link href="/login">
+                <button
+                  data-testid="link-back-to-login-invalid"
+                  className="text-sm text-[#059467] hover:underline transition-all inline-flex items-center gap-1 mt-1"
+                >
+                  <ArrowLeft className="h-3 w-3" />
+                  Back to sign in
+                </button>
               </Link>
             </div>
           </motion.div>
@@ -115,7 +146,7 @@ export default function ResetPasswordPage() {
               <p className="text-muted-foreground text-sm">
                 Your password has been updated. You'll be redirected to the sign in page shortly.
               </p>
-              <Link href="/login">
+              <Link href="/login?reset=success">
                 <Button
                   className="w-full bg-[#059467] text-white"
                   data-testid="button-go-to-login"
