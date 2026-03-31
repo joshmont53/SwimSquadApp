@@ -699,7 +699,8 @@ export function setupNewAuth(app: Express) {
 
     } catch (error: any) {
       console.error('Forgot password error:', error);
-      res.status(500).json({ message: error.message || 'Failed to process request' });
+      // Always return neutral response even on unexpected errors to prevent account enumeration
+      res.json({ message: 'If an account exists with this email, a password reset link has been sent.' });
     }
   });
 
@@ -788,7 +789,7 @@ export function setupNewAuth(app: Express) {
 
     } catch (error: any) {
       console.error('Reset password error:', error);
-      res.status(500).json({ message: error.message || 'Failed to reset password' });
+      res.status(500).json({ message: 'Failed to reset password. Please try again or request a new reset link.' });
     }
   });
 
