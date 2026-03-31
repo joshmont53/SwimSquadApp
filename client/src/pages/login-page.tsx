@@ -191,19 +191,13 @@ export default function LoginPage() {
             )}
 
             <div className="mt-5 text-center">
-              <button 
+              <Link
                 data-testid="link-forgot-password"
+                href="/forgot-password"
                 className="text-sm text-[#059467] hover:underline transition-all"
-                onClick={(e) => {
-                  e.preventDefault();
-                  toast({
-                    title: 'Password reset',
-                    description: 'Password reset functionality coming soon!',
-                  });
-                }}
               >
                 Forgot your password?
-              </button>
+              </Link>
             </div>
 
             <div className="mt-4 pt-4 border-t text-center">

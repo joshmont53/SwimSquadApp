@@ -31,6 +31,16 @@ export function getVerificationExpiry(): Date {
 }
 
 /**
+ * Calculate expiration timestamp for password reset (1 hour from now)
+ * @returns Date object representing expiration time
+ */
+export function getPasswordResetExpiry(): Date {
+  const expiry = new Date();
+  expiry.setHours(expiry.getHours() + 1); // 1 hour
+  return expiry;
+}
+
+/**
  * Check if a token has expired
  * @param expiresAt - Expiration timestamp
  * @returns True if expired, false otherwise

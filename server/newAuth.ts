@@ -5,11 +5,11 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import { storage } from './storage';
 import { db } from './db';
-import { users, coaches, clubs, authorizedInvitations, emailVerificationTokens } from '@shared/schema';
+import { users, coaches, clubs, authorizedInvitations, emailVerificationTokens, passwordResetTokens } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from './passwordUtils';
-import { generateSecureToken, getInvitationExpiry, getVerificationExpiry, isTokenExpired } from './tokenUtils';
-import { sendInvitationEmail, sendVerificationEmail } from './emailService';
+import { generateSecureToken, getInvitationExpiry, getVerificationExpiry, getPasswordResetExpiry, isTokenExpired } from './tokenUtils';
+import { sendInvitationEmail, sendVerificationEmail, sendPasswordResetEmail } from './emailService';
 import { getUncachableStripeClient, syncSubscriptionQuantity } from './stripeClient';
 import crypto from 'crypto';
 
@@ -619,6 +619,133 @@ export function setupNewAuth(app: Express) {
     }
   });
   
+  // Forgot password endpoint - sends reset email
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: 'Email is required' });
+      }
+
+      // Always return a neutral response regardless of whether the email exists
+      // This prevents account enumeration attacks
+      const neutralResponse = { message: 'If an account exists with this email, a password reset link has been sent.' };
+
+      const user = await storage.getUserByEmail(email.toLowerCase());
+
+      if (!user || !user.passwordHash) {
+        // No account found or account uses OAuth - return neutral response
+        return res.json(neutralResponse);
+      }
+
+      if (user.accountStatus !== 'active') {
+        // Account not active - return neutral response
+        return res.json(neutralResponse);
+      }
+
+      // Delete any existing unused reset tokens for this user
+      await storage.deletePasswordResetTokensForUser(user.id);
+
+      // Generate new reset token
+      const resetToken = generateSecureToken();
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token: resetToken,
+        expiresAt: getPasswordResetExpiry(),
+        usedAt: null,
+      });
+
+      // Send reset email (non-fatal - return neutral response either way)
+      try {
+        await sendPasswordResetEmail(user.email!, resetToken, user.firstName || 'Coach');
+      } catch (emailError: any) {
+        console.error('Failed to send password reset email:', emailError);
+        // Still return neutral response to avoid leaking info
+      }
+
+      res.json(neutralResponse);
+
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({ message: error.message || 'Failed to process request' });
+    }
+  });
+
+  // Reset password endpoint - validates token and updates password
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, password, passwordConfirm } = req.body;
+
+      if (!token || !password || !passwordConfirm) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      if (password !== passwordConfirm) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+      }
+
+      // Password strength validation
+      if (password.length < 12) {
+        return res.status(400).json({ message: 'Password must be at least 12 characters' });
+      }
+
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+      if (!hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
+        return res.status(400).json({
+          message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+        });
+      }
+
+      // Find the reset token
+      const resetToken = await storage.getPasswordResetToken(token);
+
+      if (!resetToken) {
+        return res.status(400).json({ message: 'Invalid or expired reset link' });
+      }
+
+      // Check if token has already been used
+      if (resetToken.usedAt) {
+        return res.status(400).json({ message: 'This reset link has already been used. Please request a new one.' });
+      }
+
+      // Check if token is expired (1 hour)
+      if (isTokenExpired(resetToken.expiresAt)) {
+        return res.status(400).json({ message: 'This reset link has expired. Please request a new one.' });
+      }
+
+      // Get user
+      const user = await storage.getUser(resetToken.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Hash the new password
+      const passwordHash = await hashPassword(password);
+
+      // Update user password and mark token as used atomically
+      await db.transaction(async (tx) => {
+        await tx.update(users)
+          .set({ passwordHash, updatedAt: new Date() })
+          .where(eq(users.id, user.id));
+
+        await tx.update(passwordResetTokens)
+          .set({ usedAt: new Date() })
+          .where(eq(passwordResetTokens.id, resetToken.id));
+      });
+
+      res.json({ message: 'Password reset successfully. You can now log in with your new password.' });
+
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      res.status(500).json({ message: error.message || 'Failed to reset password' });
+    }
+  });
+
   // Logout endpoint
   app.post('/api/auth/logout', async (req, res) => {
     try {

@@ -10,6 +10,7 @@ import {
   attendance,
   authorizedInvitations,
   emailVerificationTokens,
+  passwordResetTokens,
   competitions,
   competitionCoaching,
   coachingRates,
@@ -50,6 +51,8 @@ import {
   type InsertAuthorizedInvitation,
   type EmailVerificationToken,
   type InsertEmailVerificationToken,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
   type Competition,
   type InsertCompetition,
   type CompetitionCoaching,
@@ -155,7 +158,13 @@ export interface IStorage {
   getVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
   deleteVerificationToken(id: string): Promise<void>;
   deleteVerificationTokensForUser(userId: string): Promise<void>;
-  
+
+  // Password reset operations
+  createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: string): Promise<void>;
+  deletePasswordResetTokensForUser(userId: string): Promise<void>;
+
   // Competition operations
   getCompetitions(clubId: string): Promise<Competition[]>;
   getCompetition(id: string): Promise<Competition | undefined>;
@@ -771,6 +780,25 @@ export class DatabaseStorage implements IStorage {
   
   async deleteVerificationTokensForUser(userId: string): Promise<void> {
     await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
+  }
+
+  // Password reset operations
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db.insert(passwordResetTokens).values(tokenData).returning();
+    return token;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token));
+    return resetToken;
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<void> {
+    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, id));
+  }
+
+  async deletePasswordResetTokensForUser(userId: string): Promise<void> {
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
   }
 
   // ============================================================================

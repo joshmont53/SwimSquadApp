@@ -415,6 +415,30 @@ export const insertEmailVerificationTokenSchema = createInsertSchema(emailVerifi
 });
 export type InsertEmailVerificationToken = z.infer<typeof insertEmailVerificationTokenSchema>;
 
+// Password Reset Tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+
 // ============================================================================
 // Authentication Schemas (Email/Password)
 // ============================================================================
@@ -452,6 +476,28 @@ export const registrationSchema = z.object({
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
+
+// Forgot password schema
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+// Reset password schema
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token required'),
+  password: strongPasswordSchema,
+  passwordConfirm: z.string(),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.passwordConfirm) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Passwords do not match',
+      path: ['passwordConfirm'],
+    });
+  }
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 // ============================================================================
 // Competitions Feature - NEW TABLES (No impact on existing functionality)

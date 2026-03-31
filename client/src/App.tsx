@@ -13,6 +13,8 @@ import RegistrationPage from "@/pages/registration-page";
 import RegisterClubPage from "@/pages/register-club-page";
 import RegisterSuccessPage from "@/pages/register-success-page";
 import RegisterCancelledPage from "@/pages/register-cancelled-page";
+import ForgotPasswordPage from "@/pages/forgot-password-page";
+import ResetPasswordPage from "@/pages/reset-password-page";
 import { MonthCalendarView } from '@/pages/month-calendar-view';
 import { DayCalendarView } from '@/pages/day-calendar-view';
 import { DayListView } from '@/pages/day-list-view';
@@ -1848,6 +1850,8 @@ function Router() {
     <Switch>
       {/* Longer paths MUST come first to avoid "/" prefix matching */}
       <Route path="/login" component={LoginPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       {/* /register/success and /register/cancelled MUST come before /register to avoid prefix-match */}
       <Route path="/register/success" component={RegisterSuccessPage} />
       <Route path="/register/cancelled" component={RegisterCancelledPage} />

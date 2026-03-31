@@ -149,6 +149,92 @@ export async function sendInvitationEmail(
 }
 
 /**
+ * Send password reset email
+ * @param email - Recipient email
+ * @param resetToken - Unique password reset token
+ * @param firstName - User's first name
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  resetToken: string,
+  firstName: string
+): Promise<void> {
+  let baseUrl: string;
+  if (process.env.NODE_ENV === 'development') {
+    baseUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : 'http://localhost:5000';
+  } else {
+    baseUrl = process.env.APP_URL || '';
+    if (!baseUrl) {
+      throw new Error('APP_URL environment variable is required in production for email links');
+    }
+  }
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+
+  await sendEmail({
+    to: email,
+    subject: 'Reset your password',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Password Reset</title>
+        </head>
+        <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">Hart SC Coaches Hub</h1>
+          </div>
+
+          <div style="background-color: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+            <h2 style="color: #1e40af; margin-top: 0;">Reset your password, ${firstName}</h2>
+
+            <p style="font-size: 16px; color: #4b5563;">
+              We received a request to reset the password for your account. Click the button below to choose a new password:
+            </p>
+
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${resetUrl}"
+                 style="display: inline-block;
+                        padding: 14px 32px;
+                        background-color: #1e40af;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        font-size: 16px;">
+                Reset Password
+              </a>
+            </div>
+
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 24px 0; border-radius: 4px;">
+              <p style="margin: 0; color: #92400e; font-size: 14px;">
+                <strong>This link expires in 1 hour.</strong>
+              </p>
+            </div>
+
+            <p style="font-size: 14px; color: #6b7280; margin-top: 32px;">
+              If you can't click the button, copy and paste this link into your browser:
+            </p>
+            <p style="font-size: 12px; color: #9ca3af; word-break: break-all; background-color: #f3f4f6; padding: 8px; border-radius: 4px;">
+              ${resetUrl}
+            </p>
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+
+            <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0;">
+              If you didn't request a password reset, you can safely ignore this email. Your password will not change.
+            </p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
+
+/**
  * Send email verification link
  * @param email - Recipient email
  * @param verificationToken - Unique verification token
