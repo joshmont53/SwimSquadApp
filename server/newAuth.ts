@@ -6,7 +6,7 @@ import connectPgSimple from 'connect-pg-simple';
 import { storage } from './storage';
 import { db } from './db';
 import { users, coaches, clubs, authorizedInvitations, emailVerificationTokens, passwordResetTokens } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from './passwordUtils';
 import { generateSecureToken, getInvitationExpiry, getVerificationExpiry, getPasswordResetExpiry, isTokenExpired } from './tokenUtils';
 import { sendInvitationEmail, sendVerificationEmail, sendPasswordResetEmail } from './emailService';
@@ -758,16 +758,31 @@ export function setupNewAuth(app: Express) {
       // Hash the new password
       const passwordHash = await hashPassword(password);
 
-      // Update user password and mark token as used atomically
-      await db.transaction(async (tx) => {
+      // Atomically claim the token by conditionally marking it as used.
+      // Using WHERE used_at IS NULL ensures only one concurrent request can succeed,
+      // preventing race conditions where two requests pass the pre-check above.
+      const now = new Date();
+      const claimed = await db.transaction(async (tx) => {
+        const updated = await tx.update(passwordResetTokens)
+          .set({ usedAt: now })
+          .where(and(eq(passwordResetTokens.id, resetToken.id), isNull(passwordResetTokens.usedAt)))
+          .returning();
+
+        if (updated.length === 0) {
+          // Token was already claimed by a concurrent request
+          return false;
+        }
+
         await tx.update(users)
-          .set({ passwordHash, updatedAt: new Date() })
+          .set({ passwordHash, updatedAt: now })
           .where(eq(users.id, user.id));
 
-        await tx.update(passwordResetTokens)
-          .set({ usedAt: new Date() })
-          .where(eq(passwordResetTokens.id, resetToken.id));
+        return true;
       });
+
+      if (!claimed) {
+        return res.status(400).json({ message: 'This reset link has already been used. Please request a new one.' });
+      }
 
       res.json({ message: 'Password reset successfully. You can now log in with your new password.' });
 
