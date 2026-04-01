@@ -34,7 +34,7 @@ For any data protection enquiries relating to the Swim Squad platform itself, pl
 
 **Josh Montgomery**  
 Swim Squad  
-**privacy@swimsquad.app** *(update with correct email before publishing)*
+**admin@swimsquadapp.co.uk**
 
 ---
 
@@ -214,7 +214,7 @@ You have the following rights in relation to your personal data:
 
 To exercise any of these rights, please contact your club administrator in the first instance. If your request relates to the Swim Squad platform itself, you may also contact:
 
-**Josh Montgomery — privacy@swimsquad.app** *(update before publishing)*
+**Josh Montgomery — admin@swimsquadapp.co.uk**
 
 We will respond to all requests within **one calendar month**.
 
@@ -242,7 +242,7 @@ For any questions or concerns about this Privacy Policy or how your data is hand
 
 **Josh Montgomery**  
 Swim Squad  
-**privacy@swimsquad.app** *(update before publishing)*
+**admin@swimsquadapp.co.uk**
 
 ---
 

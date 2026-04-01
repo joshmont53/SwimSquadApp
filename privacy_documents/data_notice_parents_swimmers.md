@@ -26,7 +26,7 @@ The Swim Squad platform is provided by **Josh Montgomery** (Swim Squad), who act
 For questions about your data, your first point of contact should be your club's administrator. You can also contact Swim Squad directly:
 
 **Josh Montgomery — Swim Squad**  
-**privacy@swimsquad.app** *(update before publishing)*
+**admin@swimsquadapp.co.uk**
 
 ---
 
@@ -168,7 +168,7 @@ You can object to us using your child's information where we rely on legitimate 
 Please contact your club administrator in the first instance. You can also contact Swim Squad directly:
 
 **Josh Montgomery — Swim Squad**  
-**privacy@swimsquad.app** *(update before publishing)*
+**admin@swimsquadapp.co.uk**
 
 We will respond to all requests within **one calendar month**. There is no charge for making a request.
 
@@ -191,7 +191,7 @@ We may update this notice from time to time. Your club administrator will let yo
 ## 11. Contact Us
 
 **Josh Montgomery — Swim Squad**  
-**privacy@swimsquad.app** *(update before publishing)*
+**admin@swimsquadapp.co.uk**
 
 For questions specific to how your club manages its data, please contact your club's administrator directly.
 

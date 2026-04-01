@@ -183,7 +183,7 @@ export function registerPrivacyRoutes(app: Express) {
     <p>Swim Squad (developed by Josh Montgomery) acts as a Data Processor on behalf of each swimming club, processing personal data only in accordance with the club's instructions and this policy. A Data Processing Agreement is in place between Swim Squad and each club that uses the platform.</p>
     <p>For any data protection enquiries relating to the Swim Squad platform itself, please contact:<br>
     <strong>Josh Montgomery — Swim Squad</strong><br>
-    <a href="mailto:privacy@swimsquad.app">privacy@swimsquad.app</a></p>
+    <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a></p>
 
     <h2>3. Data We Collect About You (Coaches)</h2>
     <table>
@@ -275,7 +275,7 @@ export function registerPrivacyRoutes(app: Express) {
       <li><strong>Right to object</strong> — object to processing based on legitimate interests</li>
       <li><strong>Right to withdraw consent</strong> — withdraw consent for push notifications via your device settings at any time</li>
     </ul>
-    <p>To exercise these rights, contact your club administrator or reach us directly at <a href="mailto:privacy@swimsquad.app">privacy@swimsquad.app</a>. We will respond within one calendar month.</p>
+    <p>To exercise these rights, contact your club administrator or reach us directly at <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a>. We will respond within one calendar month.</p>
     <p>You also have the right to complain to the <strong>Information Commissioner's Office (ICO)</strong> at <a href="https://ico.org.uk" target="_blank" rel="noopener noreferrer">ico.org.uk</a> or by calling 0303 123 1113.</p>
 
     <h2>13. Children's Data</h2>
@@ -286,7 +286,7 @@ export function registerPrivacyRoutes(app: Express) {
 
     <h2>15. Contact</h2>
     <p><strong>Josh Montgomery — Swim Squad</strong><br>
-    <a href="mailto:privacy@swimsquad.app">privacy@swimsquad.app</a></p>
+    <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a></p>
 
     <div class="footer">
       Swim Squad Privacy Policy &mdash; Version 1.0 &mdash; 29 March 2026<br>
@@ -330,7 +330,7 @@ export function registerPrivacyRoutes(app: Express) {
     <p>The Swim Squad platform is provided by <strong>Josh Montgomery (Swim Squad)</strong>, who acts as a data processor on behalf of your club — meaning Swim Squad stores and processes the information only on your club's instruction.</p>
     <p>For questions about your data, contact your club administrator first. You may also contact Swim Squad directly:<br>
     <strong>Josh Montgomery — Swim Squad</strong><br>
-    <a href="mailto:privacy@swimsquad.app">privacy@swimsquad.app</a></p>
+    <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a></p>
 
     <h2>2. What Information Do We Hold About Your Child?</h2>
     <table>
@@ -395,7 +395,7 @@ export function registerPrivacyRoutes(app: Express) {
       <li><strong>Right to restrict processing</strong> — you can ask us to limit how we use your child's information</li>
       <li><strong>Right to object</strong> — you can object to us using your child's information where we rely on legitimate interests</li>
     </ul>
-    <p>To exercise any of these rights, contact your club administrator or reach Swim Squad directly at <a href="mailto:privacy@swimsquad.app">privacy@swimsquad.app</a>. We will respond within one calendar month at no charge.</p>
+    <p>To exercise any of these rights, contact your club administrator or reach Swim Squad directly at <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a>. We will respond within one calendar month at no charge.</p>
     <h3>If you are not satisfied</h3>
     <p>You can complain to the <strong>Information Commissioner's Office (ICO)</strong>:<br>
     Website: <a href="https://ico.org.uk" target="_blank" rel="noopener noreferrer">ico.org.uk</a><br>
@@ -407,7 +407,7 @@ export function registerPrivacyRoutes(app: Express) {
 
     <h2>11. Contact</h2>
     <p><strong>Josh Montgomery — Swim Squad</strong><br>
-    <a href="mailto:privacy@swimsquad.app">privacy@swimsquad.app</a></p>
+    <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a></p>
     <p>For questions specific to how your club manages its data, please contact your club's administrator directly.</p>
 
     <div class="footer">
