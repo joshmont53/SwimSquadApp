@@ -9,6 +9,7 @@ import { pool, db } from "./db";
 import {
   clubs, coaches, squads, swimmers, swimmingSessions,
   locations, competitions, authorizedInvitations, coachingRates,
+  drills, sessionTemplates,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -170,11 +171,12 @@ async function initializeHartSwimmingClub() {
     log('[Init] No clubs found — initializing Hart Swimming Club...');
 
     // 1. Create the club
+    // active_users = 2: only Josh Montgomery and Will Fuller have active user accounts
     const [club] = await db.insert(clubs).values({
       clubName: 'Hart Swimming Club',
       clubColor: '#4B9A4A',
       clubStatus: 'active',
-      activeUsers: 13,
+      activeUsers: 2,
     }).returning();
 
     log(`[Init] Created club: ${club.id}`);
@@ -208,7 +210,14 @@ async function initializeHartSwimmingClub() {
     await db.update(coachingRates).set({ clubId: club.id });
     log('[Init] Coaching rates linked');
 
+    await db.update(drills).set({ clubId: club.id });
+    log('[Init] Drills linked');
+
+    await db.update(sessionTemplates).set({ clubId: club.id });
+    log('[Init] Session templates linked');
+
     // 4. Set up Stripe customer and subscription
+    // Quantity = 2: only Josh Montgomery and Will Fuller have active user accounts
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     const stripePriceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
 
@@ -225,7 +234,7 @@ async function initializeHartSwimmingClub() {
 
         const subscription = await stripe.subscriptions.create({
           customer: customer.id,
-          items: [{ price: stripePriceId, quantity: 13 }],
+          items: [{ price: stripePriceId, quantity: 2 }],
         });
         log(`[Init] Stripe subscription created: ${subscription.id}`);
 
