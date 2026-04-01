@@ -260,27 +260,24 @@ async function initializeHartSwimmingClub() {
 async function repairHartStripeSetup() {
   try {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    const stripePriceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
-    if (!stripeSecretKey || !stripePriceId) return;
+    if (!stripeSecretKey) return;
 
     const [club] = await db.select().from(clubs);
     if (!club) return;
 
-    // Only repair if stripe IDs are missing
     if (club.stripeCustomerId && club.stripeSubscriptionId) {
-      log('[StripeRepair] Stripe already configured — skipping');
+      log('[StripeRepair] Stripe already fully configured — skipping');
       return;
     }
 
-    log('[StripeRepair] Stripe IDs missing — repairing...');
+    log('[StripeRepair] Stripe IDs incomplete — repairing...');
     const Stripe = (await import('stripe')).default;
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });
 
-    // The customer was already created on first attempt — use that known ID
+    // --- Step 1: Ensure customer ID is saved ---
     const KNOWN_CUSTOMER_ID = 'cus_UFvmrhLAPfueC9';
     let customerId = club.stripeCustomerId ?? KNOWN_CUSTOMER_ID;
 
-    // Verify customer exists in Stripe, create fresh one if not
     try {
       await stripe.customers.retrieve(customerId);
       log(`[StripeRepair] Customer confirmed: ${customerId}`);
@@ -293,19 +290,38 @@ async function repairHartStripeSetup() {
       log(`[StripeRepair] Created new customer: ${customerId}`);
     }
 
-    // Create subscription
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: stripePriceId, quantity: club.activeUsers ?? 2 }],
-    });
-    log(`[StripeRepair] Subscription created: ${subscription.id}`);
+    if (!club.stripeCustomerId) {
+      await db.update(clubs).set({ stripeCustomerId: customerId }).where(eq(clubs.id, club.id));
+      log(`[StripeRepair] Customer ID saved: ${customerId}`);
+    }
 
-    // Save both IDs to the club record
-    await db.update(clubs)
-      .set({ stripeCustomerId: customerId, stripeSubscriptionId: subscription.id })
-      .where(eq(clubs.id, club.id));
+    // --- Step 2: Ensure subscription ID is saved ---
+    if (!club.stripeSubscriptionId) {
+      // First check if a subscription already exists for this customer in Stripe
+      const existingSubs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
+      if (existingSubs.data.length > 0) {
+        const existingSub = existingSubs.data[0];
+        await db.update(clubs).set({ stripeSubscriptionId: existingSub.id }).where(eq(clubs.id, club.id));
+        log(`[StripeRepair] Found existing subscription, saved: ${existingSub.id}`);
+        return;
+      }
 
-    log('[StripeRepair] Stripe customer and subscription IDs saved to club record');
+      // No existing subscription — create one if we have a valid price ID
+      const stripePriceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
+      if (!stripePriceId) {
+        console.warn('[StripeRepair] No STRIPE_SUBSCRIPTION_PRICE_ID — skipping subscription creation');
+        return;
+      }
+
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: stripePriceId, quantity: club.activeUsers ?? 2 }],
+      });
+      await db.update(clubs).set({ stripeSubscriptionId: subscription.id }).where(eq(clubs.id, club.id));
+      log(`[StripeRepair] Subscription created and saved: ${subscription.id}`);
+    }
+
+    log('[StripeRepair] Repair complete');
   } catch (err) {
     console.error('[StripeRepair] Failed:', err);
   }
