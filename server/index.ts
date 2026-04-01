@@ -9,9 +9,9 @@ import { pool, db } from "./db";
 import {
   clubs, coaches, squads, swimmers, swimmingSessions,
   locations, competitions, authorizedInvitations, coachingRates,
-  drills, sessionTemplates,
+  drills, sessionTemplates, sessionFeedback, coachNotes,
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
 const app = express();
 
@@ -225,6 +225,12 @@ async function initializeHartSwimmingClub() {
     await db.update(sessionTemplates).set({ clubId: club.id });
     log('[Init] Session templates linked');
 
+    await db.update(sessionFeedback).set({ clubId: club.id });
+    log('[Init] Session feedback linked');
+
+    await db.update(coachNotes).set({ clubId: club.id });
+    log('[Init] Coach notes linked');
+
     // 4. Set up Stripe customer and subscription
     // Quantity = 2: only Josh Montgomery and Will Fuller have active user accounts
     const stripeSecretKey = getStripeKeyForEnvironment();
@@ -336,12 +342,36 @@ async function repairHartStripeSetup() {
   }
 }
 
+// Ensures all records in every club_id-bearing table are linked to their club.
+// Runs on every startup but is a no-op once all records are already linked.
+async function repairMissingClubIds() {
+  try {
+    const [club] = await db.select({ id: clubs.id }).from(clubs);
+    if (!club) return;
+
+    const tables: Array<{ name: string; table: any }> = [
+      { name: 'session_feedback', table: sessionFeedback },
+      { name: 'coach_notes',      table: coachNotes },
+    ];
+
+    for (const { name, table } of tables) {
+      await db.update(table).set({ clubId: club.id }).where(isNull(table.clubId));
+      log(`[ClubIdRepair] ${name}: linked any unlinked records`);
+    }
+  } catch (err) {
+    console.error('[ClubIdRepair] Failed:', err);
+  }
+}
+
 (async () => {
   // Ensure auth-related tables exist (idempotent schema migrations)
   await ensurePasswordResetTokensTable();
 
   // One-time production initialization: create Hart Swimming Club and link all data
   await initializeHartSwimmingClub();
+
+  // Repair any records missing club_id that were not covered during initial setup
+  await repairMissingClubIds();
 
   // Repair Stripe IDs if they were not saved during initial setup
   await repairHartStripeSetup();

@@ -3,6 +3,16 @@ import Stripe from 'stripe';
 let connectionSettings: any;
 
 async function getCredentials() {
+  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+
+  // In production the Replit connector is sandbox-only, so use env vars directly.
+  if (isProduction) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured for production');
+    return { secretKey, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '' };
+  }
+
+  // In development use the Replit Stripe connector (sandbox credentials).
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? 'repl ' + process.env.REPL_IDENTITY
@@ -14,14 +24,10 @@ async function getCredentials() {
     throw new Error('X-Replit-Token not found for repl/depl');
   }
 
-  const connectorName = 'stripe';
-  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
-  const targetEnvironment = isProduction ? 'production' : 'development';
-
   const url = new URL(`https://${hostname}/api/v2/connection`);
   url.searchParams.set('include_secrets', 'true');
-  url.searchParams.set('connector_names', connectorName);
-  url.searchParams.set('environment', targetEnvironment);
+  url.searchParams.set('connector_names', 'stripe');
+  url.searchParams.set('environment', 'development');
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -34,7 +40,7 @@ async function getCredentials() {
   connectionSettings = data.items?.[0];
 
   if (!connectionSettings || (!connectionSettings.settings.publishable || !connectionSettings.settings.secret)) {
-    throw new Error(`Stripe ${targetEnvironment} connection not found`);
+    throw new Error('Stripe development connection not found');
   }
 
   return {
