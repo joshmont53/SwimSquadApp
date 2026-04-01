@@ -257,12 +257,69 @@ async function initializeHartSwimmingClub() {
   }
 }
 
+async function repairHartStripeSetup() {
+  try {
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const stripePriceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
+    if (!stripeSecretKey || !stripePriceId) return;
+
+    const [club] = await db.select().from(clubs);
+    if (!club) return;
+
+    // Only repair if stripe IDs are missing
+    if (club.stripeCustomerId && club.stripeSubscriptionId) {
+      log('[StripeRepair] Stripe already configured — skipping');
+      return;
+    }
+
+    log('[StripeRepair] Stripe IDs missing — repairing...');
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });
+
+    // The customer was already created on first attempt — use that known ID
+    const KNOWN_CUSTOMER_ID = 'cus_UFvmrhLAPfueC9';
+    let customerId = club.stripeCustomerId ?? KNOWN_CUSTOMER_ID;
+
+    // Verify customer exists in Stripe, create fresh one if not
+    try {
+      await stripe.customers.retrieve(customerId);
+      log(`[StripeRepair] Customer confirmed: ${customerId}`);
+    } catch {
+      const newCustomer = await stripe.customers.create({
+        name: 'Hart Swimming Club',
+        metadata: { clubId: club.id },
+      });
+      customerId = newCustomer.id;
+      log(`[StripeRepair] Created new customer: ${customerId}`);
+    }
+
+    // Create subscription
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: stripePriceId, quantity: club.activeUsers ?? 2 }],
+    });
+    log(`[StripeRepair] Subscription created: ${subscription.id}`);
+
+    // Save both IDs to the club record
+    await db.update(clubs)
+      .set({ stripeCustomerId: customerId, stripeSubscriptionId: subscription.id })
+      .where(eq(clubs.id, club.id));
+
+    log('[StripeRepair] Stripe customer and subscription IDs saved to club record');
+  } catch (err) {
+    console.error('[StripeRepair] Failed:', err);
+  }
+}
+
 (async () => {
   // Ensure auth-related tables exist (idempotent schema migrations)
   await ensurePasswordResetTokensTable();
 
   // One-time production initialization: create Hart Swimming Club and link all data
   await initializeHartSwimmingClub();
+
+  // Repair Stripe IDs if they were not saved during initial setup
+  await repairHartStripeSetup();
 
   // Initialize Stripe schema and webhook before registering routes
   await initStripe();
