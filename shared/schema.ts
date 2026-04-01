@@ -569,17 +569,14 @@ export type InsertCompetitionCoaching = z.infer<typeof insertCompetitionCoaching
 // ============================================================================
 
 // Coaching Rates table - Stores hourly rates and session writing rates for each qualification level per club
-// Composite PK (clubId + qualificationLevel) — each club has its own set of rates
 export const coachingRates = pgTable("coaching_rates", {
-  clubId: varchar("club_id").references(() => clubs.id).notNull(), // Multi-club support
-  qualificationLevel: varchar("qualification_level").notNull(), // "No Qualification" | "Level 1" | "Level 2" | "Level 3"
+  qualificationLevel: varchar("qualification_level").primaryKey().notNull(), // "No Qualification" | "Level 1" | "Level 2" | "Level 3"
+  clubId: varchar("club_id").references(() => clubs.id), // Multi-club support — nullable until populated post-deploy
   hourlyRate: decimal("hourly_rate", { precision: 6, scale: 2 }).notNull(), // Hourly rate for coaching sessions and competitions
   sessionWritingRate: decimal("session_writing_rate", { precision: 6, scale: 2 }).notNull(), // Rate per session written
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  primaryKey({ columns: [table.clubId, table.qualificationLevel] }),
-]);
+});
 
 export type CoachingRate = typeof coachingRates.$inferSelect;
 export const insertCoachingRateSchema = createInsertSchema(coachingRates).omit({ 
