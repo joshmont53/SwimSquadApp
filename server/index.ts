@@ -5,7 +5,12 @@ import { startNotificationScheduler } from "./notifications/scheduler";
 import { WebhookHandlers } from "./webhookHandlers";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
-import { pool } from "./db";
+import { pool, db } from "./db";
+import {
+  clubs, coaches, squads, swimmers, swimmingSessions,
+  locations, competitions, authorizedInvitations, coachingRates,
+} from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const app = express();
 
@@ -154,9 +159,101 @@ async function ensurePasswordResetTokensTable() {
   }
 }
 
+async function initializeHartSwimmingClub() {
+  try {
+    const existingClubs = await db.select().from(clubs);
+    if (existingClubs.length > 0) {
+      log('[Init] Club already exists — skipping Hart Swimming Club initialization');
+      return;
+    }
+
+    log('[Init] No clubs found — initializing Hart Swimming Club...');
+
+    // 1. Create the club
+    const [club] = await db.insert(clubs).values({
+      clubName: 'Hart Swimming Club',
+      clubColor: '#4B9A4A',
+      clubStatus: 'active',
+      activeUsers: 13,
+    }).returning();
+
+    log(`[Init] Created club: ${club.id}`);
+
+    // 2. Set Josh Montgomery as primary coach
+    const JOSH_COACH_ID = '73e876d4-4d72-4f06-84ae-4b9adec7ac75';
+    await db.update(clubs).set({ primaryCoachId: JOSH_COACH_ID }).where(eq(clubs.id, club.id));
+
+    // 3. Link all existing data to Hart Swimming Club
+    await db.update(coaches).set({ clubId: club.id });
+    log('[Init] Coaches linked');
+
+    await db.update(squads).set({ clubId: club.id });
+    log('[Init] Squads linked');
+
+    await db.update(swimmers).set({ clubId: club.id });
+    log('[Init] Swimmers linked');
+
+    await db.update(swimmingSessions).set({ clubId: club.id });
+    log('[Init] Sessions linked');
+
+    await db.update(locations).set({ clubId: club.id });
+    log('[Init] Locations linked');
+
+    await db.update(competitions).set({ clubId: club.id });
+    log('[Init] Competitions linked');
+
+    await db.update(authorizedInvitations).set({ clubId: club.id });
+    log('[Init] Invitations linked');
+
+    await db.update(coachingRates).set({ clubId: club.id });
+    log('[Init] Coaching rates linked');
+
+    // 4. Set up Stripe customer and subscription
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const stripePriceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
+
+    if (stripeSecretKey && stripePriceId) {
+      try {
+        const Stripe = (await import('stripe')).default;
+        const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });
+
+        const customer = await stripe.customers.create({
+          name: 'Hart Swimming Club',
+          metadata: { clubId: club.id },
+        });
+        log(`[Init] Stripe customer created: ${customer.id}`);
+
+        const subscription = await stripe.subscriptions.create({
+          customer: customer.id,
+          items: [{ price: stripePriceId, quantity: 13 }],
+        });
+        log(`[Init] Stripe subscription created: ${subscription.id}`);
+
+        await db.update(clubs).set({
+          stripeCustomerId: customer.id,
+          stripeSubscriptionId: subscription.id,
+        }).where(eq(clubs.id, club.id));
+
+        log('[Init] Stripe IDs saved to club record');
+      } catch (stripeErr) {
+        console.error('[Init] Stripe setup failed (non-fatal — apply manually in Stripe dashboard):', stripeErr);
+      }
+    } else {
+      console.warn('[Init] STRIPE_SECRET_KEY or STRIPE_SUBSCRIPTION_PRICE_ID not set — skipping Stripe setup');
+    }
+
+    log('[Init] Hart Swimming Club initialization complete');
+  } catch (err) {
+    console.error('[Init] Hart Swimming Club initialization failed:', err);
+  }
+}
+
 (async () => {
   // Ensure auth-related tables exist (idempotent schema migrations)
   await ensurePasswordResetTokensTable();
+
+  // One-time production initialization: create Hart Swimming Club and link all data
+  await initializeHartSwimmingClub();
 
   // Initialize Stripe schema and webhook before registering routes
   await initStripe();
