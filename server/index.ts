@@ -15,6 +15,15 @@ import { eq } from "drizzle-orm";
 
 const app = express();
 
+// Returns the correct Stripe secret key for the current environment.
+// In production (REPLIT_DEPLOYMENT=1) uses the live key; in dev uses the test key.
+function getStripeKeyForEnvironment(): string | undefined {
+  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+  return isProduction
+    ? process.env.STRIPE_SECRET_KEY
+    : (process.env.STRIPE_TEST_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY);
+}
+
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
@@ -218,7 +227,7 @@ async function initializeHartSwimmingClub() {
 
     // 4. Set up Stripe customer and subscription
     // Quantity = 2: only Josh Montgomery and Will Fuller have active user accounts
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const stripeSecretKey = getStripeKeyForEnvironment();
     const stripePriceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
 
     if (stripeSecretKey && stripePriceId) {
@@ -259,7 +268,7 @@ async function initializeHartSwimmingClub() {
 
 async function repairHartStripeSetup() {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const stripeSecretKey = getStripeKeyForEnvironment();
     if (!stripeSecretKey) return;
 
     const [club] = await db.select().from(clubs);
