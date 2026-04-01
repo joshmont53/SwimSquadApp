@@ -46,6 +46,11 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.
 
 [userenv.production]
 APP_URL = "https://www.hartsccoaches.co.uk/"
+STRIPE_PRODUCT_ID = "prod_UFuyHIzlUyDomm"
+STRIPE_SUBSCRIPTION_PRICE_ID = "price_1THP8MDumQCjE7aCt4M4jWMO"
 
 [userenv.shared]
+
+[userenv.development]
 STRIPE_PRODUCT_ID = "prod_UFGxJEbEgEpM7P"
+STRIPE_SUBSCRIPTION_PRICE_ID = "price_1TGmPvD28dJq0fFqF8LLozlx"
