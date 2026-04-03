@@ -1,0 +1,31 @@
+Hi team,
+
+Thanks very much for the review. This is my first app review submission so the insight is really valuable and I appreciate the areas raised.
+
+I have made a change so that users are not required to provide their date of birth to create an account. I have also changed this on the 'Coach' records to make this optional here as well.
+
+Here are the answers to the further questions:
+
+1. Who are the users that will use the paid content in the app?
+The app is built for swimming coaches at swimming clubs. The app is designed so that all coaches have their own individual account, but billing is charged to the club - not the individual. When the first coach signs up to the app, they will provide payment details on the clubs behalf, then charging is based on number of active users. All features within the app will be used by coaches.
+
+2. Where can users purchase the content that can be accessed in the app?
+This is not a goods business - the product they are paying for is the app. The app includes management features, analytics etc. They can't purchase this elsewhere.
+
+3. What specific types of previously purchased content can a user access in the app?
+I don't think I understand this question. The app is charged on a subscription basis, so whilst a user is active, they will have access to the app, and their user record will be considered for charging on a monthly basis. Charging to the club is based on how many active users there are on the specific invoice/payment date. The charging structure is tiered based on the number of users. The more users, the lower cost per user to the club.
+
+4. What paid content, subscriptions, or features are unlocked within the app that do not use In-App Purchase?
+Firstly, its important to note that the app is only accessible on a paid basis. Whilst anyone can download the app, an account is only created on a paid basis.
+When the first user of a club creates the first record, they will set up club paymnet details. Within the app, the first user is then able to send invitiations to other coaches (which is by design - we want the invititions and sign ups to be managed by the club). They then follow sign up link details and create an account. This user record is then considered for charging to the given club.
+
+5. Can users purchase physical goods or services together with digital content in your app? If so, please describe how the physical and digital content are connected and why you bundle them together in a single purchase.
+No - they are purely paying for the technology within the app. They do not purchase any goods or services.
+
+I hope these answers suffice. I'm really excited to get this app available on the app store, so look forward to working with you more to get this in a position of approval.
+
+Look forward to hearing from you shortly.
+
+Many thanks,
+
+Josh
