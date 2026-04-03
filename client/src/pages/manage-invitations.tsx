@@ -333,7 +333,7 @@ export function ManageInvitations({ onBack }: ManageInvitationsProps) {
                   <SelectValue placeholder="Select a coach" />
                 </SelectTrigger>
                 <SelectContent>
-                  {coaches.map((coach) => (
+                  {coaches.filter((coach) => !coach.userId).map((coach) => (
                     <SelectItem key={coach.id} value={coach.id}>
                       {coach.firstName} {coach.lastName} - {coach.level}
                     </SelectItem>
