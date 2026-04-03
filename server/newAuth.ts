@@ -342,7 +342,7 @@ export function setupNewAuth(app: Express) {
           firstName,
           lastName,
           email: email.toLowerCase(),
-          dob,
+          dob: dob || undefined,
           level: level || 'No Qualification',
           passwordHash,
         },

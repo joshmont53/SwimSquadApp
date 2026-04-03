@@ -140,7 +140,7 @@ export class WebhookHandlers {
           firstName: formData.firstName,
           lastName: formData.lastName,
           level: formData.level || 'No Qualification',
-          dob: formData.dob,
+          dob: formData.dob || undefined,
           recordStatus: 'active',
         }).returning();
 
