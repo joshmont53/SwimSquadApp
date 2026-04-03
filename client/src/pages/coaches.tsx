@@ -28,7 +28,7 @@ const coachFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   level: z.string().min(1, "Level is required"),
-  dob: z.string().min(1, "Date of birth is required"),
+  dob: z.string().optional(),
 });
 
 type CoachFormValues = z.infer<typeof coachFormSchema>;

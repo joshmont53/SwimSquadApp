@@ -265,7 +265,7 @@ export function setupNewAuth(app: Express) {
       const { clubName, clubColor, firstName, lastName, email, password, passwordConfirm, level, dob } = req.body;
 
       // Validate required fields
-      if (!clubName || !firstName || !lastName || !email || !password || !passwordConfirm || !dob) {
+      if (!clubName || !firstName || !lastName || !email || !password || !passwordConfirm) {
         return res.status(400).json({ message: 'Missing required fields' });
       }
 

@@ -76,7 +76,7 @@ export const coaches = pgTable("coaches", {
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   level: varchar("level").notNull(), // "Level 3" | "Level 2" | "Level 1" | "No qualification"
-  dob: date("dob").notNull(),
+  dob: date("dob"),
   recordStatus: varchar("record_status").notNull().default("active"), // "active" | "inactive"
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -863,7 +863,7 @@ export const clubRegistrationSchema = z.object({
   clubName: z.string().min(2, 'Club name must be at least 2 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
-  dob: z.string().min(1, 'Date of birth is required'),
+  dob: z.string().optional(),
   level: z.enum(["No Qualification", "Level 1", "Level 2", "Level 3"], {
     required_error: 'Qualification level is required',
   }),

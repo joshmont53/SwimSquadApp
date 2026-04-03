@@ -172,7 +172,7 @@ export function ManageCoaches({ onBack }: ManageCoachesProps) {
   });
 
   const handleAdd = () => {
-    if (!formData.firstName || !formData.lastName || !formData.dob) {
+    if (!formData.firstName || !formData.lastName) {
       toast({ title: 'Validation Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
@@ -196,7 +196,7 @@ export function ManageCoaches({ onBack }: ManageCoachesProps) {
 
   const handleSaveEdit = () => {
     if (!editingCoach) return;
-    if (!formData.firstName || !formData.lastName || !formData.dob) {
+    if (!formData.firstName || !formData.lastName) {
       toast({ title: 'Validation Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
@@ -362,7 +362,7 @@ export function ManageCoaches({ onBack }: ManageCoachesProps) {
               />
             </div>
             <div>
-              <Label htmlFor="dob">Date of Birth *</Label>
+              <Label htmlFor="dob">Date of Birth</Label>
               <Input
                 id="dob"
                 type="date"
@@ -424,7 +424,7 @@ export function ManageCoaches({ onBack }: ManageCoachesProps) {
               />
             </div>
             <div>
-              <Label htmlFor="edit-dob">Date of Birth *</Label>
+              <Label htmlFor="edit-dob">Date of Birth</Label>
               <Input
                 id="edit-dob"
                 type="date"

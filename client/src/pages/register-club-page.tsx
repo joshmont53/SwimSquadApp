@@ -30,7 +30,7 @@ const registerClubSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Please enter a valid email'),
-  dob: z.string().min(1, 'Date of birth is required'),
+  dob: z.string().optional(),
   level: z.string().min(1, 'Qualification level is required'),
   password: z.string()
     .min(12, 'Password must be at least 12 characters')
