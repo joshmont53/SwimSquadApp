@@ -82,25 +82,25 @@ export async function sendInvitationEmail(
   
   await sendEmail({
     to: email,
-    subject: 'You\'ve been invited to Hart SC Coaches Hub',
+    subject: 'You\'ve been invited to Swim Squad App',
     html: `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Hart SC Coaches Hub Invitation</title>
+          <title>Swim Squad App Invitation</title>
         </head>
         <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Hart SC Coaches Hub</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Swim Squad App</h1>
           </div>
           
           <div style="background-color: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
             <h2 style="color: #1e40af; margin-top: 0;">Welcome, ${coachName}!</h2>
             
             <p style="font-size: 16px; color: #4b5563;">
-              You've been invited to join the Hart Swimming Club coaching team platform. 
+              You've been invited to join Swim Squad App as a coach. 
               This platform helps you manage training sessions, track swimmer attendance, and collaborate with fellow coaches.
             </p>
             
@@ -184,7 +184,7 @@ export async function sendPasswordResetEmail(
         </head>
         <body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Hart SC Coaches Hub</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Swim Squad App</h1>
           </div>
 
           <div style="background-color: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
