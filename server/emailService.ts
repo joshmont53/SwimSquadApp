@@ -24,8 +24,7 @@ function getResendClient() {
 
   return {
     client: new Resend(apiKey),
-    // Use test domain in development, configured email in production
-    fromEmail: process.env.NODE_ENV === 'development' ? 'onboarding@resend.dev' : fromEmail
+    fromEmail,
   };
 }
 
