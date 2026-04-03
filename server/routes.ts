@@ -316,7 +316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/coaches", requireAuth, async (req, res) => {
     try {
-      const validatedData = insertCoachSchema.parse(req.body);
+      const body = { ...req.body, dob: req.body.dob || undefined };
+      const validatedData = insertCoachSchema.parse(body);
       const coach = await storage.createCoach(validatedData);
       res.json(coach);
     } catch (error: any) {
@@ -331,7 +332,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getCoachAnyStatus(req.params.id);
       if (!existing) return res.status(404).json({ message: "Coach not found" });
       if (existing.clubId !== req.user.clubId) return res.status(403).json({ message: "Forbidden" });
-      const validatedData = insertCoachSchema.partial().parse(req.body);
+      const body = { ...req.body, dob: req.body.dob || undefined };
+      const validatedData = insertCoachSchema.partial().parse(body);
       const coach = await storage.updateCoach(req.params.id, validatedData);
       res.json(coach);
     } catch (error: any) {
