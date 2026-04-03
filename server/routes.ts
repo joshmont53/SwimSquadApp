@@ -314,12 +314,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/coaches", requireAuth, async (req, res) => {
+  app.post("/api/coaches", requireAuth, async (req: any, res) => {
     try {
       const body = { ...req.body };
       if (!body.dob) delete body.dob;
       const validatedData = insertCoachSchema.parse(body);
-      const coach = await storage.createCoach(validatedData);
+      const coach = await storage.createCoach({ ...validatedData, clubId: req.user.clubId });
       res.json(coach);
     } catch (error: any) {
       console.error("Error creating coach:", error);
