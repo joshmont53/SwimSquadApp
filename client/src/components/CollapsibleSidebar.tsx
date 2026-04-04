@@ -29,6 +29,7 @@ interface CollapsibleSidebarProps {
   locations: Location[];
   competitionsCount: number;
   isAdmin: boolean;
+  isNativeApp: boolean;
 }
 
 export function CollapsibleSidebar({
@@ -47,6 +48,7 @@ export function CollapsibleSidebar({
   locations,
   competitionsCount,
   isAdmin,
+  isNativeApp,
 }: CollapsibleSidebarProps) {
   const [, setLocation] = useLocation();
   const isActive = (view: string) => managementView === view;
@@ -649,36 +651,38 @@ export function CollapsibleSidebar({
                   )}
                 </Tooltip>
 
-                {/* Billing */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "w-full py-2.5 relative transition-all duration-200",
-                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]"
-                      )}
-                      onClick={() => onNavigate('billing')}
-                      data-testid="button-nav-billing"
-                    >
-                      <CreditCard 
+                {/* Billing — hidden on native iOS/Android apps (Apple/Google Play compliance) */}
+                {!isNativeApp && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
                         className={cn(
-                          "h-4 w-4 transition-colors",
-                          collapsed ? "" : "mr-3 ml-2",
-                          "text-muted-foreground"
+                          "w-full py-2.5 relative transition-all duration-200",
+                          collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]"
                         )}
-                      />
-                      {!collapsed && (
-                        <span className="flex-1 text-left">Billing</span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  {collapsed && (
-                    <TooltipContent side="right">
-                      Billing
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                        onClick={() => onNavigate('billing')}
+                        data-testid="button-nav-billing"
+                      >
+                        <CreditCard 
+                          className={cn(
+                            "h-4 w-4 transition-colors",
+                            collapsed ? "" : "mr-3 ml-2",
+                            "text-muted-foreground"
+                          )}
+                        />
+                        {!collapsed && (
+                          <span className="flex-1 text-left">Billing</span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    {collapsed && (
+                      <TooltipContent side="right">
+                        Billing
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )}
               </div>
             </div>
           )}

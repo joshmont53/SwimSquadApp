@@ -51,6 +51,32 @@ The platform uses Stripe for club subscription billing. Key components:
 - **Schema**: `clubs` table has `stripe_customer_id`, `stripe_subscription_id`, `active_users` columns.
 - **`pending_registrations` table**: Stores Stripe checkout session ID + registration data before webhook confirmation.
 
+## Native App Platform Restrictions (Apple App Store / Google Play Compliance)
+
+To comply with Apple guideline 3.1.3(b), the following payment-related features are automatically hidden when the app is running inside the iOS or Android native WebView wrapper:
+
+- **Register Club link** on the login page (leads to Stripe checkout)
+- **`/register-club` route** — redirects to login page
+- **`/billing` route** — redirects to login page
+- **Billing sidebar item** in `CollapsibleSidebar`
+- **BillingView panel** inside the app's management area
+- **Cancel Club section** in Club Settings
+
+### Detection mechanism
+`client/src/hooks/use-native-app.ts` — the single source of truth. Returns `true` when:
+1. `window.isNativeApp === true` (injected by Swift via `evaluateJavaScript` in `webView(_:didFinish:)`)
+2. URL contains `?native=true` (browser-based testing convenience)
+
+Web users are completely unaffected — all features remain fully visible and functional.
+
+### Swift wrapper change required
+In `WebViewCoordinator.webView(_:didFinish:)`, add as the **first** `evaluateJavaScript` call:
+```swift
+webView.evaluateJavaScript("window.isNativeApp = true;") { _, _ in }
+```
+The updated Swift file is saved at `attached_assets/SwiftNativeWrapper_Updated.swift`.
+Note: The `appURL` in `ContentView` has been updated from the old `.replit.app` domain to `https://swimsquadapp.co.uk`.
+
 ## External Dependencies
 
 ### Third-Party Services

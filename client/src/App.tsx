@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useNativeApp } from "@/hooks/use-native-app";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Route, Switch, useLocation } from "wouter";
@@ -164,6 +165,7 @@ function applyClubColours(hex: string) {
 function ClubSettingsView({ onBack }: { onBack: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const isNativeApp = useNativeApp();
   const [colour, setColour] = useState(user?.clubColor || '#4B9A4A');
   const [saving, setSaving] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -253,8 +255,8 @@ function ClubSettingsView({ onBack }: { onBack: () => void }) {
         {saving ? 'Saving…' : 'Save colour'}
       </Button>
 
-      {/* Cancel Club — admin only, destructive section */}
-      {user?.role === 'admin' && (
+      {/* Cancel Club — admin only, web only (hidden on native apps for App Store compliance) */}
+      {user?.role === 'admin' && !isNativeApp && (
         <div className="border-t pt-6 space-y-3">
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-destructive">Cancel Club</h2>
@@ -932,6 +934,7 @@ function CalendarApp() {
     : 'SC';
 
   const isAdmin = user?.role === 'admin';
+  const isNativeApp = useNativeApp();
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -1487,6 +1490,7 @@ function CalendarApp() {
         locations={locations}
         competitionsCount={competitions.length}
         isAdmin={isAdmin}
+        isNativeApp={isNativeApp}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1631,7 +1635,7 @@ function CalendarApp() {
             />
           ) : managementView === 'clubSettings' ? (
             <ClubSettingsView onBack={handleBackToHome} />
-          ) : managementView === 'billing' && isAdmin ? (
+          ) : managementView === 'billing' && isAdmin && !isNativeApp ? (
             <BillingView onBack={handleBackToHome} />
           ) : managementView === 'home' ? (
             currentCoach ? (
@@ -1846,6 +1850,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const isNativeApp = useNativeApp();
+
   return (
     <Switch>
       {/* Longer paths MUST come first to avoid "/" prefix matching */}
@@ -1856,12 +1862,19 @@ function Router() {
       <Route path="/register/success" component={RegisterSuccessPage} />
       <Route path="/register/cancelled" component={RegisterCancelledPage} />
       <Route path="/register" component={RegistrationPage} />
-      <Route path="/register-club" component={RegisterClubPage} />
-      {/* Billing — admin-only dedicated route */}
+      {/* Register Club — hidden on native apps (Apple/Google Play 3.1.3(b) compliance) */}
+      <Route path="/register-club">
+        {isNativeApp ? <LoginPage /> : <RegisterClubPage />}
+      </Route>
+      {/* Billing — admin-only dedicated route; hidden on native apps */}
       <Route path="/billing">
-        <AdminRoute>
-          <BillingPage />
-        </AdminRoute>
+        {isNativeApp ? (
+          <LoginPage />
+        ) : (
+          <AdminRoute>
+            <BillingPage />
+          </AdminRoute>
+        )}
       </Route>
       <Route path="/app">
         <ProtectedRoute>
