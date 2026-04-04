@@ -56,8 +56,8 @@ The platform uses Stripe for club subscription billing. Key components:
 To comply with Apple guideline 3.1.3(b), the following payment-related features are automatically hidden when the app is running inside the iOS or Android native WebView wrapper:
 
 - **Register Club link** on the login page (leads to Stripe checkout)
-- **`/register-club` route** — redirects to login page
-- **`/billing` route** — redirects to login page
+- **`/register-club` route** — redirects native users to `/login`
+- **`/billing` route** — redirects native users to `/app`
 - **Billing sidebar item** in `CollapsibleSidebar`
 - **BillingView panel** inside the app's management area
 - **Cancel Club section** in Club Settings
