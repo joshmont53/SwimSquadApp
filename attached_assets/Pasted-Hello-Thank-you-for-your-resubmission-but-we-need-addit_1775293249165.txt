@@ -1,0 +1,54 @@
+Hello,
+
+Thank you for your resubmission, but we need additional information before we can continue our review.
+
+Please reply to this message in App Store Connect with detailed answers to the questions below.
+
+Review Environment
+Submission ID: d64fbaea-552f-4ff2-9edb-d2195d6571ca
+Review date: April 03, 2026
+Review Device: iPad Air 11-inch (M3)
+Version reviewed: 1.0
+
+Guideline 3.1.1 - Business - Payments - In-App Purchase
+
+Issue Description
+
+We noticed that the app includes or accesses paid digital content, services, or functionality by means other than In-App Purchase, which is not appropriate for the App Store. Specifically: 
+
+- The subscription can be purchased in the app using payment mechanisms other than In-App Purchase. 
+
+- The app accesses digital content purchased outside the app, such as subscription, but that content isn't available to purchase using In-App Purchase. 
+
+Next Steps
+
+The paid digital content, services, or subscriptions included in or accessed by the app must be available for purchase in the app using In-App Purchase. 
+
+Apps that offer paid digital services and content across multiple platforms may allow customers to access the content they acquired outside the app as long as it is also available for purchase using In-App Purchase. See guideline 3.1.3(b) for more information. 
+
+If you have any additional information to provide regarding the digital content and services in the app and how the guidelines apply to them, please reply to this message in App Store Connect and let us know. If there is information you'd like us to consider in our review of future submissions, please feel free to include it in the App Review Information section of App Store Connect. 
+
+Resources
+
+- See how to implement In-App Purchase with the StoreKit framework.
+- Review step-by-step instructions for creating In-App Purchases in App Store Connect. 
+- Learn more about business requirements in guideline 3.1.1.
+- Learn more about submitting In-App Purchases and subscriptions to App Review.
+Guideline 3.1.1 - Business - Payments - In-App Purchase
+
+Issue Description
+
+The app includes an account registration feature for businesses and organizations, which is considered access to external mechanisms for purchases or subscriptions to be used in the app.
+
+Next Steps
+
+Remove the account registration features for business and organizations.
+
+Resources
+
+Learn more about business requirements in guideline 3.1.1.
+Support
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Request an App Review Appointment at Meet with Apple to discuss your app's review. Appointments subject to availability during your local business hours on Tuesdays and Thursdays.
+- Provide feedback on this message and your review experience by completing a short survey.
