@@ -1,0 +1,194 @@
+import SwiftUI
+import WebKit
+import Combine
+
+class WebViewCoordinator: NSObject, WKNavigationDelegate {
+    var onPageLoaded: (() -> Void)?
+    private let appURL = "https://swimsquadapp.co.uk"
+    
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        print("WebView finished loading")
+        webView.evaluateJavaScript("window.isNativeApp = true;") { _, _ in }
+        
+        // Check for pending session after a delay to ensure React app is mounted
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            if let sessionId = AppDelegate.pendingSessionId {
+                print("didFinish: Found pending session: \(sessionId)")
+                self.openSession(webView, sessionId: sessionId)
+            }
+        }
+        
+        // Register device token
+        if let token = NotificationManager.shared.deviceToken {
+            let js = "if(window.registerDeviceToken){window.registerDeviceToken('\(token)');'success'}else{'not_ready'}"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                webView.evaluateJavaScript(js) { result, error in
+                    if let status = result as? String, status == "success" {
+                        print("Token registered after page load!")
+                    } else {
+                        print("Will retry via NotificationManager")
+                    }
+                }
+            }
+        }
+        
+        onPageLoaded?()
+    }
+    
+    private func openSession(_ webView: WKWebView, sessionId: String) {
+        let escaped = sessionId.replacingOccurrences(of: "'", with: "\\'")
+        let js = """
+        (function() {
+            if (window.openSession) {
+                window.openSession('\(escaped)');
+                return 'called';
+            } else {
+                return 'not_found';
+            }
+        })();
+        """
+        
+        webView.evaluateJavaScript(js) { result, error in
+            if let error = error {
+                print("didFinish JS error: \(error)")
+                self.navigateWithURLParam(webView, sessionId)
+                return
+            }
+            
+            let status = result as? String ?? "unknown"
+            print("didFinish openSession JS status: \(status)")
+            
+            if status == "called" {
+                // Only clear once we truly invoked the function
+                AppDelegate.pendingSessionId = nil
+                print("Session opened successfully from didFinish")
+            } else {
+                self.navigateWithURLParam(webView, sessionId)
+            }
+        }
+    }
+    
+    private func navigateWithURLParam(_ webView: WKWebView, _ sessionId: String) {
+        if let encoded = sessionId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+           let url = URL(string: "\(appURL)/app?sessionId=\(encoded)") {
+            print("didFinish: Navigating with URL param: \(url.absoluteString)")
+            webView.load(URLRequest(url: url))
+            AppDelegate.pendingSessionId = nil
+        } else {
+            print("didFinish: Failed to build URL with sessionId: \(sessionId)")
+        }
+    }
+}
+
+struct WebView: UIViewRepresentable {
+    let urlString: String
+    @Binding var webViewRef: WKWebView?
+
+    func makeCoordinator() -> WebViewCoordinator {
+        WebViewCoordinator()
+    }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.navigationDelegate = context.coordinator
+        NotificationManager.shared.webView = webView
+        DispatchQueue.main.async {
+            self.webViewRef = webView
+        }
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        guard let url = URL(string: urlString) else { return }
+        if webView.url == nil {
+            let request = URLRequest(url: url)
+            webView.load(request)
+        }
+    }
+}
+
+struct ContentView: View {
+    private let appURL = "https://hart-sc-coaches-hub.replit.app"
+    @State private var webView: WKWebView?
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        WebView(urlString: appURL, webViewRef: $webView)
+            .ignoresSafeArea()
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .active {
+                    // Delay check to ensure didReceive has time to set pendingSessionId
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        checkForPendingSession()
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSession"))) { notification in
+                if let sessionId = notification.userInfo?["sessionId"] as? String {
+                    print("Received OpenSession notification for: \(sessionId)")
+                    openSession(sessionId)
+                }
+            }
+    }
+    
+    private func checkForPendingSession() {
+        if let sessionId = AppDelegate.pendingSessionId {
+            print("scenePhase: Found pending session: \(sessionId)")
+            openSession(sessionId)
+        }
+    }
+    
+    private func openSession(_ sessionId: String) {
+        guard let wv = webView else {
+            print("WebView not available yet - keeping pendingSessionId")
+            AppDelegate.pendingSessionId = sessionId
+            return
+        }
+        
+        let escaped = sessionId.replacingOccurrences(of: "'", with: "\\'")
+        let js = """
+        (function() {
+            if (window.openSession) {
+                window.openSession('\(escaped)');
+                return 'called';
+            } else {
+                return 'not_found';
+            }
+        })();
+        """
+        
+        wv.evaluateJavaScript(js) { result, error in
+            if let error = error {
+                print("ContentView JS error: \(error)")
+                self.navigateWithURLParam(wv, sessionId)
+                return
+            }
+            
+            let status = result as? String ?? "unknown"
+            print("ContentView openSession JS status: \(status)")
+            
+            if status == "called" {
+                // Only clear once we truly invoked the function
+                AppDelegate.pendingSessionId = nil
+                print("Session opened successfully from ContentView")
+            } else {
+                self.navigateWithURLParam(wv, sessionId)
+            }
+        }
+    }
+    
+    private func navigateWithURLParam(_ wv: WKWebView, _ sessionId: String) {
+        if let encoded = sessionId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+           let url = URL(string: "\(appURL)/app?sessionId=\(encoded)") {
+            print("ContentView: Navigating with URL param: \(url.absoluteString)")
+            wv.load(URLRequest(url: url))
+            AppDelegate.pendingSessionId = nil
+        } else {
+            print("ContentView: Failed to build URL with sessionId: \(sessionId)")
+        }
+    }
+}
+
+#Preview {
+    ContentView()
+}
