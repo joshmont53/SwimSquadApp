@@ -1322,22 +1322,25 @@ function CalendarApp() {
                   <span className="flex-1 text-left">Club Settings</span>
                 </Button>
 
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]"
-                  )}
-                  onClick={() => { setManagementView('billing'); setSidebarOpen(false); }}
-                  data-testid="button-billing-mobile"
-                >
-                  <CreditCard 
+                {/* Billing — hidden on native iOS/Android apps (Apple/Google Play compliance) */}
+                {!isNativeApp && (
+                  <Button
+                    variant="ghost"
                     className={cn(
-                      "h-4 w-4 mr-3 ml-2 transition-colors",
-                      "text-muted-foreground"
+                      "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]"
                     )}
-                  />
-                  <span className="flex-1 text-left">Billing</span>
-                </Button>
+                    onClick={() => { setManagementView('billing'); setSidebarOpen(false); }}
+                    data-testid="button-billing-mobile"
+                  >
+                    <CreditCard 
+                      className={cn(
+                        "h-4 w-4 mr-3 ml-2 transition-colors",
+                        "text-muted-foreground"
+                      )}
+                    />
+                    <span className="flex-1 text-left">Billing</span>
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -1849,6 +1852,16 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Immediately navigates to `to` and renders nothing.
+ * Used to redirect native-app users away from payment routes.
+ */
+function NativeAppRedirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation(to, { replace: true }); }, [to, setLocation]);
+  return null;
+}
+
 function Router() {
   const isNativeApp = useNativeApp();
 
@@ -1864,12 +1877,14 @@ function Router() {
       <Route path="/register" component={RegistrationPage} />
       {/* Register Club — hidden on native apps (Apple/Google Play 3.1.3(b) compliance) */}
       <Route path="/register-club">
-        {isNativeApp ? <LoginPage /> : <RegisterClubPage />}
+        {isNativeApp
+          ? <NativeAppRedirect to="/login" />
+          : <RegisterClubPage />}
       </Route>
       {/* Billing — admin-only dedicated route; hidden on native apps */}
       <Route path="/billing">
         {isNativeApp ? (
-          <LoginPage />
+          <NativeAppRedirect to="/app" />
         ) : (
           <AdminRoute>
             <BillingPage />
