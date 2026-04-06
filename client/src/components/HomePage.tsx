@@ -176,11 +176,12 @@ export function HomePage({
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     
-    return sessions.filter(session => 
-      isWithinInterval(new Date(session.date), { start: weekStart, end: weekEnd }) &&
-      session.squadId === distanceSquadFilter
-    );
-  }, [sessions, distanceSquadFilter]);
+    return sessions.filter(session => {
+      const squadIds = sessionSquadMap[session.id] || [session.squadId];
+      return isWithinInterval(new Date(session.date), { start: weekStart, end: weekEnd }) &&
+        squadIds.includes(distanceSquadFilter);
+    });
+  }, [sessions, distanceSquadFilter, sessionSquadMap]);
 
   const thisWeekSwimmerStats = useMemo(() => {
     const weekSessions = thisWeekSessionsForDistance;
