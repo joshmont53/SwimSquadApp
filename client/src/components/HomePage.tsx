@@ -176,11 +176,11 @@ export function HomePage({
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     
-    return coachSessions.filter(session => 
+    return sessions.filter(session => 
       isWithinInterval(new Date(session.date), { start: weekStart, end: weekEnd }) &&
       session.squadId === distanceSquadFilter
     );
-  }, [coachSessions, distanceSquadFilter]);
+  }, [sessions, distanceSquadFilter]);
 
   const thisWeekSwimmerStats = useMemo(() => {
     const weekSessions = thisWeekSessionsForDistance;
