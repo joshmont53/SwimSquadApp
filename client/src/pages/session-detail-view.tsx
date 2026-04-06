@@ -301,8 +301,6 @@ export function SessionDetail({
       });
     },
     onSuccess: () => {
-      // Drill detection completes as part of this PUT request on the backend
-      setIsCalculatingDrills(false);
       queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/sessions', sessionId] });
       setIsEditingSession(false);
@@ -372,6 +370,24 @@ export function SessionDetail({
         description: error.message || 'Failed to calculate distances. You can try saving again.',
         variant: 'destructive',
       });
+    },
+  });
+
+  // Step 3: Detect drills in background (separate AI call, independent of distances)
+  const detectDrillsMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const plainText = stripHtmlTags(content);
+      return await apiRequest('POST', `/api/sessions/${sessionId}/detect-drills`, {
+        sessionContent: plainText,
+      });
+    },
+    onSuccess: () => {
+      setIsCalculatingDrills(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sessions', sessionId] });
+    },
+    onError: () => {
+      setIsCalculatingDrills(false);
     },
   });
 
@@ -552,8 +568,11 @@ export function SessionDetail({
     // Step 1: Save content immediately (user returns to view mode instantly)
     saveContentMutation.mutate(sessionContent);
     
-    // Step 2: Trigger background calculations (runs while user can continue working)
+    // Step 2: Calculate distances in background (separate AI call)
     calculateDistancesMutation.mutate(sessionContent);
+
+    // Step 3: Detect drills in background (separate AI call, runs concurrently)
+    detectDrillsMutation.mutate(sessionContent);
   };
 
   const handleOpenTemplateDialog = () => {

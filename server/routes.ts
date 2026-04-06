@@ -841,37 +841,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createSessionSquad({ sessionId: session.id, squadId });
       }
 
-      // Run drill detection if session content exists
-      if (session.sessionContent && session.sessionContent.trim()) {
-        try {
-          // Get all active drills for detection
-          const allDrills = await storage.getDrills(req.user.clubId);
-          const drillReferences: DrillReference[] = allDrills.map(drill => ({
-            id: drill.id,
-            drillName: drill.drillName,
-            strokeType: drill.strokeType,
-            drillDescription: drill.drillDescription,
-          }));
-
-          // Detect drills in session content
-          const detectedDrillIds = await detectDrillsInSession(
-            session.sessionContent,
-            drillReferences
-          );
-
-          // Update session with detected drill IDs
-          if (detectedDrillIds.length > 0) {
-            session = await storage.updateSession(session.id, {
-              detectedDrillIds,
-            });
-            console.log(`[Drill Detection] Found ${detectedDrillIds.length} drills in session ${session.id}`);
-          }
-        } catch (drillError) {
-          // Non-fatal: log error but still return session
-          console.error('[Drill Detection] Error detecting drills:', drillError);
-        }
-      }
-
       res.json(session);
     } catch (error: any) {
       console.error("Error creating session:", error);
@@ -989,35 +958,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateSessionSquads(session.id, squadIds);
       }
 
-      // Re-run drill detection if session content was updated
-      if (validatedData.sessionContent !== undefined && session.sessionContent && session.sessionContent.trim()) {
-        try {
-          // Get all active drills for detection
-          const allDrills = await storage.getDrills(req.user.clubId);
-          const drillReferences: DrillReference[] = allDrills.map(drill => ({
-            id: drill.id,
-            drillName: drill.drillName,
-            strokeType: drill.strokeType,
-            drillDescription: drill.drillDescription,
-          }));
-
-          // Detect drills in updated session content
-          const detectedDrillIds = await detectDrillsInSession(
-            session.sessionContent,
-            drillReferences
-          );
-
-          // Update session with detected drill IDs (may be empty array if no drills found)
-          session = await storage.updateSession(session.id, {
-            detectedDrillIds,
-          });
-          console.log(`[Drill Detection] Re-detected drills: found ${detectedDrillIds.length} drills in session ${session.id}`);
-        } catch (drillError) {
-          // Non-fatal: log error but still return session
-          console.error('[Drill Detection] Error re-detecting drills:', drillError);
-        }
-      }
-
       res.json(session);
     } catch (error: any) {
       console.error("Error updating session:", error);
@@ -1025,6 +965,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: error.message });
       }
       res.status(400).json({ message: error.message || "Failed to update session" });
+    }
+  });
+
+  // Background drill detection endpoint - called by frontend independently of the save
+  app.post("/api/sessions/:id/detect-drills", requireAuth, async (req: any, res) => {
+    try {
+      const { sessionContent } = req.body;
+
+      if (!sessionContent || !sessionContent.trim()) {
+        return res.json({ detectedDrillIds: [] });
+      }
+
+      const allDrills = await storage.getDrills(req.user.clubId);
+      const drillReferences: DrillReference[] = allDrills.map(drill => ({
+        id: drill.id,
+        drillName: drill.drillName,
+        strokeType: drill.strokeType,
+        drillDescription: drill.drillDescription,
+      }));
+
+      const detectedDrillIds = await detectDrillsInSession(sessionContent, drillReferences);
+
+      await storage.updateSession(req.params.id, { detectedDrillIds });
+      console.log(`[Drill Detection] Found ${detectedDrillIds.length} drills in session ${req.params.id}`);
+
+      res.json({ detectedDrillIds });
+    } catch (error: any) {
+      console.error('[Drill Detection] Error detecting drills:', error);
+      res.status(500).json({ message: 'Failed to detect drills' });
     }
   });
 
