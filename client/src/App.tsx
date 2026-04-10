@@ -16,6 +16,7 @@ import RegisterSuccessPage from "@/pages/register-success-page";
 import RegisterCancelledPage from "@/pages/register-cancelled-page";
 import ForgotPasswordPage from "@/pages/forgot-password-page";
 import ResetPasswordPage from "@/pages/reset-password-page";
+import VerifyEmailPage from "@/pages/verify-email-page";
 import { MonthCalendarView } from '@/pages/month-calendar-view';
 import { DayCalendarView } from '@/pages/day-calendar-view';
 import { DayListView } from '@/pages/day-list-view';
@@ -1871,6 +1872,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/verify-email" component={VerifyEmailPage} />
       {/* /register/success and /register/cancelled MUST come before /register to avoid prefix-match */}
       <Route path="/register/success" component={RegisterSuccessPage} />
       <Route path="/register/cancelled" component={RegisterCancelledPage} />
