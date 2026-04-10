@@ -53,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           namespace: 'android_app',
           package_name: 'uk.co.swimsquadapp',
           sha256_cert_fingerprints: [
-            'PLACEHOLDER_REPLACE_WITH_YOUR_ANDROID_KEYSTORE_SHA256_FINGERPRINT',
+            'BE:FD:5C:E1:4C:80:82:F8:39:2E:6E:04:39:3C:58:8D:19:1E:40:11:48:42:44:AA:6B:C7:A5:1F:EF:B8:3D:D9',
           ],
         },
       },
