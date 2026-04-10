@@ -39,6 +39,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Privacy policy routes (public, no auth required)
   registerPrivacyRoutes(app);
 
+  // Android TWA (Trusted Web Activity) domain verification
+  // This file proves to Google Play that this server owns the domain.
+  // It has no effect on iOS, Apple, or any existing functionality.
+  // The sha256_cert_fingerprints value must be updated with the actual
+  // fingerprint from your Android keystore once the Android app is created.
+  app.get('/.well-known/assetlinks.json', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.json([
+      {
+        relation: ['delegate_permission/common.handle_all_urls'],
+        target: {
+          namespace: 'android_app',
+          package_name: 'uk.co.swimsquadapp',
+          sha256_cert_fingerprints: [
+            'PLACEHOLDER_REPLACE_WITH_YOUR_ANDROID_KEYSTORE_SHA256_FINGERPRINT',
+          ],
+        },
+      },
+    ]);
+  });
+
   // Email/password authentication
   setupNewAuth(app);
 
