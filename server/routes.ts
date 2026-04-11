@@ -54,6 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           package_name: 'com.swimsquadapp',
           sha256_cert_fingerprints: [
             'BE:FD:5C:E1:4C:80:82:F8:39:2E:6E:04:39:3C:58:8D:19:1E:40:11:48:42:44:AA:6B:C7:A5:1F:EF:B8:3D:D9',
+            '97:B6:EE:5A:56:5A:B3:52:14:3C:A5:60:A5:E5:23:18:AB:A0:00:C3:41:7C:64:39:D4:22:85:D4:0D:D4:4E:EE',
           ],
         },
       },
