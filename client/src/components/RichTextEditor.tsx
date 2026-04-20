@@ -31,6 +31,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Enter session c
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      document.execCommand('insertText', false, '\t');
+    }
+  };
+
   const executeCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
@@ -189,6 +196,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Enter session c
           ref={editorRef}
           contentEditable
           onInput={handleInput}
+          onKeyDown={handleKeyDown}
           className="min-h-[400px] p-4 outline-none overflow-auto whitespace-pre-wrap font-sans text-sm focus:bg-muted/30 transition-colors"
           style={{ wordBreak: 'break-word' }}
           suppressContentEditableWarning
