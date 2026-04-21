@@ -156,6 +156,61 @@ export function DayCalendarView({
     return dayCompetitions.filter((c) => c.locationId === locationId);
   };
 
+  const computeColumnLayout = (sessions: Session[]): Map<string, { column: number; totalColumns: number }> => {
+    const sorted = [...sessions].sort((a, b) => {
+      if (a.startTime !== b.startTime) return a.startTime.localeCompare(b.startTime);
+      return a.id.localeCompare(b.id);
+    });
+
+    const columnAssignments = new Map<string, number>();
+    const columnEndTimes: number[] = [];
+
+    for (const session of sorted) {
+      const startMinutes = timeToMinutes(session.startTime);
+      const endMinutes = timeToMinutes(session.endTime);
+
+      let assignedColumn = -1;
+      for (let col = 0; col < columnEndTimes.length; col++) {
+        if (columnEndTimes[col] <= startMinutes) {
+          assignedColumn = col;
+          columnEndTimes[col] = endMinutes;
+          break;
+        }
+      }
+
+      if (assignedColumn === -1) {
+        assignedColumn = columnEndTimes.length;
+        columnEndTimes.push(endMinutes);
+      }
+
+      columnAssignments.set(session.id, assignedColumn);
+    }
+
+    const result = new Map<string, { column: number; totalColumns: number }>();
+
+    for (const session of sessions) {
+      const sessionStart = timeToMinutes(session.startTime);
+      const sessionEnd = timeToMinutes(session.endTime);
+
+      let maxColumn = columnAssignments.get(session.id)!;
+      for (const other of sessions) {
+        if (other.id === session.id) continue;
+        const otherStart = timeToMinutes(other.startTime);
+        const otherEnd = timeToMinutes(other.endTime);
+        if (sessionStart < otherEnd && otherStart < sessionEnd) {
+          maxColumn = Math.max(maxColumn, columnAssignments.get(other.id)!);
+        }
+      }
+
+      result.set(session.id, {
+        column: columnAssignments.get(session.id)!,
+        totalColumns: maxColumn + 1,
+      });
+    }
+
+    return result;
+  };
+
   return (
     <div className="flex flex-col h-full" data-testid="view-day-calendar">
       <div className="flex items-center gap-4 mb-6 px-2">
@@ -188,6 +243,8 @@ export function DayCalendarView({
                 const locationSessions = getSessionsForLocation(location.id);
                 const locationCompetitions = getCompetitionsForLocation(location.id);
                 if (locationSessions.length === 0 && locationCompetitions.length === 0) return null;
+
+                const columnLayout = computeColumnLayout(locationSessions);
 
                 return (
                   <div key={location.id} className="flex-1 min-w-48">
@@ -255,30 +312,10 @@ export function DayCalendarView({
                             : { backgroundColor: primarySquad.color };
 
                           const { top, height } = getSessionPosition(session);
-                          
-                          const sessionStart = timeToMinutes(session.startTime);
-                          const sessionEnd = timeToMinutes(session.endTime);
-                          
-                          const overlappingSessions = locationSessions.filter((s) => {
-                            if (s.id === session.id) return true;
-                            
-                            const otherStart = timeToMinutes(s.startTime);
-                            const otherEnd = timeToMinutes(s.endTime);
-                            
-                            return sessionStart < otherEnd && otherStart < sessionEnd;
-                          });
-                          
-                          const sortedOverlapping = overlappingSessions.sort((a, b) => {
-                            if (a.startTime !== b.startTime) {
-                              return a.startTime.localeCompare(b.startTime);
-                            }
-                            return a.id.localeCompare(b.id);
-                          });
-                          
-                          const sessionIndex = sortedOverlapping.findIndex(s => s.id === session.id);
-                          const totalConcurrent = sortedOverlapping.length;
-                          const width = `${100 / totalConcurrent}%`;
-                          const left = `${(sessionIndex / totalConcurrent) * 100}%`;
+
+                          const { column, totalColumns } = columnLayout.get(session.id) ?? { column: 0, totalColumns: 1 };
+                          const width = `${100 / totalColumns}%`;
+                          const left = `${(column / totalColumns) * 100}%`;
 
                           return (
                             <div
