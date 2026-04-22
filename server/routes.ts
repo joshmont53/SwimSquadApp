@@ -1418,38 +1418,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/attendance/:sessionId", requireAuth, async (req, res) => {
-    try {
-      const { attendance: attendanceData } = req.body;
-      
-      // Delete existing attendance for this session
-      await storage.deleteAttendanceBySession(req.params.sessionId);
-      
-      // Create new attendance records
-      const createdRecords = [];
-      for (const record of attendanceData) {
-        // Validate that notes is null when status is Absent
-        const notes = record.status === "Absent" ? null : (record.notes || null);
-        
-        const validatedData = insertAttendanceSchema.parse({
-          sessionId: req.params.sessionId,
-          swimmerId: record.swimmerId,
-          status: record.status,
-          notes: notes,
-        });
-        const attendance = await storage.createAttendance(validatedData);
-        createdRecords.push(attendance);
-      }
-      
-      res.json(createdRecords);
-    } catch (error: any) {
-      console.error("Error saving attendance:", error);
-      res.status(400).json({ message: error.message || "Failed to save attendance" });
-    }
-  });
-
   // ============================================================================
-  // Attendance AI chat endpoint
+  // Attendance AI chat endpoint — must be registered BEFORE /:sessionId
   // ============================================================================
   app.post("/api/attendance/ai-chat", requireAuth, async (req: any, res) => {
     try {
@@ -1574,6 +1544,36 @@ Note on definitions:
     } catch (error: any) {
       console.error('Error in attendance AI chat:', error);
       res.status(500).json({ message: error.message || 'Failed to process your question' });
+    }
+  });
+
+  app.post("/api/attendance/:sessionId", requireAuth, async (req, res) => {
+    try {
+      const { attendance: attendanceData } = req.body;
+      
+      // Delete existing attendance for this session
+      await storage.deleteAttendanceBySession(req.params.sessionId);
+      
+      // Create new attendance records
+      const createdRecords = [];
+      for (const record of attendanceData) {
+        // Validate that notes is null when status is Absent
+        const notes = record.status === "Absent" ? null : (record.notes || null);
+        
+        const validatedData = insertAttendanceSchema.parse({
+          sessionId: req.params.sessionId,
+          swimmerId: record.swimmerId,
+          status: record.status,
+          notes: notes,
+        });
+        const attendance = await storage.createAttendance(validatedData);
+        createdRecords.push(attendance);
+      }
+      
+      res.json(createdRecords);
+    } catch (error: any) {
+      console.error("Error saving attendance:", error);
+      res.status(400).json({ message: error.message || "Failed to save attendance" });
     }
   });
 
