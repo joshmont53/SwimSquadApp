@@ -319,7 +319,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold truncate" data-testid="text-swimmer-name">
+          <h1 className="text-2xl font-normal truncate" data-testid="text-swimmer-name">
             {swimmer.firstName} {swimmer.lastName}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -490,8 +490,8 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
               Attendance by Day of Week
             </CardTitle>
             <Select
@@ -543,13 +543,10 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       {/* Attendance Trend — Last 6 Months */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <BarChart3 className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
             Attendance Trend (Last 6 Months)
           </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Bars = squad average attendance &nbsp;·&nbsp; Line = {swimmer.firstName}'s attendance
-          </p>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={220}>

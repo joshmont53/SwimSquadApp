@@ -605,7 +605,7 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base truncate font-semibold" data-testid="text-attendance-title">
+          <h1 className="text-base truncate font-normal" data-testid="text-attendance-title">
             Attendance Analysis
           </h1>
         </div>
