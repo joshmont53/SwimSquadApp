@@ -897,7 +897,6 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
               <p className="text-xs text-muted-foreground">
                 Ask me about your club's attendance statistics — I can return figures, tables and text summaries.
                 I'm unable to generate charts, but I can give you the exact numbers behind them.
-                All responses are based solely on your club's data.
               </p>
             </div>
           </CardHeader>
