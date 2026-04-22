@@ -1,12 +1,44 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { TrendingUp, Calendar, Clock, Waves, BarChart3, ChevronLeft } from 'lucide-react';
 import { Button } from './ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import type { Swimmer, Session, Squad } from '@/lib/typeAdapters';
 import type { Attendance } from '@shared/schema';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, getDay, startOfYear, isPast } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, getDay, startOfYear, subMonths } from 'date-fns';
+import {
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+
+type TimePeriod = 'this_week' | 'this_month' | 'last_month' | 'last_3_months' | 'year_to_date' | 'all_time';
+
+const periodLabels: Record<TimePeriod, string> = {
+  this_week: 'This Week',
+  this_month: 'This Month',
+  last_month: 'Last Month',
+  last_3_months: 'Last 3 Months',
+  year_to_date: 'Year to Date',
+  all_time: 'All Time',
+};
+
+const TIME_PERIOD_OPTIONS: TimePeriod[] = [
+  'this_week',
+  'this_month',
+  'last_month',
+  'last_3_months',
+  'year_to_date',
+  'all_time',
+];
 
 interface SwimmerProfilePageProps {
   swimmer: Swimmer;
@@ -16,62 +48,72 @@ interface SwimmerProfilePageProps {
   onBack: () => void;
 }
 
+function getDateRange(period: TimePeriod): { start: Date; end: Date } {
+  const now = new Date();
+  switch (period) {
+    case 'this_week':
+      return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+    case 'this_month':
+      return { start: startOfMonth(now), end: endOfMonth(now) };
+    case 'last_month': {
+      const lastMonth = subMonths(now, 1);
+      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
+    }
+    case 'last_3_months':
+      return { start: subMonths(now, 3), end: now };
+    case 'year_to_date':
+      return { start: new Date(now.getFullYear(), 0, 1), end: now };
+    case 'all_time':
+    default:
+      return { start: new Date(2020, 0, 1), end: now };
+  }
+}
+
+const isPresent = (status: string | null | undefined) =>
+  status === 'Present' || status === 'First Half Only' || status === 'Second Half Only';
+
 export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBack }: SwimmerProfilePageProps) {
   const squad = squads.find(s => s.id === swimmer.squadId);
-  
+
+  const [punctualityPeriod, setPunctualityPeriod] = useState<TimePeriod>('all_time');
+  const [dayOfWeekPeriod, setDayOfWeekPeriod] = useState<TimePeriod>('all_time');
+
   // Get swimmer's attendance records
   const swimmerAttendance = useMemo(() => {
     return attendance.filter(a => a.swimmerId === swimmer.id);
   }, [attendance, swimmer.id]);
-  
-  // Calculate attendance stats using real data
+
+  // Helper: get session date from attendance record
+  const getSessionDate = (a: Attendance): Date | null => {
+    const session = sessions.find(s => s.id === a.sessionId);
+    return session ? new Date(session.date) : null;
+  };
+
+  // ─── Quick Stats (all-time / this-week / this-month) ─────────────────────
   const attendanceStats = useMemo(() => {
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
-    
-    // Helper to check if swimmer attended (status is "Present" - case insensitive)
-    const isAttended = (a: Attendance) => a.status?.toLowerCase() === 'present';
-    
-    // Helper to check lateness from notes field
-    const isLate = (a: Attendance) => a.notes?.toLowerCase().includes('late') && !a.notes?.toLowerCase().includes('very late');
-    const isVeryLate = (a: Attendance) => a.notes?.toLowerCase().includes('very late');
-    const isOnTime = (a: Attendance) => isAttended(a) && !isLate(a) && !isVeryLate(a);
-    
-    // Helper to get session date for an attendance record
-    const getSessionDate = (a: Attendance) => {
-      const session = sessions.find(s => s.id === a.sessionId);
-      return session ? new Date(session.date) : null;
-    };
-    
-    // Total = all attendance records for this swimmer (sessions where coach recorded attendance)
+
     const totalSessions = swimmerAttendance.length;
-    const attended = swimmerAttendance.filter(isAttended).length;
-    
-    // Punctuality stats (based on notes field)
-    const lateCount = swimmerAttendance.filter(a => isAttended(a) && isLate(a)).length;
-    const veryLateCount = swimmerAttendance.filter(a => isAttended(a) && isVeryLate(a)).length;
-    const onTimeCount = swimmerAttendance.filter(isOnTime).length;
-    const onTimePercentage = attended > 0 ? Math.round((onTimeCount / attended) * 100) : 100;
-    
-    // This week - filter attendance records where session date is within this week
+    const attended = swimmerAttendance.filter(a => isPresent(a.status)).length;
+
     const weekAttendance = swimmerAttendance.filter(a => {
-      const sessionDate = getSessionDate(a);
-      return sessionDate && isWithinInterval(sessionDate, { start: weekStart, end: weekEnd });
+      const d = getSessionDate(a);
+      return d && isWithinInterval(d, { start: weekStart, end: weekEnd });
     });
     const weekTotal = weekAttendance.length;
-    const weekAttended = weekAttendance.filter(isAttended).length;
-    
-    // This month - filter attendance records where session date is within this month
+    const weekAttended = weekAttendance.filter(a => isPresent(a.status)).length;
+
     const monthAttendance = swimmerAttendance.filter(a => {
-      const sessionDate = getSessionDate(a);
-      return sessionDate && isWithinInterval(sessionDate, { start: monthStart, end: monthEnd });
+      const d = getSessionDate(a);
+      return d && isWithinInterval(d, { start: monthStart, end: monthEnd });
     });
     const monthTotal = monthAttendance.length;
-    const monthAttended = monthAttendance.filter(isAttended).length;
-    
+    const monthAttended = monthAttendance.filter(a => isPresent(a.status)).length;
+
     return {
       overall: totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : 0,
       thisWeek: weekTotal > 0 ? Math.round((weekAttended / weekTotal) * 100) : 0,
@@ -81,75 +123,133 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
       monthSessions: monthTotal,
       monthAttended,
       attended,
-      onTimeCount,
-      lateCount,
-      veryLateCount,
-      onTimePercentage
     };
   }, [swimmer, sessions, swimmerAttendance]);
-  
-  // Attendance by day of week
-  const attendanceByDay = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // ─── Punctuality Stats (filtered by period) ───────────────────────────────
+  const punctualityStats = useMemo(() => {
+    const { start, end } = getDateRange(punctualityPeriod);
     const now = new Date();
-    
+
+    const filtered = swimmerAttendance.filter(a => {
+      const d = getSessionDate(a);
+      return d && isWithinInterval(d, { start, end }) && d <= now && isPresent(a.status);
+    });
+
+    const attended = filtered.length;
+    const lateCount = filtered.filter(a => a.notes?.toLowerCase() === 'late').length;
+    const veryLateCount = filtered.filter(a => a.notes?.toLowerCase() === 'very late').length;
+    const onTimeCount = attended - lateCount - veryLateCount;
+    const onTimePercentage = attended > 0 ? Math.round((onTimeCount / attended) * 100) : 100;
+
+    return { attended, onTimeCount, lateCount, veryLateCount, onTimePercentage };
+  }, [swimmer, sessions, swimmerAttendance, punctualityPeriod]);
+
+  // ─── Attendance by Day of Week (filtered by period, hide 0-session days) ──
+  const attendanceByDay = useMemo(() => {
+    const { start, end } = getDateRange(dayOfWeekPeriod);
+    const now = new Date();
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
     const dayStats = days.map((day, index) => {
-      const dayIndex = index === 6 ? 0 : index + 1; // Adjust for getDay (0 = Sunday)
-      
-      // Filter attendance records for this day of week
+      const dayIndex = index === 6 ? 0 : index + 1; // Mon=1 … Sun=0
+
       const dayAttendance = swimmerAttendance.filter(a => {
         const session = sessions.find(s => s.id === a.sessionId);
-        return session && getDay(new Date(session.date)) === dayIndex;
+        if (!session) return false;
+        const d = new Date(session.date);
+        return isWithinInterval(d, { start, end }) && d <= now && getDay(d) === dayIndex;
       });
-      
-      // Count attended (status = "Present")
-      const dayAttended = dayAttendance.filter(a => 
-        a.status?.toLowerCase() === 'present'
-      ).length;
-      
+
       const total = dayAttendance.length;
-      const percentage = total > 0 ? Math.round((dayAttended / total) * 100) : 0;
-      
-      return { day, percentage, total };
+      const attended = dayAttendance.filter(a => isPresent(a.status)).length;
+      const percentage = total > 0 ? Math.round((attended / total) * 100) : 0;
+
+      return { day, percentage, total, attended };
     });
-    
-    return dayStats;
-  }, [swimmer, sessions, swimmerAttendance]);
-  
-  // Attendance by month (last 6 months)
+
+    // Hide days with no sessions in the selected period
+    return dayStats.filter(s => s.total > 0);
+  }, [swimmer, sessions, swimmerAttendance, dayOfWeekPeriod]);
+
+  // ─── Attendance Trend — last 6 months (swimmer line + squad avg bars) ─────
   const attendanceByMonth = useMemo(() => {
-    const months = [];
     const now = new Date();
-    
+
+    // All squad swimmers that appear in any attendance record
+    const squadSwimmerIds = Array.from(
+      new Set(
+        attendance
+          .filter(a => {
+            const session = sessions.find(s => s.id === a.sessionId);
+            return session && session.squadId === swimmer.squadId;
+          })
+          .map(a => a.swimmerId)
+      )
+    );
+
+    const months = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthStartDate = startOfMonth(date);
-      const monthEndDate = endOfMonth(date);
-      
-      // Filter attendance records for this month
-      const monthAttendance = swimmerAttendance.filter(a => {
+      const monthStart = startOfMonth(date);
+      const monthEnd = endOfMonth(date);
+
+      const monthSessions = sessions.filter(s =>
+        s.squadId === swimmer.squadId &&
+        isWithinInterval(new Date(s.date), { start: monthStart, end: monthEnd }) &&
+        new Date(s.date) <= now
+      );
+
+      // Swimmer's own attendance %
+      const swimmerMonthAttendance = attendance.filter(a => {
         const session = sessions.find(s => s.id === a.sessionId);
-        return session && isWithinInterval(new Date(session.date), { start: monthStartDate, end: monthEndDate });
+        return (
+          a.swimmerId === swimmer.id &&
+          session &&
+          session.squadId === swimmer.squadId &&
+          isWithinInterval(new Date(session.date), { start: monthStart, end: monthEnd }) &&
+          new Date(session.date) <= now
+        );
       });
-      
-      const monthAttended = monthAttendance.filter(a => 
-        a.status?.toLowerCase() === 'present'
-      ).length;
-      
-      const total = monthAttendance.length;
-      const percentage = total > 0 ? Math.round((monthAttended / total) * 100) : 0;
-      
+      const swimmerAttended = swimmerMonthAttendance.filter(a => isPresent(a.status)).length;
+      const swimmerTotal = swimmerMonthAttendance.length;
+      const swimmerPercentage = swimmerTotal > 0 ? Math.round((swimmerAttended / swimmerTotal) * 100) : 0;
+
+      // Squad average: per-swimmer averages, then average of those
+      const swimmerAverages: number[] = [];
+      for (const swId of squadSwimmerIds) {
+        const swRecords = attendance.filter(a => {
+          const session = sessions.find(s => s.id === a.sessionId);
+          return (
+            a.swimmerId === swId &&
+            session &&
+            session.squadId === swimmer.squadId &&
+            isWithinInterval(new Date(session.date), { start: monthStart, end: monthEnd }) &&
+            new Date(session.date) <= now
+          );
+        });
+        if (swRecords.length > 0) {
+          const swAttended = swRecords.filter(a => isPresent(a.status)).length;
+          swimmerAverages.push(Math.round((swAttended / swRecords.length) * 100));
+        }
+      }
+      const squadAverage =
+        swimmerAverages.length > 0
+          ? Math.round(swimmerAverages.reduce((a, b) => a + b, 0) / swimmerAverages.length)
+          : 0;
+
       months.push({
         name: format(date, 'MMM'),
-        percentage,
-        total
+        swimmerPercentage: swimmerTotal > 0 ? swimmerPercentage : null,
+        squadAverage: monthSessions.length > 0 ? squadAverage : null,
+        total: swimmerTotal,
       });
     }
-    
+
     return months;
-  }, [swimmer, sessions, swimmerAttendance]);
-  
-  // Distance stats using real session data
+  }, [swimmer, sessions, attendance]);
+
+  // ─── Distance stats ───────────────────────────────────────────────────────
   const distanceStats = useMemo(() => {
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -157,45 +257,48 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
     const yearStart = startOfYear(now);
-    
-    // Get sessions this swimmer attended (status = "Present" case insensitive)
+
     const attendedSessionIds = swimmerAttendance
-      .filter(a => a.status?.toLowerCase() === 'present')
+      .filter(a => isPresent(a.status))
       .map(a => a.sessionId);
-    
+
     const attendedSessions = sessions.filter(s => attendedSessionIds.includes(s.id));
-    
-    // Get total distance from session's distanceBreakdown
-    const calculateSessionDistance = (session: Session): number => {
-      return session.distanceBreakdown?.total || 0;
+
+    const calculateDistance = (sessionList: Session[]) =>
+      sessionList.reduce((sum, s) => sum + (s.distanceBreakdown?.total || 0), 0) / 1000;
+
+    return {
+      thisWeek: calculateDistance(attendedSessions.filter(s => isWithinInterval(new Date(s.date), { start: weekStart, end: weekEnd }))),
+      thisMonth: calculateDistance(attendedSessions.filter(s => isWithinInterval(new Date(s.date), { start: monthStart, end: monthEnd }))),
+      thisYear: calculateDistance(attendedSessions.filter(s => isWithinInterval(new Date(s.date), { start: yearStart, end: now }))),
     };
-    
-    // This week distance
-    const weekSessions = attendedSessions.filter(s => 
-      isWithinInterval(new Date(s.date), { start: weekStart, end: weekEnd })
-    );
-    const thisWeek = weekSessions.reduce((sum, s) => sum + calculateSessionDistance(s), 0) / 1000;
-    
-    // This month distance
-    const monthSessions = attendedSessions.filter(s => 
-      isWithinInterval(new Date(s.date), { start: monthStart, end: monthEnd })
-    );
-    const thisMonth = monthSessions.reduce((sum, s) => sum + calculateSessionDistance(s), 0) / 1000;
-    
-    // This year distance
-    const yearSessions = attendedSessions.filter(s => 
-      isWithinInterval(new Date(s.date), { start: yearStart, end: now })
-    );
-    const thisYear = yearSessions.reduce((sum, s) => sum + calculateSessionDistance(s), 0) / 1000;
-    
-    return { thisWeek, thisMonth, thisYear };
   }, [swimmer, sessions, swimmerAttendance]);
-  
+
   const initials = `${swimmer.firstName[0]}${swimmer.lastName[0]}`.toUpperCase();
-  
+
+  // Custom tooltip for the composed chart
+  const MonthlyChartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    const squadVal = payload.find((p: any) => p.dataKey === 'squadAverage');
+    const swimmerVal = payload.find((p: any) => p.dataKey === 'swimmerPercentage');
+    return (
+      <div className="bg-card border rounded-md p-3 shadow-md text-sm">
+        <p className="font-semibold mb-1">{label}</p>
+        {squadVal && squadVal.value !== null && (
+          <p style={{ color: 'var(--club-primary)' }}>Squad Avg: {squadVal.value}%</p>
+        )}
+        {swimmerVal && swimmerVal.value !== null && (
+          <p className="text-foreground">
+            {swimmer.firstName}: {swimmerVal.value}%
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Compact Header */}
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -208,7 +311,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
           Back
         </Button>
         <Avatar className="h-12 w-12 shrink-0">
-          <AvatarFallback 
+          <AvatarFallback
             className="text-white font-bold"
             style={{ backgroundColor: 'var(--club-primary)' }}
           >
@@ -243,7 +346,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -260,7 +363,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -276,24 +379,39 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Punctuality Stats */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
-            Punctuality
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
+              Punctuality
+            </CardTitle>
+            <Select
+              value={punctualityPeriod}
+              onValueChange={(v) => setPunctualityPeriod(v as TimePeriod)}
+            >
+              <SelectTrigger className="w-40" data-testid="select-punctuality-period">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_PERIOD_OPTIONS.map(opt => (
+                  <SelectItem key={opt} value={opt}>{periodLabels[opt]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="text-center p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 rounded-lg border border-green-500/20">
               <p className="text-3xl font-bold" style={{ color: 'var(--club-primary)' }} data-testid="text-ontime-percentage">
-                {attendanceStats.onTimePercentage}%
+                {punctualityStats.onTimePercentage}%
               </p>
               <p className="text-sm text-muted-foreground mt-1">On Time</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {attendanceStats.onTimeCount} of {attendanceStats.attended} sessions
+                {punctualityStats.onTimeCount} of {punctualityStats.attended} sessions
               </p>
             </div>
             <div className="space-y-3">
@@ -302,12 +420,14 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
                   <div>
                     <p className="text-sm text-muted-foreground">Late</p>
                     <p className="text-2xl font-bold text-amber-600" data-testid="text-late-count">
-                      {attendanceStats.lateCount}
+                      {punctualityStats.lateCount}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">
-                      {attendanceStats.attended > 0 ? Math.round((attendanceStats.lateCount / attendanceStats.attended) * 100) : 0}%
+                      {punctualityStats.attended > 0
+                        ? Math.round((punctualityStats.lateCount / punctualityStats.attended) * 100)
+                        : 0}%
                     </p>
                   </div>
                 </div>
@@ -317,12 +437,14 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
                   <div>
                     <p className="text-sm text-muted-foreground">Very Late</p>
                     <p className="text-2xl font-bold text-red-600" data-testid="text-verylate-count">
-                      {attendanceStats.veryLateCount}
+                      {punctualityStats.veryLateCount}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">
-                      {attendanceStats.attended > 0 ? Math.round((attendanceStats.veryLateCount / attendanceStats.attended) * 100) : 0}%
+                      {punctualityStats.attended > 0
+                        ? Math.round((punctualityStats.veryLateCount / punctualityStats.attended) * 100)
+                        : 0}%
                     </p>
                   </div>
                 </div>
@@ -331,7 +453,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Distance Stats */}
       <Card>
         <CardHeader>
@@ -363,68 +485,105 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Attendance by Day of Week */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
-            Attendance by Day of Week
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
+              Attendance by Day of Week
+            </CardTitle>
+            <Select
+              value={dayOfWeekPeriod}
+              onValueChange={(v) => setDayOfWeekPeriod(v as TimePeriod)}
+            >
+              <SelectTrigger className="w-40" data-testid="select-day-period">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_PERIOD_OPTIONS.map(opt => (
+                  <SelectItem key={opt} value={opt}>{periodLabels[opt]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {attendanceByDay.map(({ day, percentage, total }) => (
-              <div key={day}>
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="font-medium">{day}</span>
-                  <span className="text-muted-foreground">
-                    {percentage}% ({total} sessions)
-                  </span>
+          {attendanceByDay.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No sessions recorded in this period.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {attendanceByDay.map(({ day, percentage, total, attended }) => (
+                <div key={day}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium">{day}</span>
+                    <span className="text-muted-foreground">
+                      {percentage}% ({attended}/{total})
+                    </span>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${percentage}%`,
+                        backgroundColor: 'var(--club-primary)',
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="h-3 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${percentage}%`,
-                      backgroundColor: 'var(--club-primary)'
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
-      
-      {/* Attendance by Month */}
+
+      {/* Attendance Trend — Last 6 Months */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
             Attendance Trend (Last 6 Months)
           </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Bars = squad average attendance &nbsp;·&nbsp; Line = {swimmer.firstName}'s attendance
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end justify-between gap-2 h-48">
-            {attendanceByMonth.map(({ name, percentage, total }) => (
-              <div key={name} className="flex-1 flex flex-col items-center gap-2 h-full">
-                <div className="text-xs text-muted-foreground text-center">
-                  {percentage}%
-                </div>
-                <div className="w-full bg-muted rounded-t-lg relative flex-1">
-                  <div 
-                    className="w-full rounded-t-lg transition-all duration-500 absolute bottom-0"
-                    style={{ 
-                      height: `${percentage}%`,
-                      backgroundColor: 'var(--club-primary)'
-                    }}
-                  />
-                </div>
-                <div className="text-sm font-medium">{name}</div>
-              </div>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={attendanceByMonth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+              <RechartsTooltip content={<MonthlyChartTooltip />} />
+              <Legend
+                formatter={(value) =>
+                  value === 'squadAverage'
+                    ? 'Squad Average'
+                    : `${swimmer.firstName}'s Attendance`
+                }
+                wrapperStyle={{ fontSize: 12 }}
+              />
+              <Bar
+                dataKey="squadAverage"
+                name="squadAverage"
+                fill="var(--club-primary)"
+                fillOpacity={0.35}
+                radius={[3, 3, 0, 0]}
+              />
+              <Line
+                dataKey="swimmerPercentage"
+                name="swimmerPercentage"
+                type="monotone"
+                stroke="var(--club-primary)"
+                strokeWidth={2}
+                dot={{ fill: 'var(--club-primary)', r: 4 }}
+                connectNulls
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>

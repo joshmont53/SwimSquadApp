@@ -33,6 +33,7 @@ import { ManageCoachingRates } from '@/pages/manage-coaching-rates';
 import { SessionLibrary } from '@/pages/session-library';
 import { DrillsLibrary } from '@/pages/drills-library';
 import { FeedbackAnalytics } from '@/pages/feedback-analytics';
+import { AttendanceAnalysis } from '@/pages/attendance-analysis';
 import { Handbook } from '@/pages/handbook';
 import { BillingPage } from '@/pages/billing';
 import { CompetitionDetailModal } from '@/components/CompetitionDetailModal';
@@ -69,6 +70,7 @@ import {
   Settings,
   CreditCard,
   ArrowLeft,
+  TrendingUp,
 } from 'lucide-react';
 import { CollapsibleSidebar } from './components/CollapsibleSidebar';
 import { Badge } from './components/ui/badge';
@@ -99,7 +101,7 @@ import type {
 
 type View = 'month' | 'day';
 type MobileView = 'calendar' | 'list' | 'search';
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
 
 // Global storage for pending session ID from notification deep link
 // This is set before CalendarApp mounts and read when it does
@@ -1433,6 +1435,31 @@ function CalendarApp() {
                 variant="ghost"
                 className={cn(
                   "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
+                  isActive('attendanceAnalysis') && "bg-accent/50"
+                )}
+                onClick={() => handleManagementClick('attendanceAnalysis')}
+                data-testid="button-attendance-analysis-mobile"
+              >
+                {isActive('attendanceAnalysis') && (
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                    style={{ backgroundColor: 'var(--club-primary)' }}
+                  />
+                )}
+                <TrendingUp
+                  className={cn(
+                    "h-4 w-4 mr-3 ml-2 transition-colors",
+                    "text-muted-foreground"
+                  )}
+                  style={{ color: isActive('attendanceAnalysis') ? 'var(--club-primary)' : undefined }}
+                />
+                <span className="flex-1 text-left">Attendance Analysis</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
                   isActive('handbook') && "bg-accent/50"
                 )}
                 onClick={() => handleManagementClick('handbook')}
@@ -1613,6 +1640,14 @@ function CalendarApp() {
             <DrillsLibrary onBack={handleBackToHome} />
           ) : managementView === 'feedbackAnalytics' ? (
             <FeedbackAnalytics onBack={handleBackToHome} />
+          ) : managementView === 'attendanceAnalysis' ? (
+            <AttendanceAnalysis
+              sessions={sessions}
+              squads={squads}
+              swimmers={swimmers}
+              attendance={allAttendance}
+              onBack={handleBackToHome}
+            />
           ) : managementView === 'handbook' ? (
             currentCoach ? (
               <Handbook coach={currentCoach} squads={squads} onBack={handleBackToHome} />

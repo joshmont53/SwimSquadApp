@@ -1449,6 +1449,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // Attendance AI chat endpoint
+  // ============================================================================
+  app.post("/api/attendance/ai-chat", requireAuth, async (req: any, res) => {
+    try {
+      const { message, history = [] } = req.body;
+
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: 'Message is required' });
+      }
+
+      const clubId = req.user.clubId;
+
+      // Fetch all club data scoped strictly to this club
+      const [allAttendance, allSessions, allSquads, allSwimmers] = await Promise.all([
+        storage.getAllAttendance(clubId),
+        storage.getSessions(clubId),
+        storage.getSquads(clubId),
+        storage.getSwimmers(clubId),
+      ]);
+
+      // Build structured summary for the AI
+      // Summarise attendance stats per swimmer per squad
+      const squadSummaries = allSquads.map(squad => {
+        const squadSessions = allSessions.filter(s => s.squadId === squad.id);
+        const squadSwimmers = allSwimmers.filter(sw => sw.squadId === squad.id);
+
+        const swimmerStats = squadSwimmers.map(sw => {
+          const recs = allAttendance.filter(a => {
+            const session = squadSessions.find(s => s.id === a.sessionId);
+            return a.swimmerId === sw.id && !!session;
+          });
+          const attended = recs.filter(a =>
+            a.status === 'Present' || a.status === 'First Half Only' || a.status === 'Second Half Only'
+          ).length;
+          const late = recs.filter(a => a.notes?.toLowerCase() === 'late').length;
+          const veryLate = recs.filter(a => a.notes?.toLowerCase() === 'very late').length;
+          const total = recs.length;
+          return {
+            name: `${sw.firstName} ${sw.lastName}`,
+            totalSessions: total,
+            attended,
+            absent: total - attended,
+            attendancePct: total > 0 ? Math.round((attended / total) * 100) : null,
+            lateCount: late,
+            veryLateCount: veryLate,
+          };
+        });
+
+        // Squad-level summary by month (last 6 months)
+        const now = new Date();
+        const monthlyStats = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const start = new Date(d.getFullYear(), d.getMonth(), 1);
+          const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+          const monthSessions = squadSessions.filter(s => {
+            const sd = new Date(s.sessionDate);
+            return sd >= start && sd <= end && sd <= now;
+          });
+          const sessionIds = new Set(monthSessions.map(s => s.id));
+          const recs = allAttendance.filter(a => sessionIds.has(a.sessionId));
+          const attended = recs.filter(a =>
+            a.status === 'Present' || a.status === 'First Half Only' || a.status === 'Second Half Only'
+          ).length;
+          const total = recs.length;
+          monthlyStats.push({
+            month: `${d.toLocaleString('en-GB', { month: 'short' })} ${d.getFullYear()}`,
+            sessions: monthSessions.length,
+            avgAttendancePct: total > 0 ? Math.round((attended / total) * 100) : null,
+          });
+        }
+
+        return {
+          squadName: squad.squadName,
+          totalSessions: squadSessions.length,
+          swimmerCount: squadSwimmers.length,
+          swimmers: swimmerStats,
+          last6MonthsMonthly: monthlyStats,
+        };
+      });
+
+      const systemPrompt = `You are an attendance analytics assistant for a swimming club. You have been given attendance data for this club only.
+
+CRITICAL RULES:
+1. You MUST only reference data that has been explicitly provided to you below. Do not infer, assume or reference data from any other club or source.
+2. You can return figures, text summaries and tables. You cannot generate charts or graphs — if asked for a chart, politely explain this and offer the underlying figures instead.
+3. Use plain, clear language suitable for swimming coaches.
+4. If the data does not contain enough information to answer a question, say so clearly.
+5. When presenting tables, use a markdown table format.
+6. All percentages should be rounded to whole numbers unless a decimal is specifically helpful.
+
+ATTENDANCE DATA FOR THIS CLUB:
+${JSON.stringify(squadSummaries, null, 2)}
+
+Note on definitions:
+- "Present" includes status values: Present, First Half Only, Second Half Only
+- "Absent" is recorded as Absent
+- "Late" and "Very Late" are recorded in the notes field for present swimmers`;
+
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+        { role: 'system', content: systemPrompt },
+        ...history.map((m: { role: string; content: string }) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+        { role: 'user', content: message },
+      ];
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-5-mini',
+        messages,
+        max_completion_tokens: 2048,
+      });
+
+      const reply = response.choices[0]?.message?.content || 'I was unable to generate a response.';
+      res.json({ reply });
+    } catch (error: any) {
+      console.error('Error in attendance AI chat:', error);
+      res.status(500).json({ message: error.message || 'Failed to process your question' });
+    }
+  });
+
+  // ============================================================================
   // Competition routes (NEW - No impact on existing functionality)
   // ============================================================================
 
