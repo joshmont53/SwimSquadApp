@@ -43,7 +43,7 @@ import {
   getDay,
   format,
 } from 'date-fns';
-import type { Session, Squad, Swimmer } from '@/lib/typeAdapters';
+import type { Session, Squad, Swimmer, Coach } from '@/lib/typeAdapters';
 import type { Attendance } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -210,6 +210,7 @@ interface AttendanceAnalysisProps {
   squads: Squad[];
   swimmers: Swimmer[];
   attendance: Attendance[];
+  currentCoach?: Coach;
   onBack: () => void;
 }
 
@@ -324,10 +325,16 @@ const PUNCTUALITY_COLORS = {
   'Very Late': '#ef4444',
 };
 
-export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onBack }: AttendanceAnalysisProps) {
+export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, currentCoach, onBack }: AttendanceAnalysisProps) {
+  const primarySquadIds = squads
+    .filter(s => s.primaryCoachId === currentCoach?.id)
+    .map(s => s.id);
+  const defaultSquadIds = primarySquadIds.length > 0
+    ? primarySquadIds
+    : squads.length > 0 ? [squads[0].id] : [];
   // ── Chart 1 filters ───────────────────────────────────────────────────────
   const [c1Period, setC1Period] = useState<TimePeriod>('all_time');
-  const [c1Squads, setC1Squads] = useState<string[]>(squads.map(s => s.id));
+  const [c1Squads, setC1Squads] = useState<string[]>(defaultSquadIds);
 
   // ── Chart 2 filters ───────────────────────────────────────────────────────
   const [c2Period, setC2Period] = useState<TimePeriod>('all_time');
@@ -336,12 +343,12 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
 
   // ── Chart 3 filters ───────────────────────────────────────────────────────
   const [c3Period, setC3Period] = useState<TimePeriod>('all_time');
-  const [c3Squads, setC3Squads] = useState<string[]>(squads.map(s => s.id));
+  const [c3Squads, setC3Squads] = useState<string[]>(defaultSquadIds);
   const [drillDownSquadId, setDrillDownSquadId] = useState<string | null>(null);
 
   // ── Chart 4 filters ───────────────────────────────────────────────────────
   const [c4Months, setC4Months] = useState<number>(6);
-  const [c4Squads, setC4Squads] = useState<string[]>(squads.slice(0, Math.min(3, squads.length)).map(s => s.id));
+  const [c4Squads, setC4Squads] = useState<string[]>(defaultSquadIds);
 
   // ── AI Chat ───────────────────────────────────────────────────────────────
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -350,7 +357,9 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatMessages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [chatMessages]);
 
   // ── Chart 1: Average Attendance by Squad ──────────────────────────────────
@@ -645,9 +654,9 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
               <p className="text-sm text-muted-foreground text-center py-8">No data for the selected filters.</p>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chart1Data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <BarChart data={chart1Data} margin={{ top: 5, right: 10, left: -20, bottom: 50 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} height={60} />
                   <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
                   <RechartsTooltip content={<Chart1Tooltip />} />
                   <Bar dataKey="percentage" name="Avg Attendance" fill="var(--club-primary)" radius={[4, 4, 0, 0]}>
@@ -807,7 +816,7 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
                   data={chart3Data}
-                  margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                  margin={{ top: 5, right: 10, left: -20, bottom: 50 }}
                   onClick={(data) => {
                     if (!drillDownSquadId && data?.activePayload?.[0]?.payload?.squadId) {
                       setDrillDownSquadId(data.activePayload[0].payload.squadId);
@@ -816,7 +825,7 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
                   style={{ cursor: drillDownSquadId ? 'default' : 'pointer' }}
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-35} textAnchor="end" height={60} />
                   <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
                   <RechartsTooltip content={<PunctualityTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -860,10 +869,10 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
             {c4Squads.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Select at least one squad.</p>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={chart4Data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chart4Data} margin={{ top: 5, right: 10, left: -20, bottom: 50 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} height={60} />
                   <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
                   <RechartsTooltip content={<Chart4Tooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />

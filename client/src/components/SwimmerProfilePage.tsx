@@ -577,7 +577,7 @@ export function SwimmerProfilePage({ swimmer, sessions, squads, attendance, onBa
                 stroke="var(--club-primary)"
                 strokeWidth={2}
                 dot={{ fill: 'var(--club-primary)', r: 4 }}
-                connectNulls
+                connectNulls={false}
               />
             </ComposedChart>
           </ResponsiveContainer>

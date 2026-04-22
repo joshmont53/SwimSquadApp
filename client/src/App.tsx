@@ -1646,6 +1646,7 @@ function CalendarApp() {
               squads={squads}
               swimmers={swimmers}
               attendance={allAttendance}
+              currentCoach={currentCoach}
               onBack={handleBackToHome}
             />
           ) : managementView === 'handbook' ? (
