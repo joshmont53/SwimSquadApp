@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -216,6 +216,101 @@ interface AttendanceAnalysisProps {
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+function renderMarkdown(text: string) {
+  const lines = text.split('\n');
+  const elements: ReactNode[] = [];
+  let i = 0;
+
+  const renderInline = (line: string): ReactNode => {
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, idx) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={idx}>{part.slice(2, -2)}</strong>
+        : part
+    );
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.trim().startsWith('|')) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const [headerRow, , ...dataRows] = tableLines;
+      const headers = headerRow.split('|').filter(c => c.trim() !== '').map(c => c.trim());
+      elements.push(
+        <div key={elements.length} className="overflow-x-auto my-2">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr>
+                {headers.map((h, hi) => (
+                  <th key={hi} className="border border-border bg-muted px-2 py-1 text-left font-semibold whitespace-nowrap">
+                    {renderInline(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, ri) => {
+                const cells = row.split('|').filter(c => c.trim() !== '').map(c => c.trim());
+                return (
+                  <tr key={ri} className={ri % 2 === 0 ? 'bg-background' : 'bg-muted/40'}>
+                    {cells.map((cell, ci) => (
+                      <td key={ci} className="border border-border px-2 py-1 whitespace-nowrap">
+                        {renderInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    if (/^#{1,3} /.test(line)) {
+      elements.push(
+        <p key={elements.length} className="font-semibold mt-2 mb-1 text-sm">
+          {renderInline(line.replace(/^#+\s/, ''))}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+      elements.push(
+        <div key={elements.length} className="flex items-start gap-1.5 ml-2 my-0.5">
+          <span className="text-muted-foreground mt-0.5 shrink-0">•</span>
+          <span>{renderInline(line.trim().slice(2))}</span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    if (line.trim()) {
+      elements.push(
+        <p key={elements.length} className="my-0.5">
+          {renderInline(line)}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    elements.push(<div key={elements.length} className="h-1.5" />);
+    i++;
+  }
+
+  return elements;
 }
 
 const PIE_COLORS = {
@@ -823,15 +918,15 @@ export function AttendanceAnalysis({ sessions, squads, swimmers, attendance, onB
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                         msg.role === 'user'
-                          ? 'text-white'
+                          ? 'text-white whitespace-pre-wrap'
                           : 'bg-card border text-foreground'
                       }`}
                       style={msg.role === 'user' ? { backgroundColor: 'var(--club-primary)' } : undefined}
                       data-testid={`message-${msg.role}-${i}`}
                     >
-                      {msg.content}
+                      {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                     </div>
                   </div>
                 ))
