@@ -20,13 +20,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks, BookOpen } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { DrillsSidebar } from '@/components/DrillsSidebar';
+import { DrillsLibrarySidebar } from '@/components/DrillsLibrarySidebar';
 import { FeedbackForm } from '@/components/FeedbackForm';
 import { SessionWriterHelper } from '@/components/SessionWriterHelper';
 import { AiChatPanel } from '@/components/AiChatPanel';
@@ -208,6 +209,7 @@ export function SessionDetail({
   const [templateSearch, setTemplateSearch] = useState('');
   const [isHelperOpen, setIsHelperOpen] = useState(false);
   const [aiChatPanelOpen, setAiChatPanelOpen] = useState(false);
+  const [drillsLibrarySidebarOpen, setDrillsLibrarySidebarOpen] = useState(false);
   
   const formatSessionDate = (date: Date | string): string => {
     if (!date) return '';
@@ -937,6 +939,16 @@ export function SessionDetail({
                   >
                     <ListChecks className="h-4 w-4 mr-2" style={{ color: 'var(--club-primary)' }} />
                     Handbook Notes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDrillsLibrarySidebarOpen(!drillsLibrarySidebarOpen)}
+                    style={drillsLibrarySidebarOpen ? { backgroundColor: 'var(--club-primary-faint)', borderColor: 'var(--club-primary)' } : undefined}
+                    data-testid="button-open-drills-library"
+                  >
+                    <BookOpen className="h-4 w-4 mr-2" style={{ color: 'var(--club-primary)' }} />
+                    Drills
                   </Button>
                 </div>
               )}
@@ -1784,6 +1796,12 @@ export function SessionDetail({
         onOpenChange={setDrillsSidebarOpen}
         detectedDrills={detectedDrills}
         isCalculating={isCalculatingDrills}
+      />
+
+      {/* Drills Library Sidebar - browse full drills library while editing */}
+      <DrillsLibrarySidebar
+        open={drillsLibrarySidebarOpen}
+        onOpenChange={setDrillsLibrarySidebarOpen}
       />
 
       {/* Notes Sidebar - rendered outside scroll container for iOS Safari compatibility */}
