@@ -24,6 +24,7 @@ import {
   coachNoteItems,
   coachNoteSquads,
   pendingRegistrations,
+  handbookDocuments,
   type PendingRegistration,
   type InsertPendingRegistration,
   type Club,
@@ -71,6 +72,8 @@ import {
   type InsertDeviceToken,
   type NotificationLog,
   type InsertNotificationLog,
+  type HandbookDocument,
+  type InsertHandbookDocument,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, count } from "drizzle-orm";
@@ -233,6 +236,11 @@ export interface IStorage {
   createPendingRegistration(data: InsertPendingRegistration): Promise<PendingRegistration>;
   getPendingRegistrationBySessionId(stripeCheckoutSessionId: string): Promise<PendingRegistration | undefined>;
   deletePendingRegistration(id: string): Promise<void>;
+
+  // Handbook Document operations
+  getHandbookDocuments(clubId: string): Promise<HandbookDocument[]>;
+  createHandbookDocument(data: InsertHandbookDocument): Promise<HandbookDocument>;
+  deleteHandbookDocument(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1281,6 +1289,26 @@ export class DatabaseStorage implements IStorage {
 
   async deletePendingRegistration(id: string): Promise<void> {
     await db.delete(pendingRegistrations).where(eq(pendingRegistrations.id, id));
+  }
+
+  // Handbook Document operations
+  async getHandbookDocuments(clubId: string): Promise<HandbookDocument[]> {
+    return db
+      .select()
+      .from(handbookDocuments)
+      .where(and(eq(handbookDocuments.clubId, clubId), eq(handbookDocuments.recordStatus, "active")));
+  }
+
+  async createHandbookDocument(data: InsertHandbookDocument): Promise<HandbookDocument> {
+    const [doc] = await db.insert(handbookDocuments).values(data).returning();
+    return doc;
+  }
+
+  async deleteHandbookDocument(id: string): Promise<void> {
+    await db
+      .update(handbookDocuments)
+      .set({ recordStatus: "inactive" })
+      .where(eq(handbookDocuments.id, id));
   }
 }
 

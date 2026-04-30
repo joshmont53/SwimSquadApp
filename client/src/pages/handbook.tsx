@@ -133,8 +133,21 @@ const CATEGORY_ICONS: Record<DocumentCategory, React.ElementType> = {
   'Other': Folder,
 };
 
+function apiDocToDocument(doc: any): Document {
+  return {
+    id: doc.id,
+    name: doc.name,
+    type: doc.fileType,
+    size: doc.size,
+    category: doc.category as DocumentCategory,
+    uploadDate: new Date(doc.uploadedAt),
+    uploadedBy: doc.uploadedBy,
+    fileData: doc.fileData,
+  };
+}
+
 export function Handbook({ coach, squads, onBack }: HandbookProps) {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | 'all'>('all');
   const [isDragging, setIsDragging] = useState(false);
@@ -143,49 +156,43 @@ export function Handbook({ coach, squads, onBack }: HandbookProps) {
   const [isUploadExpanded, setIsUploadExpanded] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('handbook_documents');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setDocuments(parsed.map((doc: Document) => ({
-        ...doc,
-        uploadDate: new Date(doc.uploadDate),
-      })));
-    }
-  }, []);
+  const { data: rawDocs = [], isLoading: docsLoading } = useQuery<any[]>({
+    queryKey: ['/api/handbook-documents'],
+  });
+  const documents = rawDocs.map(apiDocToDocument);
 
-  useEffect(() => {
-    localStorage.setItem('handbook_documents', JSON.stringify(documents));
-  }, [documents]);
+  const uploadMutation = useMutation({
+    mutationFn: (payload: { name: string; fileType: string; size: number; category: string; uploadedBy: string; fileData: string }) =>
+      apiRequest('POST', '/api/handbook-documents', payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/handbook-documents'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/handbook-documents/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/handbook-documents'] });
+    },
+  });
 
   const handleFileUpload = async (files: FileList | null, category: DocumentCategory) => {
     if (!files) return;
 
-    const newDocuments: Document[] = [];
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
+
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const fileData = e.target?.result as string;
-        
-        const newDoc: Document = {
-          id: `${Date.now()}-${i}`,
+        await uploadMutation.mutateAsync({
           name: file.name,
-          type: file.type,
+          fileType: file.type,
           size: file.size,
           category,
-          uploadDate: new Date(),
           uploadedBy: `${coach.firstName} ${coach.lastName}`,
           fileData,
-        };
-
-        newDocuments.push(newDoc);
-        
-        if (newDocuments.length === files.length) {
-          setDocuments(prev => [...prev, ...newDocuments]);
-        }
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -208,7 +215,7 @@ export function Handbook({ coach, squads, onBack }: HandbookProps) {
   };
 
   const handleDelete = (id: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    deleteMutation.mutate(id);
     setDeleteConfirmId(null);
   };
 

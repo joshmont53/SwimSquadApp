@@ -886,3 +886,24 @@ export const clubRegistrationSchema = z.object({
 });
 
 export type ClubRegistrationInput = z.infer<typeof clubRegistrationSchema>;
+
+// ============================================================================
+// Handbook Documents table
+// ============================================================================
+export const handbookDocuments = pgTable("handbook_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").notNull().references(() => clubs.id),
+  uploadedByUserId: varchar("uploaded_by_user_id").references(() => users.id),
+  name: varchar("name").notNull(),
+  fileType: varchar("file_type").notNull(),
+  size: integer("size").notNull(),
+  category: varchar("category").notNull(),
+  fileData: text("file_data").notNull(),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  recordStatus: varchar("record_status").notNull().default("active"),
+});
+
+export type HandbookDocument = typeof handbookDocuments.$inferSelect;
+export const insertHandbookDocumentSchema = createInsertSchema(handbookDocuments).omit({ id: true, uploadedAt: true, recordStatus: true });
+export type InsertHandbookDocument = z.infer<typeof insertHandbookDocumentSchema>;

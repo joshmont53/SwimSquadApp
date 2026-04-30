@@ -3614,6 +3614,57 @@ CRITICAL RULES:
     }
   });
 
+  // ============================================================================
+  // Handbook Documents API
+  // ============================================================================
+
+  // GET /api/handbook-documents — fetch all active documents for the coach's club
+  app.get("/api/handbook-documents", requireAuth, async (req: any, res) => {
+    try {
+      const docs = await storage.getHandbookDocuments(req.user.clubId);
+      res.json(docs);
+    } catch (error: any) {
+      console.error("Error fetching handbook documents:", error);
+      res.status(500).json({ message: "Failed to fetch handbook documents" });
+    }
+  });
+
+  // POST /api/handbook-documents — upload a new document
+  app.post("/api/handbook-documents", requireAuth, async (req: any, res) => {
+    try {
+      const { name, fileType, size, category, fileData, uploadedBy } = req.body;
+      if (!name || !fileType || !size || !category || !fileData || !uploadedBy) {
+        return res.status(400).json({ message: "name, fileType, size, category, fileData, and uploadedBy are required" });
+      }
+      const doc = await storage.createHandbookDocument({
+        clubId: req.user.clubId,
+        uploadedByUserId: req.user.id,
+        name,
+        fileType,
+        size,
+        category,
+        fileData,
+        uploadedBy,
+      });
+      res.status(201).json(doc);
+    } catch (error: any) {
+      console.error("Error creating handbook document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  // DELETE /api/handbook-documents/:id — soft-delete a document
+  app.delete("/api/handbook-documents/:id", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteHandbookDocument(id);
+      res.json({ message: "Document deleted" });
+    } catch (error: any) {
+      console.error("Error deleting handbook document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
