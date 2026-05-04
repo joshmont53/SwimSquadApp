@@ -3657,7 +3657,7 @@ CRITICAL RULES:
   // Recurring Sessions API (admin only)
   // ============================================================================
 
-  app.get("/api/recurring-sessions", requireAuth, async (req: any, res) => {
+  app.get("/api/recurring-sessions", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const rows = await storage.getRecurringSessions(req.user.clubId);
       res.json(rows);
@@ -3718,14 +3718,25 @@ CRITICAL RULES:
 
   app.post("/api/absence-periods", requireAuth, async (req: any, res) => {
     try {
-      const { startDate, endDate, absenceType } = req.body;
+      const { startDate, endDate, absenceType, startTime, endTime } = req.body;
       if (!startDate || !endDate || !absenceType) {
         return res.status(400).json({ message: "startDate, endDate, absenceType are required" });
+      }
+      if (!["all_day", "specific_times"].includes(absenceType)) {
+        return res.status(400).json({ message: "absenceType must be 'all_day' or 'specific_times'" });
+      }
+      if (absenceType === "specific_times" && (!startTime || !endTime)) {
+        return res.status(400).json({ message: "startTime and endTime are required for specific_times absences" });
       }
       const coachId = req.user.coachId;
       if (!coachId) return res.status(400).json({ message: "No coach profile found" });
       const row = await storage.createAbsencePeriod({
-        ...req.body,
+        startDate,
+        endDate,
+        absenceType,
+        startTime: absenceType === "specific_times" ? startTime : null,
+        endTime: absenceType === "specific_times" ? endTime : null,
+        reason: req.body.reason ?? null,
         coachId,
         clubId: req.user.clubId,
       });
@@ -3871,7 +3882,7 @@ CRITICAL RULES:
   // Float Sessions API
   // ============================================================================
 
-  app.get("/api/float-sessions", requireAuth, async (req: any, res) => {
+  app.get("/api/float-sessions", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const rows = await storage.getFloatSessions(req.user.clubId);
       res.json(rows);
