@@ -355,6 +355,7 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
       )}
 
       <RecurringSessionModal
+        key={editing?.id ?? 'new'}
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditing(null); }}
         initial={editing}
@@ -368,6 +369,7 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
             createMut.mutate(data);
           }
         }}
+        onDelete={editing ? () => { setModalOpen(false); setEditing(null); setDeleteId(editing.id); } : undefined}
         saving={createMut.isPending || updateMut.isPending}
       />
 
@@ -442,10 +444,12 @@ function RSTable({ rows, coaches, squads, locations, onEdit, onDelete }: {
   );
 }
 
-function RecurringSessionModal({ open, onClose, initial, coaches, squads, locations, onSave, saving }: {
+function RecurringSessionModal({ open, onClose, initial, coaches, squads, locations, onSave, onDelete, saving }: {
   open: boolean; onClose: () => void; initial: RecurringSession | null;
   coaches: Coach[]; squads: Squad[]; locations: Location[];
-  onSave: (data: RecurringSessionFormData) => void; saving: boolean;
+  onSave: (data: RecurringSessionFormData) => void;
+  onDelete?: () => void;
+  saving: boolean;
 }) {
   const [form, setForm] = useState({
     dayOfWeek: initial?.dayOfWeek?.toString() ?? '1',
@@ -483,7 +487,19 @@ function RecurringSessionModal({ open, onClose, initial, coaches, squads, locati
     }));
   };
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const handleSave = () => {
+    const errs: Record<string, string> = {};
+    if (!form.startTime) errs.startTime = 'Required';
+    if (!form.endTime) errs.endTime = 'Required';
+    if (!form.locationId) errs.locationId = 'Required';
+    if (!form.leadCoachId) errs.leadCoachId = 'Required';
+    if (!form.setWriterId) errs.setWriterId = 'Required';
+    if (form.squadIds.length === 0) errs.squadIds = 'Select at least one squad';
+    if (form.startTime && form.endTime && form.startTime >= form.endTime) errs.endTime = 'End time must be after start time';
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     onSave({
       dayOfWeek: parseInt(form.dayOfWeek),
       startTime: form.startTime,
@@ -519,49 +535,54 @@ function RecurringSessionModal({ open, onClose, initial, coaches, squads, locati
 
           <div className="space-y-1.5">
             <Label>Squads <span className="text-destructive">*</span></Label>
-            <div className="border rounded-md p-3 space-y-2">
+            <div className={cn('border rounded-md p-3 space-y-2', errors.squadIds && 'border-destructive')}>
               {squads.map(sq => (
                 <label key={sq.id} className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={form.squadIds.includes(sq.id)}
-                    onCheckedChange={() => handleSquadToggle(sq.id)}
+                    onCheckedChange={() => { handleSquadToggle(sq.id); setErrors(e => ({ ...e, squadIds: '' })); }}
                     data-testid={`checkbox-squad-${sq.id}`}
                   />
                   <span className="text-sm">{sq.name}</span>
                 </label>
               ))}
             </div>
+            {errors.squadIds && <p className="text-xs text-destructive">{errors.squadIds}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Start Time <span className="text-destructive">*</span></Label>
-              <Input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} data-testid="input-rs-start-time" />
+              <Input type="time" value={form.startTime} onChange={e => { setForm(f => ({ ...f, startTime: e.target.value })); setErrors(er => ({ ...er, startTime: '' })); }} data-testid="input-rs-start-time" className={errors.startTime ? 'border-destructive' : ''} />
+              {errors.startTime && <p className="text-xs text-destructive">{errors.startTime}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>End Time <span className="text-destructive">*</span></Label>
-              <Input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} data-testid="input-rs-end-time" />
+              <Input type="time" value={form.endTime} onChange={e => { setForm(f => ({ ...f, endTime: e.target.value })); setErrors(er => ({ ...er, endTime: '' })); }} data-testid="input-rs-end-time" className={errors.endTime ? 'border-destructive' : ''} />
+              {errors.endTime && <p className="text-xs text-destructive">{errors.endTime}</p>}
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label>Venue <span className="text-destructive">*</span></Label>
-            <Select value={form.locationId} onValueChange={v => setForm(f => ({ ...f, locationId: v }))}>
-              <SelectTrigger data-testid="select-rs-location"><SelectValue placeholder="Select venue" /></SelectTrigger>
+            <Select value={form.locationId} onValueChange={v => { setForm(f => ({ ...f, locationId: v })); setErrors(e => ({ ...e, locationId: '' })); }}>
+              <SelectTrigger data-testid="select-rs-location" className={errors.locationId ? 'border-destructive' : ''}><SelectValue placeholder="Select venue" /></SelectTrigger>
               <SelectContent>
                 {locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.locationId && <p className="text-xs text-destructive">{errors.locationId}</p>}
           </div>
 
           <div className="space-y-1.5">
             <Label>Lead Coach <span className="text-destructive">*</span></Label>
-            <Select value={form.leadCoachId} onValueChange={v => setForm(f => ({ ...f, leadCoachId: v }))}>
-              <SelectTrigger data-testid="select-rs-lead"><SelectValue placeholder="Select lead coach" /></SelectTrigger>
+            <Select value={form.leadCoachId} onValueChange={v => { setForm(f => ({ ...f, leadCoachId: v })); setErrors(e => ({ ...e, leadCoachId: '' })); }}>
+              <SelectTrigger data-testid="select-rs-lead" className={errors.leadCoachId ? 'border-destructive' : ''}><SelectValue placeholder="Select lead coach" /></SelectTrigger>
               <SelectContent>
                 {activeCoaches.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.leadCoachId && <p className="text-xs text-destructive">{errors.leadCoachId}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -588,12 +609,13 @@ function RecurringSessionModal({ open, onClose, initial, coaches, squads, locati
 
           <div className="space-y-1.5">
             <Label>Set Writer <span className="text-destructive">*</span></Label>
-            <Select value={form.setWriterId} onValueChange={v => setForm(f => ({ ...f, setWriterId: v }))}>
-              <SelectTrigger data-testid="select-rs-writer"><SelectValue placeholder="Select set writer" /></SelectTrigger>
+            <Select value={form.setWriterId} onValueChange={v => { setForm(f => ({ ...f, setWriterId: v })); setErrors(e => ({ ...e, setWriterId: '' })); }}>
+              <SelectTrigger data-testid="select-rs-writer" className={errors.setWriterId ? 'border-destructive' : ''}><SelectValue placeholder="Select set writer" /></SelectTrigger>
               <SelectContent>
                 {activeCoaches.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
               </SelectContent>
             </Select>
+            {errors.setWriterId && <p className="text-xs text-destructive">{errors.setWriterId}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -601,7 +623,12 @@ function RecurringSessionModal({ open, onClose, initial, coaches, squads, locati
             <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Optional notes" data-testid="input-rs-notes" />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-wrap gap-2">
+          {onDelete && (
+            <Button variant="ghost" className="text-destructive mr-auto" onClick={onDelete} data-testid="button-delete-rs-modal">
+              <Trash2 className="h-4 w-4 mr-1.5" />Delete
+            </Button>
+          )}
           <Button variant="ghost" onClick={() => { onClose(); resetForm(); }}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving} data-testid="button-save-rs">
             {saving ? 'Saving…' : initial ? 'Save Changes' : 'Add Session'}
