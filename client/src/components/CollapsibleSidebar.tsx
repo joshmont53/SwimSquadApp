@@ -4,14 +4,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { 
   CalendarDays, FileText, Target, Receipt, BarChart3, 
   UserCog, Users, Shield, MapPin, Trophy, LogOut, ChevronLeft, ChevronRight,
-  Mail, PoundSterling, Home, BookOpen, Settings, CreditCard, TrendingUp
+  Mail, PoundSterling, Home, BookOpen, Settings, CreditCard, TrendingUp,
+  CalendarOff, LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useLocation } from 'wouter';
 import type { Session, Squad, Location, Coach, Swimmer } from '@/lib/typeAdapters';
 
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing' | 'availabilityCover' | 'scheduleManager';
 
 interface CollapsibleSidebarProps {
   collapsed: boolean;
@@ -892,8 +893,101 @@ export function CollapsibleSidebar({
                   </TooltipContent>
                 )}
               </Tooltip>
+
+              {/* Availability & Cover */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full py-2.5 relative transition-all duration-200",
+                      collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
+                      isActive('availabilityCover') && "bg-accent/50"
+                    )}
+                    onClick={() => onNavigate('availabilityCover')}
+                    data-testid="button-nav-availability-cover"
+                  >
+                    {isActive('availabilityCover') && (
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                        style={{ backgroundColor: 'var(--club-primary)' }}
+                      />
+                    )}
+                    <CalendarOff 
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        collapsed ? "" : "mr-3 ml-2",
+                        "text-muted-foreground"
+                      )}
+                      style={{ color: isActive('availabilityCover') ? 'var(--club-primary)' : undefined }}
+                    />
+                    {!collapsed && (
+                      <span className="flex-1 text-left">Availability & Cover</span>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                {collapsed && (
+                  <TooltipContent side="right">
+                    Availability & Cover
+                  </TooltipContent>
+                )}
+              </Tooltip>
             </div>
           </div>
+
+          {/* MANAGEMENT Section — admin only: Schedule Manager */}
+          {isAdmin && (
+            <div>
+              {!collapsed && (
+                <div className="px-3 mb-2 mt-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Scheduling
+                  </p>
+                </div>
+              )}
+              {collapsed && <div className="h-px bg-border my-2" />}
+              <div className="space-y-1">
+                {/* Schedule Manager */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full py-2.5 relative transition-all duration-200",
+                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
+                        isActive('scheduleManager') && "bg-accent/50"
+                      )}
+                      onClick={() => onNavigate('scheduleManager')}
+                      data-testid="button-nav-schedule-manager"
+                    >
+                      {isActive('scheduleManager') && (
+                        <div 
+                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                          style={{ backgroundColor: 'var(--club-primary)' }}
+                        />
+                      )}
+                      <LayoutGrid 
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          collapsed ? "" : "mr-3 ml-2",
+                          "text-muted-foreground"
+                        )}
+                        style={{ color: isActive('scheduleManager') ? 'var(--club-primary)' : undefined }}
+                      />
+                      {!collapsed && (
+                        <span className="flex-1 text-left">Schedule Manager</span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right">
+                      Schedule Manager
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 

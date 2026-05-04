@@ -3653,6 +3653,207 @@ CRITICAL RULES:
     }
   });
 
+  // ============================================================================
+  // Recurring Sessions API (admin only)
+  // ============================================================================
+
+  app.get("/api/recurring-sessions", requireAuth, async (req: any, res) => {
+    try {
+      const rows = await storage.getRecurringSessions(req.user.clubId);
+      res.json(rows);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch recurring sessions" });
+    }
+  });
+
+  app.post("/api/recurring-sessions", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { squadIds, ...data } = req.body;
+      if (!data.dayOfWeek || !data.startTime || !data.endTime || !data.locationId || !data.leadCoachId || !data.setWriterId) {
+        return res.status(400).json({ message: "dayOfWeek, startTime, endTime, locationId, leadCoachId, setWriterId are required" });
+      }
+      if (!squadIds || !Array.isArray(squadIds) || squadIds.length === 0) {
+        return res.status(400).json({ message: "At least one squad is required" });
+      }
+      const rs = await storage.createRecurringSession({ ...data, clubId: req.user.clubId }, squadIds);
+      res.status(201).json(rs);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create recurring session" });
+    }
+  });
+
+  app.patch("/api/recurring-sessions/:id", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { squadIds, ...data } = req.body;
+      const rs = await storage.updateRecurringSession(id, data, squadIds);
+      res.json(rs);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to update recurring session" });
+    }
+  });
+
+  app.delete("/api/recurring-sessions/:id", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRecurringSession(id);
+      res.json({ message: "Deleted" });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to delete recurring session" });
+    }
+  });
+
+  // ============================================================================
+  // Absence Periods API
+  // ============================================================================
+
+  app.get("/api/absence-periods", requireAuth, async (req: any, res) => {
+    try {
+      const rows = await storage.getAbsencePeriods(req.user.clubId);
+      res.json(rows);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch absence periods" });
+    }
+  });
+
+  app.post("/api/absence-periods", requireAuth, async (req: any, res) => {
+    try {
+      const { startDate, endDate, absenceType } = req.body;
+      if (!startDate || !endDate || !absenceType) {
+        return res.status(400).json({ message: "startDate, endDate, absenceType are required" });
+      }
+      const coachId = req.user.coachId;
+      if (!coachId) return res.status(400).json({ message: "No coach profile found" });
+      const row = await storage.createAbsencePeriod({
+        ...req.body,
+        coachId,
+        clubId: req.user.clubId,
+      });
+      res.status(201).json(row);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create absence period" });
+    }
+  });
+
+  app.delete("/api/absence-periods/:id", requireAuth, async (req: any, res) => {
+    try {
+      await storage.deleteAbsencePeriod(req.params.id);
+      res.json({ message: "Deleted" });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to delete absence period" });
+    }
+  });
+
+  // ============================================================================
+  // Cover Opportunities API
+  // ============================================================================
+
+  app.get("/api/cover-opportunities", requireAuth, async (req: any, res) => {
+    try {
+      const rows = await storage.getCoverOpportunities(req.user.clubId);
+      res.json(rows);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch cover opportunities" });
+    }
+  });
+
+  app.post("/api/cover-opportunities", requireAuth, async (req: any, res) => {
+    try {
+      const { sessionId, role } = req.body;
+      if (!sessionId || !role) {
+        return res.status(400).json({ message: "sessionId and role are required" });
+      }
+      const coachId = req.user.coachId;
+      if (!coachId) return res.status(400).json({ message: "No coach profile found" });
+      const row = await storage.createCoverOpportunity({
+        ...req.body,
+        requesterCoachId: coachId,
+        clubId: req.user.clubId,
+        coverStatus: "pending",
+      });
+      res.status(201).json(row);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create cover opportunity" });
+    }
+  });
+
+  app.patch("/api/cover-opportunities/:id/volunteer", requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const coachId = req.user.coachId;
+      if (!coachId) return res.status(400).json({ message: "No coach profile found" });
+
+      const opportunities = await storage.getCoverOpportunities(req.user.clubId);
+      const opp = opportunities.find(o => o.id === id);
+      if (!opp) return res.status(404).json({ message: "Cover opportunity not found" });
+
+      const updated = await storage.updateCoverOpportunity(id, {
+        coverStatus: "covered",
+        coverCoachId: coachId,
+      });
+
+      // Update the swimming session with the volunteering coach in the relevant role
+      const session = await storage.getSession(opp.sessionId);
+      if (session) {
+        const update: Record<string, string> = {};
+        if (opp.role === "lead") update.leadCoachId = coachId;
+        else if (opp.role === "second") update.secondCoachId = coachId;
+        else if (opp.role === "helper") update.helperId = coachId;
+        if (Object.keys(update).length > 0) {
+          await storage.updateSession(opp.sessionId, update as any);
+        }
+      }
+
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to volunteer for cover" });
+    }
+  });
+
+  app.delete("/api/cover-opportunities/:id", requireAuth, async (req: any, res) => {
+    try {
+      await storage.deleteCoverOpportunity(req.params.id);
+      res.json({ message: "Deleted" });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to delete cover opportunity" });
+    }
+  });
+
+  // ============================================================================
+  // Float Sessions API
+  // ============================================================================
+
+  app.get("/api/float-sessions", requireAuth, async (req: any, res) => {
+    try {
+      const rows = await storage.getFloatSessions(req.user.clubId);
+      res.json(rows);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch float sessions" });
+    }
+  });
+
+  app.post("/api/float-sessions", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { sessionDate, startTime, endTime, coachId, locationId } = req.body;
+      if (!sessionDate || !startTime || !endTime || !coachId || !locationId) {
+        return res.status(400).json({ message: "sessionDate, startTime, endTime, coachId, locationId are required" });
+      }
+      const row = await storage.createFloatSession({ ...req.body, clubId: req.user.clubId });
+      res.status(201).json(row);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to create float session" });
+    }
+  });
+
+  app.delete("/api/float-sessions/:id", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      await storage.deleteFloatSession(req.params.id);
+      res.json({ message: "Deleted" });
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to delete float session" });
+    }
+  });
+
   // DELETE /api/handbook-documents/:id — soft-delete a document
   app.delete("/api/handbook-documents/:id", requireAuth, async (req: any, res) => {
     try {

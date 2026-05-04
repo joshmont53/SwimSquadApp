@@ -36,6 +36,8 @@ import { FeedbackAnalytics } from '@/pages/feedback-analytics';
 import { AttendanceAnalysis } from '@/pages/attendance-analysis';
 import { Handbook } from '@/pages/handbook';
 import { BillingPage } from '@/pages/billing';
+import { AvailabilityCover } from '@/pages/availability-cover';
+import { ScheduleManager } from '@/pages/schedule-manager';
 import { CompetitionDetailModal } from '@/components/CompetitionDetailModal';
 import { HomePage } from '@/components/HomePage';
 import { SwimmerProfiles } from '@/components/SwimmerProfiles';
@@ -101,7 +103,7 @@ import type {
 
 type View = 'month' | 'day';
 type MobileView = 'calendar' | 'list' | 'search';
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing' | 'availabilityCover' | 'scheduleManager';
 
 // Global storage for pending session ID from notification deep link
 // This is set before CalendarApp mounts and read when it does
@@ -1677,6 +1679,25 @@ function CalendarApp() {
             <ClubSettingsView onBack={handleBackToHome} />
           ) : managementView === 'billing' && isAdmin && !isNativeApp ? (
             <BillingView onBack={handleBackToHome} />
+          ) : managementView === 'availabilityCover' ? (
+            currentCoach ? (
+              <AvailabilityCover
+                onBack={handleBackToHome}
+                currentCoach={currentCoach}
+                coaches={coaches}
+                squads={squads}
+                locations={locations}
+                sessions={backendSessions}
+                sessionSquadMap={sessionSquadMap}
+              />
+            ) : null
+          ) : managementView === 'scheduleManager' && isAdmin ? (
+            <ScheduleManager
+              onBack={handleBackToHome}
+              coaches={coaches}
+              squads={squads}
+              locations={locations}
+            />
           ) : managementView === 'home' ? (
             currentCoach ? (
               <div className="px-2 pt-2 pb-4 overflow-y-auto">

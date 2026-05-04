@@ -888,6 +888,121 @@ export const clubRegistrationSchema = z.object({
 export type ClubRegistrationInput = z.infer<typeof clubRegistrationSchema>;
 
 // ============================================================================
+// Scheduling — Recurring Sessions, Absences, Cover, Float Sessions
+// ============================================================================
+
+export const recurringSessions = pgTable("recurring_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").notNull().references(() => clubs.id),
+  dayOfWeek: integer("day_of_week").notNull(), // 1=Monday … 7=Sunday (ISO)
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+  locationId: varchar("location_id").references(() => locations.id).notNull(),
+  leadCoachId: varchar("lead_coach_id").references(() => coaches.id).notNull(),
+  secondCoachId: varchar("second_coach_id").references(() => coaches.id),
+  helperId: varchar("helper_id").references(() => coaches.id),
+  setWriterId: varchar("set_writer_id").references(() => coaches.id).notNull(),
+  notes: text("notes"),
+  recordStatus: varchar("record_status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const recurringSessionsRelations = relations(recurringSessions, ({ one, many }) => ({
+  location: one(locations, { fields: [recurringSessions.locationId], references: [locations.id] }),
+  leadCoach: one(coaches, { fields: [recurringSessions.leadCoachId], references: [coaches.id], relationName: "rsLead" }),
+  secondCoach: one(coaches, { fields: [recurringSessions.secondCoachId], references: [coaches.id], relationName: "rsSecond" }),
+  helper: one(coaches, { fields: [recurringSessions.helperId], references: [coaches.id], relationName: "rsHelper" }),
+  setWriter: one(coaches, { fields: [recurringSessions.setWriterId], references: [coaches.id], relationName: "rsWriter" }),
+  squads: many(recurringSessionSquads),
+}));
+
+export type RecurringSession = typeof recurringSessions.$inferSelect;
+export const insertRecurringSessionSchema = createInsertSchema(recurringSessions).omit({ id: true, createdAt: true, recordStatus: true });
+export type InsertRecurringSession = z.infer<typeof insertRecurringSessionSchema>;
+
+export const recurringSessionSquads = pgTable("recurring_session_squads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recurringSessionId: varchar("recurring_session_id").notNull().references(() => recurringSessions.id, { onDelete: "cascade" }),
+  squadId: varchar("squad_id").notNull().references(() => squads.id),
+}, (t) => [unique().on(t.recurringSessionId, t.squadId)]);
+
+export const recurringSessionSquadsRelations = relations(recurringSessionSquads, ({ one }) => ({
+  recurringSession: one(recurringSessions, { fields: [recurringSessionSquads.recurringSessionId], references: [recurringSessions.id] }),
+  squad: one(squads, { fields: [recurringSessionSquads.squadId], references: [squads.id] }),
+}));
+
+export type RecurringSessionSquad = typeof recurringSessionSquads.$inferSelect;
+export const insertRecurringSessionSquadSchema = createInsertSchema(recurringSessionSquads).omit({ id: true });
+export type InsertRecurringSessionSquad = z.infer<typeof insertRecurringSessionSquadSchema>;
+
+export const absencePeriods = pgTable("absence_periods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id").notNull().references(() => coaches.id, { onDelete: "cascade" }),
+  clubId: varchar("club_id").notNull().references(() => clubs.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  absenceType: varchar("absence_type").notNull().default("all_day"), // "all_day" | "specific_times"
+  startTime: time("start_time"),
+  endTime: time("end_time"),
+  reason: text("reason"),
+  recordStatus: varchar("record_status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const absencePeriodsRelations = relations(absencePeriods, ({ one }) => ({
+  coach: one(coaches, { fields: [absencePeriods.coachId], references: [coaches.id] }),
+}));
+
+export type AbsencePeriod = typeof absencePeriods.$inferSelect;
+export const insertAbsencePeriodSchema = createInsertSchema(absencePeriods).omit({ id: true, createdAt: true, recordStatus: true });
+export type InsertAbsencePeriod = z.infer<typeof insertAbsencePeriodSchema>;
+
+export const coverOpportunities = pgTable("cover_opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").notNull().references(() => clubs.id),
+  requesterCoachId: varchar("requester_coach_id").notNull().references(() => coaches.id),
+  sessionId: varchar("session_id").notNull().references(() => swimmingSessions.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull(), // "lead" | "second" | "helper"
+  reason: text("reason"),
+  coverStatus: varchar("cover_status").notNull().default("pending"), // "pending" | "covered"
+  coverCoachId: varchar("cover_coach_id").references(() => coaches.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  recordStatus: varchar("record_status").notNull().default("active"),
+});
+
+export const coverOpportunitiesRelations = relations(coverOpportunities, ({ one }) => ({
+  requesterCoach: one(coaches, { fields: [coverOpportunities.requesterCoachId], references: [coaches.id], relationName: "requester" }),
+  coverCoach: one(coaches, { fields: [coverOpportunities.coverCoachId], references: [coaches.id], relationName: "cover" }),
+  session: one(swimmingSessions, { fields: [coverOpportunities.sessionId], references: [swimmingSessions.id] }),
+}));
+
+export type CoverOpportunity = typeof coverOpportunities.$inferSelect;
+export const insertCoverOpportunitySchema = createInsertSchema(coverOpportunities).omit({ id: true, createdAt: true, recordStatus: true });
+export type InsertCoverOpportunity = z.infer<typeof insertCoverOpportunitySchema>;
+
+export const floatSessions = pgTable("float_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").notNull().references(() => clubs.id),
+  sessionDate: date("session_date").notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+  coachId: varchar("coach_id").notNull().references(() => coaches.id),
+  locationId: varchar("location_id").notNull().references(() => locations.id),
+  notes: text("notes"),
+  recordStatus: varchar("record_status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const floatSessionsRelations = relations(floatSessions, ({ one }) => ({
+  coach: one(coaches, { fields: [floatSessions.coachId], references: [coaches.id] }),
+  location: one(locations, { fields: [floatSessions.locationId], references: [locations.id] }),
+}));
+
+export type FloatSession = typeof floatSessions.$inferSelect;
+export const insertFloatSessionSchema = createInsertSchema(floatSessions).omit({ id: true, createdAt: true, recordStatus: true });
+export type InsertFloatSession = z.infer<typeof insertFloatSessionSchema>;
+
+// ============================================================================
 // Handbook Documents table
 // ============================================================================
 export const handbookDocuments = pgTable("handbook_documents", {
