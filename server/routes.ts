@@ -3712,7 +3712,7 @@ CRITICAL RULES:
       // Admins can see all club absences; coaches only see their own
       const rows = req.user.isAdmin
         ? await storage.getAbsencePeriods(req.user.clubId)
-        : await storage.getAbsencePeriodsByCoach(req.user.coachId);
+        : await storage.getAbsencePeriodsByCoach(req.user.coachId, req.user.clubId);
       res.json(rows);
     } catch (e: any) {
       res.status(500).json({ message: "Failed to fetch absence periods" });

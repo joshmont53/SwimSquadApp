@@ -265,7 +265,7 @@ export interface IStorage {
 
   // Absence Periods operations
   getAbsencePeriods(clubId: string): Promise<AbsencePeriod[]>;
-  getAbsencePeriodsByCoach(coachId: string): Promise<AbsencePeriod[]>;
+  getAbsencePeriodsByCoach(coachId: string, clubId: string): Promise<AbsencePeriod[]>;
   createAbsencePeriod(data: InsertAbsencePeriod): Promise<AbsencePeriod>;
   deleteAbsencePeriod(id: string, coachId: string, clubId: string): Promise<void>;
 
@@ -1398,9 +1398,9 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(absencePeriods.clubId, clubId), eq(absencePeriods.recordStatus, "active")));
   }
 
-  async getAbsencePeriodsByCoach(coachId: string): Promise<AbsencePeriod[]> {
+  async getAbsencePeriodsByCoach(coachId: string, clubId: string): Promise<AbsencePeriod[]> {
     return db.select().from(absencePeriods)
-      .where(and(eq(absencePeriods.coachId, coachId), eq(absencePeriods.recordStatus, "active")));
+      .where(and(eq(absencePeriods.coachId, coachId), eq(absencePeriods.clubId, clubId), eq(absencePeriods.recordStatus, "active")));
   }
 
   async createAbsencePeriod(data: InsertAbsencePeriod): Promise<AbsencePeriod> {
