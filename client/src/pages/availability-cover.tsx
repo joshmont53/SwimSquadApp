@@ -150,7 +150,7 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   type AbsencePayload = { startDate: string; endDate: string; absenceType: 'all_day' | 'specific_times'; startTime?: string | null; endTime?: string | null; reason?: string | null };
-  type CoverPayload = { sessionId: string; role: string; reason?: string };
+  type CoverPayload = { sessionId: string; role: string; reason?: string | null };
 
   const createAbsence = useMutation({
     mutationFn: (data: AbsencePayload) => apiRequest('POST', '/api/absence-periods', data),
@@ -301,7 +301,7 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
 
                   <div className="space-y-1.5">
                     <Label>Type <span className="text-destructive">*</span></Label>
-                    <Select value={absForm.absenceType} onValueChange={v => setAbsForm(f => ({ ...f, absenceType: v }))}>
+                    <Select value={absForm.absenceType} onValueChange={v => setAbsForm(f => ({ ...f, absenceType: v as 'all_day' | 'specific_times' }))}>
                       <SelectTrigger data-testid="select-absence-type"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all_day">All Day</SelectItem>
