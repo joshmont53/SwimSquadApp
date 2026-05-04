@@ -254,14 +254,20 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
     return map;
   }, [sorted]);
 
+  type RecurringSessionFormData = {
+    dayOfWeek: number; startTime: string; endTime: string; locationId: string;
+    leadCoachId: string; secondCoachId?: string | null; helperId?: string | null;
+    setWriterId?: string | null; notes?: string | null; squadIds: string[];
+  };
+
   const createMut = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/recurring-sessions', data),
+    mutationFn: (data: RecurringSessionFormData) => apiRequest('POST', '/api/recurring-sessions', data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/recurring-sessions'] }); setModalOpen(false); toast({ title: 'Session added' }); },
     onError: () => toast({ title: 'Error', description: 'Failed to save session', variant: 'destructive' }),
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest('PATCH', `/api/recurring-sessions/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: RecurringSessionFormData }) => apiRequest('PATCH', `/api/recurring-sessions/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/recurring-sessions'] }); setModalOpen(false); setEditing(null); toast({ title: 'Session updated' }); },
     onError: () => toast({ title: 'Error', description: 'Failed to update session', variant: 'destructive' }),
   });
@@ -434,7 +440,7 @@ function RSTable({ rows, coaches, squads, locations, onEdit, onDelete }: {
 function RecurringSessionModal({ open, onClose, initial, coaches, squads, locations, onSave, saving }: {
   open: boolean; onClose: () => void; initial: RecurringSession | null;
   coaches: Coach[]; squads: Squad[]; locations: Location[];
-  onSave: (data: any) => void; saving: boolean;
+  onSave: (data: RecurringSessionFormData) => void; saving: boolean;
 }) {
   const [form, setForm] = useState({
     dayOfWeek: initial?.dayOfWeek?.toString() ?? '1',
@@ -487,7 +493,7 @@ function RecurringSessionModal({ open, onClose, initial, coaches, squads, locati
     });
   };
 
-  const activeCoaches = coaches.filter(c => (c as any).recordStatus !== 'inactive');
+  const activeCoaches = coaches.filter(c => (c as Coach & { recordStatus?: string }).recordStatus !== 'inactive');
 
   return (
     <Dialog open={open} onOpenChange={open => { if (!open) { onClose(); resetForm(); } }}>
@@ -745,7 +751,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
     setDraft(prev => prev ? prev.filter(r => r.id !== id) : null);
   };
 
-  const addSessionRow = (data: any) => {
+  const addSessionRow = (data: Omit<DraftRow, 'id' | 'type' | 'status' | 'issues'>) => {
     const newRow: DraftRow = {
       id: `manual-${Date.now()}`,
       type: 'session',
@@ -769,7 +775,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
     setAddSessionOpen(false);
   };
 
-  const addFloatRow = (data: any) => {
+  const addFloatRow = (data: { sessionDate: string; startTime: string; endTime: string; coachId: string; locationId: string; notes?: string }) => {
     const newRow: DraftRow = {
       id: `float-${Date.now()}`,
       type: 'float',
@@ -879,7 +885,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
     }
   };
 
-  const activeCoaches = coaches.filter(c => (c as any).recordStatus !== 'inactive');
+  const activeCoaches = coaches.filter(c => (c as Coach & { recordStatus?: string }).recordStatus !== 'inactive');
 
   return (
     <div className="space-y-4">
@@ -1102,9 +1108,11 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
   );
 }
 
+type AddSessionFormData = Omit<DraftRow, 'id' | 'type' | 'status' | 'issues'>;
+
 function AddDraftSessionModal({ open, onClose, coaches, squads, locations, onAdd }: {
   open: boolean; onClose: () => void; coaches: Coach[]; squads: Squad[]; locations: Location[];
-  onAdd: (data: any) => void;
+  onAdd: (data: AddSessionFormData) => void;
 }) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [form, setForm] = useState({ date: today, startTime: '', endTime: '', locationId: '', leadCoachId: '', secondCoachId: '', helperId: '', setWriterId: '', squadIds: [] as string[] });
@@ -1174,9 +1182,11 @@ function AddDraftSessionModal({ open, onClose, coaches, squads, locations, onAdd
   );
 }
 
+type AddFloatFormData = { sessionDate: string; startTime: string; endTime: string; coachId: string; locationId: string; notes?: string };
+
 function AddFloatSessionModal({ open, onClose, coaches, locations, onAdd }: {
   open: boolean; onClose: () => void; coaches: Coach[]; locations: Location[];
-  onAdd: (data: any) => void;
+  onAdd: (data: AddFloatFormData) => void;
 }) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [form, setForm] = useState({ sessionDate: today, startTime: '', endTime: '', coachId: '', locationId: '', notes: '' });

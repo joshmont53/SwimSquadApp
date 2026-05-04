@@ -260,27 +260,27 @@ export interface IStorage {
   // Recurring Sessions operations
   getRecurringSessions(clubId: string): Promise<(RecurringSession & { squadIds: string[] })[]>;
   createRecurringSession(data: InsertRecurringSession, squadIds: string[]): Promise<RecurringSession & { squadIds: string[] }>;
-  updateRecurringSession(id: string, data: Partial<InsertRecurringSession>, squadIds?: string[]): Promise<RecurringSession & { squadIds: string[] }>;
-  deleteRecurringSession(id: string): Promise<void>;
+  updateRecurringSession(id: string, clubId: string, data: Partial<InsertRecurringSession>, squadIds?: string[]): Promise<RecurringSession & { squadIds: string[] }>;
+  deleteRecurringSession(id: string, clubId: string): Promise<void>;
 
   // Absence Periods operations
   getAbsencePeriods(clubId: string): Promise<AbsencePeriod[]>;
   getAbsencePeriodsByCoach(coachId: string): Promise<AbsencePeriod[]>;
   createAbsencePeriod(data: InsertAbsencePeriod): Promise<AbsencePeriod>;
-  deleteAbsencePeriod(id: string): Promise<void>;
+  deleteAbsencePeriod(id: string, coachId: string): Promise<void>;
 
   // Cover Opportunities operations
   getCoverOpportunities(clubId: string): Promise<CoverOpportunity[]>;
   getCoverOpportunitiesByCoach(requesterCoachId: string): Promise<CoverOpportunity[]>;
   createCoverOpportunity(data: InsertCoverOpportunity): Promise<CoverOpportunity>;
-  updateCoverOpportunity(id: string, data: Partial<InsertCoverOpportunity>): Promise<CoverOpportunity>;
-  deleteCoverOpportunity(id: string): Promise<void>;
+  updateCoverOpportunity(id: string, clubId: string, data: Partial<InsertCoverOpportunity>): Promise<CoverOpportunity>;
+  deleteCoverOpportunity(id: string, requesterCoachId: string): Promise<void>;
 
   // Float Sessions operations
   getFloatSessions(clubId: string): Promise<FloatSession[]>;
   getFloatSessionsByCoach(coachId: string): Promise<FloatSession[]>;
   createFloatSession(data: InsertFloatSession): Promise<FloatSession>;
-  deleteFloatSession(id: string): Promise<void>;
+  deleteFloatSession(id: string, clubId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1372,8 +1372,11 @@ export class DatabaseStorage implements IStorage {
     return this._enrichRecurringSession(rs);
   }
 
-  async updateRecurringSession(id: string, data: Partial<InsertRecurringSession>, squadIds?: string[]): Promise<RecurringSession & { squadIds: string[] }> {
-    const [rs] = await db.update(recurringSessions).set(data).where(eq(recurringSessions.id, id)).returning();
+  async updateRecurringSession(id: string, clubId: string, data: Partial<InsertRecurringSession>, squadIds?: string[]): Promise<RecurringSession & { squadIds: string[] }> {
+    const [rs] = await db.update(recurringSessions).set(data)
+      .where(and(eq(recurringSessions.id, id), eq(recurringSessions.clubId, clubId)))
+      .returning();
+    if (!rs) throw new Error("Recurring session not found or access denied");
     if (squadIds !== undefined) {
       await db.delete(recurringSessionSquads).where(eq(recurringSessionSquads.recurringSessionId, id));
       for (const squadId of squadIds) {
@@ -1383,8 +1386,9 @@ export class DatabaseStorage implements IStorage {
     return this._enrichRecurringSession(rs);
   }
 
-  async deleteRecurringSession(id: string): Promise<void> {
-    await db.update(recurringSessions).set({ recordStatus: "inactive" }).where(eq(recurringSessions.id, id));
+  async deleteRecurringSession(id: string, clubId: string): Promise<void> {
+    await db.update(recurringSessions).set({ recordStatus: "inactive" })
+      .where(and(eq(recurringSessions.id, id), eq(recurringSessions.clubId, clubId)));
   }
 
   // ─── Absence Periods ──────────────────────────────────────────────────────
@@ -1404,8 +1408,9 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async deleteAbsencePeriod(id: string): Promise<void> {
-    await db.update(absencePeriods).set({ recordStatus: "inactive" }).where(eq(absencePeriods.id, id));
+  async deleteAbsencePeriod(id: string, coachId: string): Promise<void> {
+    await db.update(absencePeriods).set({ recordStatus: "inactive" })
+      .where(and(eq(absencePeriods.id, id), eq(absencePeriods.coachId, coachId)));
   }
 
   // ─── Cover Opportunities ──────────────────────────────────────────────────
@@ -1425,13 +1430,17 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async updateCoverOpportunity(id: string, data: Partial<InsertCoverOpportunity>): Promise<CoverOpportunity> {
-    const [row] = await db.update(coverOpportunities).set(data).where(eq(coverOpportunities.id, id)).returning();
+  async updateCoverOpportunity(id: string, clubId: string, data: Partial<InsertCoverOpportunity>): Promise<CoverOpportunity> {
+    const [row] = await db.update(coverOpportunities).set(data)
+      .where(and(eq(coverOpportunities.id, id), eq(coverOpportunities.clubId, clubId)))
+      .returning();
+    if (!row) throw new Error("Cover opportunity not found or access denied");
     return row;
   }
 
-  async deleteCoverOpportunity(id: string): Promise<void> {
-    await db.update(coverOpportunities).set({ recordStatus: "inactive" }).where(eq(coverOpportunities.id, id));
+  async deleteCoverOpportunity(id: string, requesterCoachId: string): Promise<void> {
+    await db.update(coverOpportunities).set({ recordStatus: "inactive" })
+      .where(and(eq(coverOpportunities.id, id), eq(coverOpportunities.requesterCoachId, requesterCoachId)));
   }
 
   // ─── Float Sessions ───────────────────────────────────────────────────────
@@ -1451,8 +1460,9 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async deleteFloatSession(id: string): Promise<void> {
-    await db.update(floatSessions).set({ recordStatus: "inactive" }).where(eq(floatSessions.id, id));
+  async deleteFloatSession(id: string, clubId: string): Promise<void> {
+    await db.update(floatSessions).set({ recordStatus: "inactive" })
+      .where(and(eq(floatSessions.id, id), eq(floatSessions.clubId, clubId)));
   }
 }
 

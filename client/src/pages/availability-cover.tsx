@@ -149,8 +149,11 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
   }, [sessions, currentCoach, today]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
+  type AbsencePayload = { startDate: string; endDate: string; absenceType: string; startTime?: string; endTime?: string; reason?: string };
+  type CoverPayload = { sessionId: string; role: string; reason?: string };
+
   const createAbsence = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/absence-periods', data),
+    mutationFn: (data: AbsencePayload) => apiRequest('POST', '/api/absence-periods', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/absence-periods'] });
       setAbsFormOpen(false);
@@ -169,7 +172,7 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
   });
 
   const createCover = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/cover-opportunities', data),
+    mutationFn: (data: CoverPayload) => apiRequest('POST', '/api/cover-opportunities', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/cover-opportunities'] });
       setCoverFormOpen(false);
@@ -298,7 +301,7 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
 
                   <div className="space-y-1.5">
                     <Label>Type <span className="text-destructive">*</span></Label>
-                    <Select value={absForm.absenceType} onValueChange={v => setAbsForm(f => ({ ...f, absenceType: v as any }))}>
+                    <Select value={absForm.absenceType} onValueChange={v => setAbsForm(f => ({ ...f, absenceType: v }))}>
                       <SelectTrigger data-testid="select-absence-type"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all_day">All Day</SelectItem>

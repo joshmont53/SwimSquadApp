@@ -73,6 +73,8 @@ import {
   CreditCard,
   ArrowLeft,
   TrendingUp,
+  CalendarOff,
+  LayoutGrid,
 } from 'lucide-react';
 import { CollapsibleSidebar } from './components/CollapsibleSidebar';
 import { Badge } from './components/ui/badge';
@@ -1482,6 +1484,58 @@ function CalendarApp() {
                 />
                 <span className="flex-1 text-left">Handbook</span>
               </Button>
+
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
+                  isActive('availabilityCover') && "bg-accent/50"
+                )}
+                onClick={() => handleManagementClick('availabilityCover')}
+                data-testid="button-nav-availability-cover-mobile"
+              >
+                {isActive('availabilityCover') && (
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                    style={{ backgroundColor: 'var(--club-primary)' }}
+                  />
+                )}
+                <CalendarOff
+                  className={cn(
+                    "h-4 w-4 mr-3 ml-2 transition-colors",
+                    "text-muted-foreground"
+                  )}
+                  style={{ color: isActive('availabilityCover') ? 'var(--club-primary)' : undefined }}
+                />
+                <span className="flex-1 text-left">Availability &amp; Cover</span>
+              </Button>
+
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-2.5 relative transition-all duration-200 hover:scale-[1.02]",
+                    isActive('scheduleManager') && "bg-accent/50"
+                  )}
+                  onClick={() => handleManagementClick('scheduleManager')}
+                  data-testid="button-nav-schedule-manager-mobile"
+                >
+                  {isActive('scheduleManager') && (
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                      style={{ backgroundColor: 'var(--club-primary)' }}
+                    />
+                  )}
+                  <LayoutGrid
+                    className={cn(
+                      "h-4 w-4 mr-3 ml-2 transition-colors",
+                      "text-muted-foreground"
+                    )}
+                    style={{ color: isActive('scheduleManager') ? 'var(--club-primary)' : undefined }}
+                  />
+                  <span className="flex-1 text-left">Schedule Manager</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

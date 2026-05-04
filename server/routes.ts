@@ -3686,7 +3686,7 @@ CRITICAL RULES:
     try {
       const { id } = req.params;
       const { squadIds, ...data } = req.body;
-      const rs = await storage.updateRecurringSession(id, data, squadIds);
+      const rs = await storage.updateRecurringSession(id, req.user.clubId, data, squadIds);
       res.json(rs);
     } catch (e: any) {
       res.status(500).json({ message: "Failed to update recurring session" });
@@ -3696,7 +3696,7 @@ CRITICAL RULES:
   app.delete("/api/recurring-sessions/:id", requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      await storage.deleteRecurringSession(id);
+      await storage.deleteRecurringSession(id, req.user.clubId);
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete recurring session" });
@@ -3737,7 +3737,9 @@ CRITICAL RULES:
 
   app.delete("/api/absence-periods/:id", requireAuth, async (req: any, res) => {
     try {
-      await storage.deleteAbsencePeriod(req.params.id);
+      const coachId = req.user.coachId;
+      if (!coachId) return res.status(400).json({ message: "No coach profile found" });
+      await storage.deleteAbsencePeriod(req.params.id, coachId);
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete absence period" });
@@ -3787,7 +3789,7 @@ CRITICAL RULES:
       const opp = opportunities.find(o => o.id === id);
       if (!opp) return res.status(404).json({ message: "Cover opportunity not found" });
 
-      const updated = await storage.updateCoverOpportunity(id, {
+      const updated = await storage.updateCoverOpportunity(id, req.user.clubId, {
         coverStatus: "covered",
         coverCoachId: coachId,
       });
@@ -3795,12 +3797,12 @@ CRITICAL RULES:
       // Update the swimming session with the volunteering coach in the relevant role
       const session = await storage.getSession(opp.sessionId);
       if (session) {
-        const update: Record<string, string> = {};
-        if (opp.role === "lead") update.leadCoachId = coachId;
-        else if (opp.role === "second") update.secondCoachId = coachId;
-        else if (opp.role === "helper") update.helperId = coachId;
-        if (Object.keys(update).length > 0) {
-          await storage.updateSession(opp.sessionId, update as any);
+        let sessionUpdate: { leadCoachId?: string; secondCoachId?: string; helperId?: string } | undefined;
+        if (opp.role === "lead") sessionUpdate = { leadCoachId: coachId };
+        else if (opp.role === "second") sessionUpdate = { secondCoachId: coachId };
+        else if (opp.role === "helper") sessionUpdate = { helperId: coachId };
+        if (sessionUpdate) {
+          await storage.updateSession(opp.sessionId, sessionUpdate);
         }
       }
 
@@ -3812,7 +3814,9 @@ CRITICAL RULES:
 
   app.delete("/api/cover-opportunities/:id", requireAuth, async (req: any, res) => {
     try {
-      await storage.deleteCoverOpportunity(req.params.id);
+      const coachId = req.user.coachId;
+      if (!coachId) return res.status(400).json({ message: "No coach profile found" });
+      await storage.deleteCoverOpportunity(req.params.id, coachId);
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete cover opportunity" });
@@ -3847,7 +3851,7 @@ CRITICAL RULES:
 
   app.delete("/api/float-sessions/:id", requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      await storage.deleteFloatSession(req.params.id);
+      await storage.deleteFloatSession(req.params.id, req.user.clubId);
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete float session" });
