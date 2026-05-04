@@ -3709,7 +3709,10 @@ CRITICAL RULES:
 
   app.get("/api/absence-periods", requireAuth, async (req: any, res) => {
     try {
-      const rows = await storage.getAbsencePeriods(req.user.clubId);
+      // Admins can see all club absences; coaches only see their own
+      const rows = req.user.isAdmin
+        ? await storage.getAbsencePeriods(req.user.clubId)
+        : await storage.getAbsencePeriodsByCoach(req.user.coachId);
       res.json(rows);
     } catch (e: any) {
       res.status(500).json({ message: "Failed to fetch absence periods" });
