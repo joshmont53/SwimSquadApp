@@ -653,7 +653,7 @@ function RecurringSessionModal({ open, onClose, initial, defaultValues, coaches,
           )}
           <Button variant="ghost" onClick={() => { onClose(); resetForm(); }}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving} data-testid="button-save-rs">
-            {saving ? 'Saving…' : initial ? 'Save Changes' : 'Add Session'}
+            {saving ? 'Saving…' : initial ? 'Save Changes' : defaultValues ? 'Duplicate Session' : 'Add Session'}
           </Button>
         </DialogFooter>
       </DialogContent>
