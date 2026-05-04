@@ -225,6 +225,17 @@ export function ScheduleManager({ onBack, coaches, squads, locations }: Props) {
   );
 }
 
+// ─── Shared types ─────────────────────────────────────────────────────────────
+
+type RecurringSessionFormData = {
+  dayOfWeek: number; startTime: string; endTime: string; locationId: string;
+  leadCoachId: string; secondCoachId?: string | null; helperId?: string | null;
+  setWriterId?: string | null; notes?: string | null; squadIds: string[];
+};
+
+type AddSessionFormData = Omit<DraftRow, 'id' | 'type' | 'status' | 'issues'>;
+type AddFloatFormData = { sessionDate: string; startTime: string; endTime: string; coachId: string; locationId: string; notes?: string };
+
 // ─── Standard Schedule Tab ────────────────────────────────────────────────────
 
 function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, locations, onRefresh }: {
@@ -253,12 +264,6 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
     for (const rs of sorted) map[rs.dayOfWeek].push(rs);
     return map;
   }, [sorted]);
-
-  type RecurringSessionFormData = {
-    dayOfWeek: number; startTime: string; endTime: string; locationId: string;
-    leadCoachId: string; secondCoachId?: string | null; helperId?: string | null;
-    setWriterId?: string | null; notes?: string | null; squadIds: string[];
-  };
 
   const createMut = useMutation({
     mutationFn: (data: RecurringSessionFormData) => apiRequest('POST', '/api/recurring-sessions', data),
@@ -1108,8 +1113,6 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
   );
 }
 
-type AddSessionFormData = Omit<DraftRow, 'id' | 'type' | 'status' | 'issues'>;
-
 function AddDraftSessionModal({ open, onClose, coaches, squads, locations, onAdd }: {
   open: boolean; onClose: () => void; coaches: Coach[]; squads: Squad[]; locations: Location[];
   onAdd: (data: AddSessionFormData) => void;
@@ -1181,8 +1184,6 @@ function AddDraftSessionModal({ open, onClose, coaches, squads, locations, onAdd
     </Dialog>
   );
 }
-
-type AddFloatFormData = { sessionDate: string; startTime: string; endTime: string; coachId: string; locationId: string; notes?: string };
 
 function AddFloatSessionModal({ open, onClose, coaches, locations, onAdd }: {
   open: boolean; onClose: () => void; coaches: Coach[]; locations: Location[];

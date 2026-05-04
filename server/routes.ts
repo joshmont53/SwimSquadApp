@@ -3767,8 +3767,17 @@ CRITICAL RULES:
       }
       const coachId = req.user.coachId;
       if (!coachId) return res.status(400).json({ message: "No coach profile found" });
+
+      // Verify the session belongs to this coach's club
+      const session = await storage.getSession(sessionId);
+      if (!session || session.clubId !== req.user.clubId) {
+        return res.status(403).json({ message: "Session not found or access denied" });
+      }
+
       const row = await storage.createCoverOpportunity({
-        ...req.body,
+        sessionId,
+        role: req.body.role,
+        reason: req.body.reason ?? null,
         requesterCoachId: coachId,
         clubId: req.user.clubId,
         coverStatus: "pending",
@@ -3789,21 +3798,34 @@ CRITICAL RULES:
       const opp = opportunities.find(o => o.id === id);
       if (!opp) return res.status(404).json({ message: "Cover opportunity not found" });
 
+      // Guard: must be in pending state
+      if (opp.coverStatus !== "pending") {
+        return res.status(409).json({ message: "Cover request is no longer open" });
+      }
+
+      // Guard: cannot self-volunteer (requester cannot cover their own request)
+      if (opp.requesterCoachId === coachId) {
+        return res.status(400).json({ message: "You cannot volunteer to cover your own request" });
+      }
+
+      // Verify the referenced session belongs to this club before updating it
+      const session = await storage.getSession(opp.sessionId);
+      if (!session || session.clubId !== req.user.clubId) {
+        return res.status(403).json({ message: "Session not found or access denied" });
+      }
+
       const updated = await storage.updateCoverOpportunity(id, req.user.clubId, {
         coverStatus: "covered",
         coverCoachId: coachId,
       });
 
       // Update the swimming session with the volunteering coach in the relevant role
-      const session = await storage.getSession(opp.sessionId);
-      if (session) {
-        let sessionUpdate: { leadCoachId?: string; secondCoachId?: string; helperId?: string } | undefined;
-        if (opp.role === "lead") sessionUpdate = { leadCoachId: coachId };
-        else if (opp.role === "second") sessionUpdate = { secondCoachId: coachId };
-        else if (opp.role === "helper") sessionUpdate = { helperId: coachId };
-        if (sessionUpdate) {
-          await storage.updateSession(opp.sessionId, sessionUpdate);
-        }
+      let sessionUpdate: { leadCoachId?: string; secondCoachId?: string; helperId?: string } | undefined;
+      if (opp.role === "lead") sessionUpdate = { leadCoachId: coachId };
+      else if (opp.role === "second") sessionUpdate = { secondCoachId: coachId };
+      else if (opp.role === "helper") sessionUpdate = { helperId: coachId };
+      if (sessionUpdate) {
+        await storage.updateSession(opp.sessionId, sessionUpdate);
       }
 
       res.json(updated);
