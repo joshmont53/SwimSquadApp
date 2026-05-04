@@ -3761,10 +3761,16 @@ CRITICAL RULES:
 
   app.post("/api/cover-opportunities", requireAuth, async (req: any, res) => {
     try {
-      const { sessionId, role } = req.body;
+      const { sessionId, role, reason } = req.body;
       if (!sessionId || !role) {
         return res.status(400).json({ message: "sessionId and role are required" });
       }
+
+      const validRoles = ["lead", "second", "helper"];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: "role must be one of: lead, second, helper" });
+      }
+
       const coachId = req.user.coachId;
       if (!coachId) return res.status(400).json({ message: "No coach profile found" });
 
@@ -3774,10 +3780,26 @@ CRITICAL RULES:
         return res.status(403).json({ message: "Session not found or access denied" });
       }
 
+      // Verify the session date is today or in the future
+      const today = new Date().toISOString().slice(0, 10);
+      if (session.sessionDate < today) {
+        return res.status(400).json({ message: "Cannot request cover for past sessions" });
+      }
+
+      // Verify the requesting coach is assigned to the selected role on this session
+      const roleCoachMap: Record<string, string | null | undefined> = {
+        lead: session.leadCoachId,
+        second: session.secondCoachId,
+        helper: session.helperId,
+      };
+      if (roleCoachMap[role] !== coachId) {
+        return res.status(403).json({ message: "You are not assigned to the selected role on this session" });
+      }
+
       const row = await storage.createCoverOpportunity({
         sessionId,
-        role: req.body.role,
-        reason: req.body.reason ?? null,
+        role,
+        reason: reason ?? null,
         requesterCoachId: coachId,
         clubId: req.user.clubId,
         coverStatus: "pending",
