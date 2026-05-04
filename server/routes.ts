@@ -3710,7 +3710,7 @@ CRITICAL RULES:
   app.get("/api/absence-periods", requireAuth, async (req: any, res) => {
     try {
       // Admins can see all club absences; coaches only see their own
-      const rows = req.user.isAdmin
+      const rows = req.user.role === 'admin'
         ? await storage.getAbsencePeriods(req.user.clubId)
         : await storage.getAbsencePeriodsByCoach(req.user.coachId, req.user.clubId);
       res.json(rows);
