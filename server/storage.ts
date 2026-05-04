@@ -267,14 +267,14 @@ export interface IStorage {
   getAbsencePeriods(clubId: string): Promise<AbsencePeriod[]>;
   getAbsencePeriodsByCoach(coachId: string): Promise<AbsencePeriod[]>;
   createAbsencePeriod(data: InsertAbsencePeriod): Promise<AbsencePeriod>;
-  deleteAbsencePeriod(id: string, coachId: string): Promise<void>;
+  deleteAbsencePeriod(id: string, coachId: string, clubId: string): Promise<void>;
 
   // Cover Opportunities operations
   getCoverOpportunities(clubId: string): Promise<CoverOpportunity[]>;
   getCoverOpportunitiesByCoach(requesterCoachId: string): Promise<CoverOpportunity[]>;
   createCoverOpportunity(data: InsertCoverOpportunity): Promise<CoverOpportunity>;
   updateCoverOpportunity(id: string, clubId: string, data: Partial<InsertCoverOpportunity>): Promise<CoverOpportunity>;
-  deleteCoverOpportunity(id: string, requesterCoachId: string): Promise<void>;
+  deleteCoverOpportunity(id: string, requesterCoachId: string, clubId: string): Promise<void>;
 
   // Float Sessions operations
   getFloatSessions(clubId: string): Promise<FloatSession[]>;
@@ -1408,9 +1408,9 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async deleteAbsencePeriod(id: string, coachId: string): Promise<void> {
+  async deleteAbsencePeriod(id: string, coachId: string, clubId: string): Promise<void> {
     await db.update(absencePeriods).set({ recordStatus: "inactive" })
-      .where(and(eq(absencePeriods.id, id), eq(absencePeriods.coachId, coachId)));
+      .where(and(eq(absencePeriods.id, id), eq(absencePeriods.coachId, coachId), eq(absencePeriods.clubId, clubId)));
   }
 
   // ─── Cover Opportunities ──────────────────────────────────────────────────
@@ -1438,9 +1438,9 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async deleteCoverOpportunity(id: string, requesterCoachId: string): Promise<void> {
+  async deleteCoverOpportunity(id: string, requesterCoachId: string, clubId: string): Promise<void> {
     await db.update(coverOpportunities).set({ recordStatus: "inactive" })
-      .where(and(eq(coverOpportunities.id, id), eq(coverOpportunities.requesterCoachId, requesterCoachId)));
+      .where(and(eq(coverOpportunities.id, id), eq(coverOpportunities.requesterCoachId, requesterCoachId), eq(coverOpportunities.clubId, clubId)));
   }
 
   // ─── Float Sessions ───────────────────────────────────────────────────────

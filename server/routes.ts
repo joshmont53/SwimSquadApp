@@ -3753,7 +3753,7 @@ CRITICAL RULES:
     try {
       const coachId = req.user.coachId;
       if (!coachId) return res.status(400).json({ message: "No coach profile found" });
-      await storage.deleteAbsencePeriod(req.params.id, coachId);
+      await storage.deleteAbsencePeriod(req.params.id, coachId, req.user.clubId);
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete absence period" });
@@ -3874,7 +3874,7 @@ CRITICAL RULES:
     try {
       const coachId = req.user.coachId;
       if (!coachId) return res.status(400).json({ message: "No coach profile found" });
-      await storage.deleteCoverOpportunity(req.params.id, coachId);
+      await storage.deleteCoverOpportunity(req.params.id, coachId, req.user.clubId);
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete cover opportunity" });

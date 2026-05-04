@@ -149,7 +149,7 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
   }, [sessions, currentCoach, today]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
-  type AbsencePayload = { startDate: string; endDate: string; absenceType: string; startTime?: string; endTime?: string; reason?: string };
+  type AbsencePayload = { startDate: string; endDate: string; absenceType: 'all_day' | 'specific_times'; startTime?: string | null; endTime?: string | null; reason?: string | null };
   type CoverPayload = { sessionId: string; role: string; reason?: string };
 
   const createAbsence = useMutation({
