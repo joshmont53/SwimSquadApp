@@ -25,7 +25,7 @@ import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  ArrowLeft, Plus, Edit2, Trash2, LayoutGrid, List,
+  ArrowLeft, Plus, Edit2, Trash2, Copy, LayoutGrid, List,
   AlertCircle, CheckCircle2, Clock, MapPin, Users, CalendarDays,
   Info, ChevronDown, ChevronUp, AlertTriangle,
 } from 'lucide-react';
@@ -251,6 +251,7 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
   const [gridView, setGridView] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringSession | null>(null);
+  const [duplicating, setDuplicating] = useState<RecurringSession | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const sorted = useMemo(() =>
@@ -282,8 +283,9 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/recurring-sessions'] }); setDeleteId(null); toast({ title: 'Session removed' }); },
   });
 
-  const handleEdit = (rs: RecurringSession) => { setEditing(rs); setModalOpen(true); };
-  const handleAdd = () => { setEditing(null); setModalOpen(true); };
+  const handleEdit = (rs: RecurringSession) => { setEditing(rs); setDuplicating(null); setModalOpen(true); };
+  const handleAdd = () => { setEditing(null); setDuplicating(null); setModalOpen(true); };
+  const handleDuplicate = (rs: RecurringSession) => { setEditing(null); setDuplicating(rs); setModalOpen(true); };
 
   if (isLoading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>;
 
@@ -333,7 +335,7 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
 
           {/* Table view (desktop) */}
           <div className={cn('hidden', !gridView && 'md:block')}>
-            <RSTable rows={sorted} coaches={coaches} squads={squads} locations={locations} onEdit={handleEdit} onDelete={id => setDeleteId(id)} />
+            <RSTable rows={sorted} coaches={coaches} squads={squads} locations={locations} onEdit={handleEdit} onDuplicate={handleDuplicate} onDelete={id => setDeleteId(id)} />
           </div>
 
           {/* Mobile: stacked day list */}
@@ -355,10 +357,11 @@ function StandardScheduleTab({ recurringSessions, isLoading, coaches, squads, lo
       )}
 
       <RecurringSessionModal
-        key={editing?.id ?? 'new'}
+        key={editing?.id ?? (duplicating ? `dup-${duplicating.id}` : 'new')}
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditing(null); }}
+        onClose={() => { setModalOpen(false); setEditing(null); setDuplicating(null); }}
         initial={editing}
+        defaultValues={duplicating ?? undefined}
         coaches={coaches}
         squads={squads}
         locations={locations}
@@ -405,9 +408,9 @@ function RSCard({ rs, coaches, squads, locations, onEdit, onDelete }: {
   );
 }
 
-function RSTable({ rows, coaches, squads, locations, onEdit, onDelete }: {
+function RSTable({ rows, coaches, squads, locations, onEdit, onDuplicate, onDelete }: {
   rows: RecurringSession[]; coaches: Coach[]; squads: Squad[]; locations: Location[];
-  onEdit: (rs: RecurringSession) => void; onDelete: (id: string) => void;
+  onEdit: (rs: RecurringSession) => void; onDuplicate: (rs: RecurringSession) => void; onDelete: (id: string) => void;
 }) {
   return (
     <div className="overflow-x-auto rounded-md border">
@@ -432,8 +435,24 @@ function RSTable({ rows, coaches, squads, locations, onEdit, onDelete }: {
               <td className="px-3 py-2">{coachN(coaches, rs.setWriterId)}</td>
               <td className="px-3 py-2">
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(rs)} data-testid={`button-edit-rs-${rs.id}`}><Edit2 className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(rs.id)} data-testid={`button-delete-rs-${rs.id}`}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => onEdit(rs)} data-testid={`button-edit-rs-${rs.id}`}><Edit2 className="h-3.5 w-3.5" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => onDuplicate(rs)} data-testid={`button-duplicate-rs-${rs.id}`}><Copy className="h-3.5 w-3.5" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Duplicate</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => onDelete(rs.id)} data-testid={`button-delete-rs-${rs.id}`}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete</TooltipContent>
+                  </Tooltip>
                 </div>
               </td>
             </tr>
@@ -444,41 +463,44 @@ function RSTable({ rows, coaches, squads, locations, onEdit, onDelete }: {
   );
 }
 
-function RecurringSessionModal({ open, onClose, initial, coaches, squads, locations, onSave, onDelete, saving }: {
+function RecurringSessionModal({ open, onClose, initial, defaultValues, coaches, squads, locations, onSave, onDelete, saving }: {
   open: boolean; onClose: () => void; initial: RecurringSession | null;
+  defaultValues?: Partial<RecurringSession>;
   coaches: Coach[]; squads: Squad[]; locations: Location[];
   onSave: (data: RecurringSessionFormData) => void;
   onDelete?: () => void;
   saving: boolean;
 }) {
+  // `source` is used for pre-populating: prefer initial (edit), fall back to defaultValues (duplicate)
+  const source = initial ?? defaultValues;
   const [form, setForm] = useState({
-    dayOfWeek: initial?.dayOfWeek?.toString() ?? '1',
-    startTime: initial?.startTime?.slice(0,5) ?? '',
-    endTime: initial?.endTime?.slice(0,5) ?? '',
-    locationId: initial?.locationId ?? '',
-    leadCoachId: initial?.leadCoachId ?? '',
-    secondCoachId: initial?.secondCoachId ?? '',
-    helperId: initial?.helperId ?? '',
-    setWriterId: initial?.setWriterId ?? '',
-    notes: initial?.notes ?? '',
-    squadIds: initial?.squadIds ?? [] as string[],
+    dayOfWeek: source?.dayOfWeek?.toString() ?? '1',
+    startTime: source?.startTime?.slice(0,5) ?? '',
+    endTime: source?.endTime?.slice(0,5) ?? '',
+    locationId: source?.locationId ?? '',
+    leadCoachId: source?.leadCoachId ?? '',
+    secondCoachId: source?.secondCoachId ?? '',
+    helperId: source?.helperId ?? '',
+    setWriterId: source?.setWriterId ?? '',
+    notes: source?.notes ?? '',
+    squadIds: source?.squadIds ?? [] as string[],
   });
 
-  // Reset form when initial changes
+  // Reset form when source changes
   const resetForm = useCallback(() => {
     setForm({
-      dayOfWeek: initial?.dayOfWeek?.toString() ?? '1',
-      startTime: initial?.startTime?.slice(0,5) ?? '',
-      endTime: initial?.endTime?.slice(0,5) ?? '',
-      locationId: initial?.locationId ?? '',
-      leadCoachId: initial?.leadCoachId ?? '',
-      secondCoachId: initial?.secondCoachId ?? '',
-      helperId: initial?.helperId ?? '',
-      setWriterId: initial?.setWriterId ?? '',
-      notes: initial?.notes ?? '',
-      squadIds: initial?.squadIds ?? [],
+      dayOfWeek: source?.dayOfWeek?.toString() ?? '1',
+      startTime: source?.startTime?.slice(0,5) ?? '',
+      endTime: source?.endTime?.slice(0,5) ?? '',
+      locationId: source?.locationId ?? '',
+      leadCoachId: source?.leadCoachId ?? '',
+      secondCoachId: source?.secondCoachId ?? '',
+      helperId: source?.helperId ?? '',
+      setWriterId: source?.setWriterId ?? '',
+      notes: source?.notes ?? '',
+      squadIds: source?.squadIds ?? [],
     });
-  }, [initial]);
+  }, [source]);
 
   const handleSquadToggle = (squadId: string) => {
     setForm(f => ({
@@ -520,7 +542,7 @@ function RecurringSessionModal({ open, onClose, initial, coaches, squads, locati
     <Dialog open={open} onOpenChange={open => { if (!open) { onClose(); resetForm(); } }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial ? 'Edit Recurring Session' : 'Add Recurring Session'}</DialogTitle>
+          <DialogTitle>{initial ? 'Edit Recurring Session' : defaultValues ? 'Duplicate Recurring Session' : 'Add Recurring Session'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
