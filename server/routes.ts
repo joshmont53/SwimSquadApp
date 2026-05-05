@@ -981,6 +981,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id || req.user?.claims?.sub;
       const requestingUser = await storage.getUser(userId);
       const isAdmin = requestingUser?.role === 'admin';
+      const userClubId = req.user?.clubId;
+
+      // Source session must belong to the requesting user's club
+      if (sourceSession.clubId !== userClubId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
 
       let authorizedCoachId: string | null = null;
       if (!isAdmin) {
@@ -998,6 +1004,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { targetSessionIds } = req.body;
       if (!targetSessionIds || !Array.isArray(targetSessionIds) || targetSessionIds.length === 0) {
         return res.status(400).json({ message: "At least one target session must be selected" });
+      }
+
+      // Pre-validate ALL targets before performing any writes (all-or-nothing)
+      const validatedTargets: typeof sourceSession[] = [];
+      for (const targetId of targetSessionIds) {
+        if (targetId === sourceSession.id) continue;
+        const target = await storage.getSession(targetId);
+        if (!target) {
+          return res.status(404).json({ message: `Target session ${targetId} not found` });
+        }
+        // Every target must belong to the user's club
+        if (target.clubId !== userClubId) {
+          return res.status(403).json({ message: "Access denied: target session belongs to a different club" });
+        }
+        // Non-admins must be involved in each target session
+        if (!isAdmin && authorizedCoachId) {
+          const isInvolvedInTarget = [target.leadCoachId, target.secondCoachId, target.helperId, target.setWriterId].includes(authorizedCoachId);
+          if (!isInvolvedInTarget) {
+            return res.status(403).json({ message: `You are not authorised to modify session ${targetId}` });
+          }
+        }
+        validatedTargets.push(target);
       }
 
       const contentPatch: Partial<InsertSwimmingSession> = {
@@ -1032,22 +1060,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         duplicatedFromSessionId: sourceSession.id,
       };
 
+      // All checks passed — apply updates
       const updatedSessions: string[] = [];
-      for (const targetId of targetSessionIds) {
-        if (targetId === sourceSession.id) continue;
-        const target = await storage.getSession(targetId);
-        if (!target) continue;
-        // Enforce club boundary — target must belong to the same club as the source
-        if (target.clubId !== sourceSession.clubId) continue;
-        // Non-admins must be involved in each target session they want to overwrite
-        if (!isAdmin && authorizedCoachId) {
-          const isInvolvedInTarget = [target.leadCoachId, target.secondCoachId, target.helperId, target.setWriterId].includes(authorizedCoachId);
-          if (!isInvolvedInTarget) {
-            return res.status(403).json({ message: `You are not authorised to modify session ${targetId}` });
-          }
-        }
-        await storage.updateSession(targetId, contentPatch);
-        updatedSessions.push(targetId);
+      for (const target of validatedTargets) {
+        await storage.updateSession(target.id, contentPatch);
+        updatedSessions.push(target.id);
       }
 
       console.log(`[Session CopyContent] Content from ${sourceSession.id} copied to ${updatedSessions.length} session(s): ${updatedSessions.join(', ')}`);
