@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Copy, ChevronDown, X, Loader2, FilePlus, FileCheck, AlertTriangle, Search, CheckSquare, Square } from "lucide-react";
+import { Copy, ChevronDown, X, Loader2, FilePlus, FileCheck, AlertTriangle, Search } from "lucide-react";
 import { format, parseISO, isToday, isFuture } from "date-fns";
 import type { SwimmingSession, Squad, Coach, Location } from "@shared/schema";
 
@@ -160,14 +160,6 @@ export function DuplicateSessionModal({ session, open, onOpenChange, onDuplicate
 
   const toggleTarget = (id: string) => {
     setSelectedTargetIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-
-  const toggleAll = () => {
-    if (selectedTargetIds.length === filteredSessions.length && filteredSessions.length > 0) {
-      setSelectedTargetIds([]);
-    } else {
-      setSelectedTargetIds(filteredSessions.map(s => s.id));
-    }
   };
 
   // ── Mutations ──
@@ -491,8 +483,6 @@ export function DuplicateSessionModal({ session, open, onOpenChange, onDuplicate
   }
 
   // Step 1b: Existing session picker
-  const allFilteredSelected = filteredSessions.length > 0 && filteredSessions.every(s => selectedTargetIds.includes(s.id));
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
@@ -541,20 +531,9 @@ export function DuplicateSessionModal({ session, open, onOpenChange, onDuplicate
           </div>
         )}
 
-        {/* Select all row */}
+        {/* Selection count */}
         {filteredSessions.length > 0 && (
-          <div className="mx-6 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={toggleAll}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              data-testid="existing-toggle-all"
-            >
-              {allFilteredSelected
-                ? <CheckSquare className="h-4 w-4 text-primary" />
-                : <Square className="h-4 w-4" />}
-              {allFilteredSelected ? "Deselect all" : "Select all"}
-            </button>
+          <div className="mx-6 flex items-center justify-end">
             <span className="text-xs text-muted-foreground">
               {selectedTargetIds.length} selected · {filteredSessions.length} shown
             </span>
