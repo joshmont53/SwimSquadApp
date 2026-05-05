@@ -725,22 +725,39 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
 
   function computeStatus(row: DraftRow, allRows: DraftRow[]): { status: DraftRow['status']; issues: string[] } {
     const issues: string[] = [];
-    if (!row.leadCoachId) issues.push('Lead coach is vacant');
+    let hasError = false;
+
+    if (!row.leadCoachId) {
+      issues.push('Lead coach is vacant — resolve before confirming');
+      hasError = true;
+    }
     if (row.secondCoachId === '_vacant') issues.push('Second coach vacant — cover opportunity will be created');
     if (row.helperId === '_vacant') issues.push('Helper vacant — cover opportunity will be created');
-    const sameLocSameDate = allRows.filter(r =>
-      r.type === 'session' && r.locationId === row.locationId && r.date === row.date
+
+    // L2 check: find all rows (session + float) at same location, same date, with overlapping time window
+    const rowStart = timeToMins(row.startTime);
+    const rowEnd = timeToMins(row.endTime);
+    const overlapping = allRows.filter(r =>
+      r.locationId === row.locationId &&
+      r.date === row.date &&
+      timeToMins(r.startTime) < rowEnd &&
+      timeToMins(r.endTime) > rowStart
     );
-    const hasL2 = sameLocSameDate.some(r => {
-      const poolCoaches = [r.leadCoachId, r.secondCoachId, r.helperId]
-        .filter(cid => cid && cid !== '_vacant') as string[];
-      return poolCoaches.some(cid => {
+    const hasL2 = overlapping.some(r => {
+      const coachIds: string[] = r.type === 'float'
+        ? (r.coachId ? [r.coachId] : [])
+        : ([r.leadCoachId, r.secondCoachId, r.helperId].filter(cid => cid && cid !== '_vacant') as string[]);
+      return coachIds.some(cid => {
         const c = coaches.find(co => co.id === cid);
         return c && LEVEL2_LEVELS.includes(c.level);
       });
     });
-    if (!hasL2) issues.push('No Level 2+ coach at this venue/time block');
-    const status = !row.leadCoachId ? 'error' : issues.length > 0 ? 'warn' : 'ok';
+    if (!hasL2) {
+      issues.push('No Level 2+ coach at this venue/time block');
+      hasError = true;
+    }
+
+    const status: DraftRow['status'] = hasError ? 'error' : issues.length > 0 ? 'warn' : 'ok';
     return { status, issues };
   }
 
@@ -895,21 +912,16 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
         }
         // Create cover opportunities for vacant roles
         const rsForCover = recurringSessions.find(r => r.id === row.recurringId);
-        if (!row.leadCoachId && rsForCover?.leadCoachId) {
-          await apiRequest('POST', '/api/cover-opportunities', {
-            sessionId: created.id, role: 'lead', reason: 'Coach absence', requesterCoachId: rsForCover.leadCoachId,
-          }).catch(() => {});
-        }
         if (row.secondCoachId === '_vacant') {
           const reqCoachId = rsForCover?.secondCoachId || row.leadCoachId;
           await apiRequest('POST', '/api/cover-opportunities', {
-            sessionId: created.id, role: 'second', reason: 'Cover needed', requesterCoachId: reqCoachId,
+            sessionId: created.id, role: 'second', reason: 'Coach absence', requesterCoachId: reqCoachId,
           }).catch(() => {});
         }
         if (row.helperId === '_vacant') {
           const reqCoachId = rsForCover?.helperId || row.leadCoachId;
           await apiRequest('POST', '/api/cover-opportunities', {
-            sessionId: created.id, role: 'helper', reason: 'Cover needed', requesterCoachId: reqCoachId,
+            sessionId: created.id, role: 'helper', reason: 'Coach absence', requesterCoachId: reqCoachId,
           }).catch(() => {});
         }
       }
@@ -1054,7 +1066,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
                 <p>{sessionRows.filter(r => r.leadCoachId).length} session{sessionRows.filter(r => r.leadCoachId).length !== 1 ? 's' : ''} and {floatRows.length} float session{floatRows.length !== 1 ? 's' : ''} will be created.</p>
                 {blockedRows.length > 0 && (
                   <div className="text-destructive space-y-1">
-                    <p className="font-medium">{blockedRows.length} session{blockedRows.length !== 1 ? 's' : ''} will be skipped (no lead coach):</p>
+                    <p className="font-medium">{blockedRows.length} session{blockedRows.length !== 1 ? 's' : ''} must have a lead coach assigned before confirming:</p>
                     {blockedRows.map(r => <p key={r.id} className="text-xs">• {fmt(r.date)} {r.startTime} — {squadN(squads, r.squadIds)}</p>)}
                   </div>
                 )}
@@ -1066,7 +1078,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Review Draft</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCreate} disabled={creating || sessionRows.filter(r => r.leadCoachId).length === 0 && floatRows.length === 0}>
+            <AlertDialogAction onClick={confirmCreate} disabled={creating || blockedRows.length > 0 || (sessionRows.length === 0 && floatRows.length === 0)}>
               {creating ? 'Creating…' : 'Confirm & Create'}
             </AlertDialogAction>
           </AlertDialogFooter>
