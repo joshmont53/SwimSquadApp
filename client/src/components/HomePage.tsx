@@ -33,8 +33,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
+import { useQuery } from '@tanstack/react-query';
 import type { Coach, Session, Squad, Swimmer, Location } from '@/lib/typeAdapters';
-import type { Competition, CompetitionCoaching, Attendance, SessionFeedback } from '@shared/schema';
+import type { Competition, CompetitionCoaching, Attendance, SessionFeedback, FloatSession } from '@shared/schema';
 
 interface HomePageProps {
   coach: Coach;
@@ -158,6 +159,10 @@ export function HomePage({
     return allIncompleteSessions.slice(0, 3);
   }, [allIncompleteSessions]);
 
+  const { data: myFloatSessions = [] } = useQuery<FloatSession[]>({
+    queryKey: ['/api/float-sessions/mine'],
+  });
+
   const thisWeekUpcomingSessions = useMemo(() => {
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -171,6 +176,16 @@ export function HomePage({
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [coachSessions]);
+
+  const thisWeekUpcomingFloats = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    return myFloatSessions.filter(fs => {
+      const d = new Date(fs.sessionDate);
+      return (isFuture(d) || isToday(d)) && isWithinInterval(d, { start: weekStart, end: weekEnd });
+    }).sort((a, b) => a.sessionDate.localeCompare(b.sessionDate) || a.startTime.localeCompare(b.startTime));
+  }, [myFloatSessions]);
   
   const thisWeekSessionsForDistance = useMemo(() => {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -459,7 +474,7 @@ export function HomePage({
               </div>
             </CardHeader>
             <CardContent>
-              {thisWeekUpcomingSessions.length > 0 ? (
+              {(thisWeekUpcomingSessions.length > 0 || thisWeekUpcomingFloats.length > 0) ? (
                 <div className="space-y-2">
                   {thisWeekUpcomingSessions.map(session => {
                     const squadIds = sessionSquadMap[session.id] || [session.squadId];
@@ -502,6 +517,38 @@ export function HomePage({
                           </div>
                           {isSessionToday && (
                             <Badge 
+                              style={{ backgroundColor: 'var(--club-primary-faint)', color: 'var(--club-primary)' }}
+                              className="text-xs ml-2"
+                            >
+                              Today
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {thisWeekUpcomingFloats.map(fs => {
+                    const fsDate = new Date(fs.sessionDate);
+                    const isFsToday = isToday(fsDate);
+                    const locationName = locations.find(l => l.id === fs.locationId)?.name ?? 'Unknown location';
+                    return (
+                      <div
+                        key={fs.id}
+                        className="p-2 bg-muted/30 rounded-lg"
+                        data-testid={`upcoming-float-${fs.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Waves className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate">Float Session</div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {isFsToday ? 'Today' : format(fsDate, 'EEE, MMM d')} • {fs.startTime.slice(0, 5)} • {locationName}
+                              </div>
+                            </div>
+                          </div>
+                          {isFsToday && (
+                            <Badge
                               style={{ backgroundColor: 'var(--club-primary-faint)', color: 'var(--club-primary)' }}
                               className="text-xs ml-2"
                             >

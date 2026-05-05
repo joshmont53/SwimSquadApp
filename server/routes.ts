@@ -2207,17 +2207,41 @@ Note on definitions:
 
       const totalCompetitionHours = competitionDetails.reduce((sum, c) => sum + c.duration, 0);
 
+      // Get float sessions for this month
+      const allFloatSessions = await storage.getFloatSessionsByCoach(coachId);
+      const monthFloatSessions = allFloatSessions.filter(fs =>
+        fs.sessionDate >= startDate && fs.sessionDate <= endDate
+      );
+
+      const floatSessionDetails = monthFloatSessions.map(fs => {
+        const [sh, sm] = fs.startTime.split(':').map(Number);
+        const [eh, em] = fs.endTime.split(':').map(Number);
+        const duration = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+        const location = locationMap.get(fs.locationId);
+        return {
+          floatId: fs.id,
+          sessionDate: fs.sessionDate,
+          startTime: fs.startTime,
+          endTime: fs.endTime,
+          locationName: location?.poolName || 'Unknown Location',
+          duration,
+        };
+      });
+
+      const totalFloatHours = floatSessionDetails.reduce((sum, fs) => sum + fs.duration, 0);
+
       // Calculate totals (duplicated sessions don't count for writing earnings)
-      const totalHours = totalCoachingHours + totalCompetitionHours;
       const originalSessionsWritten = sessionsWritten.filter(s => !s.duplicatedFromSessionId);
       const totalSessionsWritten = originalSessionsWritten.length;
 
       const hourlyRate = parseFloat(rate.hourlyRate);
       const sessionWritingRate = parseFloat(rate.sessionWritingRate);
 
-      const coachingEarnings = totalHours * hourlyRate;
+      const totalHours = totalCoachingHours + totalCompetitionHours + totalFloatHours;
+      const coachingEarnings = (totalCoachingHours + totalCompetitionHours) * hourlyRate;
+      const floatEarnings = totalFloatHours * hourlyRate;
       const sessionWritingEarnings = totalSessionsWritten * sessionWritingRate;
-      const totalEarnings = coachingEarnings + sessionWritingEarnings;
+      const totalEarnings = coachingEarnings + floatEarnings + sessionWritingEarnings;
 
       // Build invoice data
       const invoiceData = {
@@ -2231,7 +2255,7 @@ Note on definitions:
           sessionWritingRate,
         },
         coaching: {
-          totalHours,
+          totalHours: totalCoachingHours + totalCompetitionHours,
           breakdown: {
             sessionHours: totalCoachingHours,
             competitionHours: totalCompetitionHours,
@@ -2239,6 +2263,11 @@ Note on definitions:
           sessions: sessionDetails,
           competitions: competitionDetails,
           earnings: coachingEarnings,
+        },
+        floatSessions: {
+          sessions: floatSessionDetails,
+          totalHours: totalFloatHours,
+          earnings: floatEarnings,
         },
         sessionWriting: {
           count: totalSessionsWritten,
@@ -3884,6 +3913,18 @@ CRITICAL RULES:
   // ============================================================================
   // Float Sessions API
   // ============================================================================
+
+  app.get("/api/float-sessions/mine", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      const coach = await storage.getCoachByUserId(userId);
+      if (!coach) return res.json([]);
+      const rows = await storage.getFloatSessionsByCoach(coach.id);
+      res.json(rows);
+    } catch (e: any) {
+      res.status(500).json({ message: "Failed to fetch float sessions" });
+    }
+  });
 
   app.get("/api/float-sessions", requireAuth, requireAdmin, async (req: any, res) => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -726,12 +726,14 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
   function computeStatus(row: DraftRow, allRows: DraftRow[]): { status: DraftRow['status']; issues: string[] } {
     const issues: string[] = [];
     if (!row.leadCoachId) issues.push('Lead coach is vacant');
-    // Level 2 check: for each concurrent session at same location, check if any L2+ coach is present
+    if (row.secondCoachId === '_vacant') issues.push('Second coach vacant — cover opportunity will be created');
+    if (row.helperId === '_vacant') issues.push('Helper vacant — cover opportunity will be created');
     const sameLocSameDate = allRows.filter(r =>
       r.type === 'session' && r.locationId === row.locationId && r.date === row.date
     );
     const hasL2 = sameLocSameDate.some(r => {
-      const poolCoaches = [r.leadCoachId, r.secondCoachId, r.helperId].filter(Boolean) as string[];
+      const poolCoaches = [r.leadCoachId, r.secondCoachId, r.helperId]
+        .filter(cid => cid && cid !== '_vacant') as string[];
       return poolCoaches.some(cid => {
         const c = coaches.find(co => co.id === cid);
         return c && LEVEL2_LEVELS.includes(c.level);
@@ -766,25 +768,20 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
           endTime: rs.endTime.slice(0,5),
           locationId: rs.locationId,
           leadCoachId: leadVacant ? '' : rs.leadCoachId,
-          secondCoachId: secondVacant ? null : rs.secondCoachId,
-          helperId: helperVacant ? null : rs.helperId,
+          secondCoachId: rs.secondCoachId === null ? null : (secondVacant ? '_vacant' : rs.secondCoachId),
+          helperId: rs.helperId === null ? null : (helperVacant ? '_vacant' : rs.helperId),
           setWriterId: rs.setWriterId,
           squadIds: rs.squadIds,
           status: 'ok',
-          issues: [
-            ...(leadVacant ? ['Lead coach absent'] : []),
-            ...(secondVacant ? ['Second coach absent'] : []),
-            ...(helperVacant ? ['Helper absent'] : []),
-          ],
+          issues: [],
           recurringId: rs.id,
         });
       }
       d = addDays(d, 1);
     }
-    // Re-run status checks
     const finalRows = rows.map(row => {
       const { status, issues } = computeStatus(row, rows);
-      return { ...row, status, issues: [...row.issues, ...issues.filter(i => !row.issues.includes(i))] };
+      return { ...row, status, issues };
     });
     setDraft(finalRows.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)));
   };
@@ -795,8 +792,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
       const updated = prev.map(r => r.id === id ? { ...r, ...updates } : r);
       return updated.map(row => {
         const { status, issues } = computeStatus(row, updated);
-        const baseIssues = row.issues.filter(i => i.includes('absent'));
-        return { ...row, ...( row.id === id ? updates : {}), status, issues: [...baseIssues, ...issues.filter(i => !baseIssues.includes(i))] };
+        return { ...row, status, issues };
       });
     });
   };
@@ -856,6 +852,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
   };
 
   const blockedRows = draft?.filter(r => r.type === 'session' && !r.leadCoachId) ?? [];
+  const vacantRoleRows = draft?.filter(r => r.type === 'session' && r.leadCoachId && (r.secondCoachId === '_vacant' || r.helperId === '_vacant')) ?? [];
   const sessionRows = draft?.filter(r => r.type === 'session') ?? [];
   const floatRows = draft?.filter(r => r.type === 'float') ?? [];
 
@@ -879,8 +876,8 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
           poolId: row.locationId,
           squadId: mainSquad,
           leadCoachId: row.leadCoachId,
-          secondCoachId: row.secondCoachId || null,
-          helperId: row.helperId || null,
+          secondCoachId: row.secondCoachId === '_vacant' ? null : (row.secondCoachId || null),
+          helperId: row.helperId === '_vacant' ? null : (row.helperId || null),
           setWriterId: row.setWriterId || row.leadCoachId,
           focus: 'Aerobic capacity',
           totalDistance: 0,
@@ -897,21 +894,23 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
           await apiRequest('POST', '/api/session-squads', { sessionId: created.id, squadId }).catch(() => {});
         }
         // Create cover opportunities for vacant roles
-        const vacants = [
-          ...(row.issues.includes('Lead coach absent') ? [{ role: 'lead' }] : []),
-          ...(row.issues.includes('Second coach absent') ? [{ role: 'second' }] : []),
-          ...(row.issues.includes('Helper absent') ? [{ role: 'helper' }] : []),
-        ];
-        const rs = recurringSessions.find(r => r.id === row.recurringId);
-        if (rs) {
-          for (const v of vacants) {
-            const reqCoachId = v.role === 'lead' ? rs.leadCoachId : v.role === 'second' ? rs.secondCoachId : rs.helperId;
-            if (reqCoachId) {
-              await apiRequest('POST', '/api/cover-opportunities', {
-                sessionId: created.id, role: v.role, reason: 'Coach absence', requesterCoachId: reqCoachId,
-              }).catch(() => {});
-            }
-          }
+        const rsForCover = recurringSessions.find(r => r.id === row.recurringId);
+        if (!row.leadCoachId && rsForCover?.leadCoachId) {
+          await apiRequest('POST', '/api/cover-opportunities', {
+            sessionId: created.id, role: 'lead', reason: 'Coach absence', requesterCoachId: rsForCover.leadCoachId,
+          }).catch(() => {});
+        }
+        if (row.secondCoachId === '_vacant') {
+          const reqCoachId = rsForCover?.secondCoachId || row.leadCoachId;
+          await apiRequest('POST', '/api/cover-opportunities', {
+            sessionId: created.id, role: 'second', reason: 'Cover needed', requesterCoachId: reqCoachId,
+          }).catch(() => {});
+        }
+        if (row.helperId === '_vacant') {
+          const reqCoachId = rsForCover?.helperId || row.leadCoachId;
+          await apiRequest('POST', '/api/cover-opportunities', {
+            sessionId: created.id, role: 'helper', reason: 'Cover needed', requesterCoachId: reqCoachId,
+          }).catch(() => {});
         }
       }
       for (const row of floatRows) {
@@ -1059,6 +1058,9 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
                     {blockedRows.map(r => <p key={r.id} className="text-xs">• {fmt(r.date)} {r.startTime} — {squadN(squads, r.squadIds)}</p>)}
                   </div>
                 )}
+                {vacantRoleRows.length > 0 && (
+                  <p className="text-amber-600 text-sm">{vacantRoleRows.length} session{vacantRoleRows.length !== 1 ? 's' : ''} will have cover opportunities created for vacant roles.</p>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1078,6 +1080,20 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
   row: DraftRow; coaches: Coach[]; squads: Squad[]; locations: Location[];
   onUpdate: (u: Partial<DraftRow>) => void; onRemove: () => void;
 }) {
+  const [squadOpen, setSquadOpen] = useState(false);
+  const squadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!squadOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (squadRef.current && !squadRef.current.contains(e.target as Node)) {
+        setSquadOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [squadOpen]);
+
   const statusIcon = row.status === 'ok'
     ? <CheckCircle2 className="h-4 w-4 text-green-600" />
     : row.status === 'warn'
@@ -1096,8 +1112,34 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
           </TooltipContent>
         </Tooltip>
       </td>
-      <td className="px-2 py-1.5 whitespace-nowrap">{fmt(row.date)}</td>
-      <td className="px-2 py-1.5 whitespace-nowrap">{row.startTime}–{row.endTime}</td>
+      <td className="px-2 py-1.5">
+        <Input
+          type="date"
+          value={row.date}
+          onChange={e => onUpdate({ date: e.target.value })}
+          className="h-7 text-xs w-32"
+          data-testid={`input-date-${row.id}`}
+        />
+      </td>
+      <td className="px-2 py-1.5">
+        <div className="flex items-center gap-1">
+          <Input
+            type="time"
+            value={row.startTime}
+            onChange={e => onUpdate({ startTime: e.target.value })}
+            className="h-7 text-xs w-20"
+            data-testid={`input-start-time-${row.id}`}
+          />
+          <span className="text-xs text-muted-foreground">–</span>
+          <Input
+            type="time"
+            value={row.endTime}
+            onChange={e => onUpdate({ endTime: e.target.value })}
+            className="h-7 text-xs w-20"
+            data-testid={`input-end-time-${row.id}`}
+          />
+        </div>
+      </td>
       <td className="px-2 py-1.5">
         {row.type === 'float'
           ? <Badge variant="outline" className="text-xs">Float</Badge>
@@ -1105,8 +1147,45 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
       </td>
       <td className="px-2 py-1.5">
         {row.type === 'float'
-          ? <span className="text-muted-foreground">{coachN(coaches, row.coachId)}</span>
-          : squadN(squads, row.squadIds)}
+          ? <span className="text-muted-foreground text-xs">{coachN(coaches, row.coachId)}</span>
+          : (
+            <div ref={squadRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setSquadOpen(v => !v)}
+                className="flex items-center gap-1 h-7 text-xs rounded-md border px-2 min-w-24 max-w-40 bg-background hover-elevate"
+                data-testid={`button-squads-${row.id}`}
+              >
+                <span className="truncate flex-1 text-left">
+                  {row.squadIds.length === 0
+                    ? 'No squads'
+                    : row.squadIds.length === 1
+                    ? (squads.find(s => s.id === row.squadIds[0])?.name ?? 'Unknown')
+                    : `${row.squadIds.length} squads`}
+                </span>
+                <ChevronDown className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+              </button>
+              {squadOpen && (
+                <div className="absolute z-50 top-8 left-0 bg-popover border rounded-md shadow-md p-2 space-y-1 min-w-36">
+                  {squads.map(sq => (
+                    <label key={sq.id} className="flex items-center gap-2 cursor-pointer px-1 py-0.5 rounded hover-elevate text-xs">
+                      <Checkbox
+                        checked={row.squadIds.includes(sq.id)}
+                        onCheckedChange={(checked) => {
+                          const newIds = checked
+                            ? [...row.squadIds, sq.id]
+                            : row.squadIds.filter(id => id !== sq.id);
+                          onUpdate({ squadIds: newIds });
+                        }}
+                      />
+                      <span>{sq.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        }
       </td>
       <td className="px-2 py-1.5">
         <Select value={row.locationId} onValueChange={v => onUpdate({ locationId: v })}>
@@ -1130,19 +1209,27 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
             </Select>
           </td>
           <td className="px-2 py-1.5">
-            <Select value={row.secondCoachId || '_none'} onValueChange={v => onUpdate({ secondCoachId: v === '_none' ? null : v })}>
+            <Select
+              value={row.secondCoachId === null ? '_none' : row.secondCoachId}
+              onValueChange={v => onUpdate({ secondCoachId: v === '_none' ? null : v })}
+            >
               <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">None</SelectItem>
+                <SelectItem value="_vacant">Vacant</SelectItem>
                 {coaches.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
               </SelectContent>
             </Select>
           </td>
           <td className="px-2 py-1.5">
-            <Select value={row.helperId || '_none'} onValueChange={v => onUpdate({ helperId: v === '_none' ? null : v })}>
+            <Select
+              value={row.helperId === null ? '_none' : row.helperId}
+              onValueChange={v => onUpdate({ helperId: v === '_none' ? null : v })}
+            >
               <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">None</SelectItem>
+                <SelectItem value="_vacant">Vacant</SelectItem>
                 {coaches.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
               </SelectContent>
             </Select>

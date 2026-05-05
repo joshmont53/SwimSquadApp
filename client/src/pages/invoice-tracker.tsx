@@ -36,9 +36,10 @@ import {
   FileText,
   Banknote,
   Copy,
+  Waves,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Coach as BackendCoach, SwimmingSession, CompetitionCoaching, Squad, Competition, Location } from '@shared/schema';
+import type { Coach as BackendCoach, SwimmingSession, CompetitionCoaching, Squad, Competition, Location, FloatSession } from '@shared/schema';
 
 interface InvoiceData {
   coachId: string;
@@ -74,6 +75,18 @@ interface InvoiceData {
       coachingDate: string;
       duration: number;
     }>;
+    earnings: number;
+  };
+  floatSessions: {
+    sessions: Array<{
+      floatId: string;
+      sessionDate: string;
+      startTime: string;
+      endTime: string;
+      locationName: string;
+      duration: number;
+    }>;
+    totalHours: number;
     earnings: number;
   };
   sessionWriting: {
@@ -117,6 +130,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
   const [coachingExpanded, setCoachingExpanded] = useState(false);
   const [writingExpanded, setWritingExpanded] = useState(false);
   const [competitionExpanded, setCompetitionExpanded] = useState(false);
+  const [floatExpanded, setFloatExpanded] = useState(false);
 
   // Fetch current user's coach profile
   const { data: coaches = [] } = useQuery<BackendCoach[]>({ 
@@ -136,6 +150,12 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
   // Fetch all competition coaching to determine available months
   const { data: allCompetitionCoaching = [] } = useQuery<CompetitionCoaching[]>({ 
     queryKey: ['/api/competitions/coaching/all'],
+    enabled: !!currentCoach,
+  });
+
+  // Fetch float sessions to determine available months
+  const { data: allMyFloatSessions = [] } = useQuery<FloatSession[]>({
+    queryKey: ['/api/float-sessions/mine'],
     enabled: !!currentCoach,
   });
 
@@ -168,6 +188,12 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
         const key = dateStr.substring(0, 7); // Extract YYYY-MM
         monthSet.add(key);
       }
+    });
+
+    // Add months from float sessions
+    allMyFloatSessions.forEach(fs => {
+      const key = fs.sessionDate.substring(0, 7);
+      monthSet.add(key);
     });
 
     // Convert to sorted array of month options
@@ -260,6 +286,29 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       '',
       `£${invoiceData.sessionWriting.earnings.toFixed(2)}`,
     ]);
+
+    if (invoiceData.floatSessions.sessions.length > 0) {
+      csvRows.push([]);
+      csvRows.push(['FLOAT SESSIONS']);
+      csvRows.push(['Date', 'Location', 'Time', 'Hours', 'Amount']);
+      invoiceData.floatSessions.sessions.forEach(fs => {
+        const fsDate = new Date(fs.sessionDate);
+        csvRows.push([
+          format(fsDate, 'EEE dd MMM'),
+          fs.locationName,
+          `${fs.startTime} - ${fs.endTime}`,
+          fs.duration.toFixed(1),
+          `£${(fs.duration * invoiceData.rates.hourlyRate).toFixed(2)}`,
+        ]);
+      });
+      csvRows.push([
+        'Subtotal',
+        '',
+        '',
+        invoiceData.floatSessions.totalHours.toFixed(1),
+        `£${invoiceData.floatSessions.earnings.toFixed(2)}`,
+      ]);
+    }
 
     csvRows.push([]);
     csvRows.push(['COMPETITION HOURS']);
@@ -504,6 +553,42 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
             </div>
           )}
 
+          {invoiceData.floatSessions.sessions.length > 0 && (
+            <div>
+              <h3 className="mb-3 font-semibold">Float Sessions</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead className="text-right">Hours</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoiceData.floatSessions.sessions.map((fs) => {
+                    const fsDate = new Date(fs.sessionDate);
+                    return (
+                      <TableRow key={fs.floatId}>
+                        <TableCell>{format(fsDate, 'EEE, dd MMM')}</TableCell>
+                        <TableCell>{fs.locationName}</TableCell>
+                        <TableCell className="text-sm">{fs.startTime} - {fs.endTime}</TableCell>
+                        <TableCell className="text-right">{fs.duration.toFixed(1)}</TableCell>
+                        <TableCell className="text-right">£{(fs.duration * invoiceData.rates.hourlyRate).toFixed(2)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow className="bg-muted/50">
+                    <TableCell colSpan={3} className="font-medium">Float Subtotal</TableCell>
+                    <TableCell className="text-right font-medium">{invoiceData.floatSessions.totalHours.toFixed(1)} hrs</TableCell>
+                    <TableCell className="text-right font-medium">£{invoiceData.floatSessions.earnings.toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
           {invoiceData.coaching.competitions.length > 0 && (
             <div>
               <h3 className="mb-3 font-semibold">Competition Hours</h3>
@@ -545,7 +630,8 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               <div>
                 <p className="text-lg font-medium">Total Payment</p>
                 <p className="text-sm text-muted-foreground">
-                  {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} session hrs + {invoiceData.coaching.breakdown.competitionHours.toFixed(1)} comp hrs + {invoiceData.sessionWriting.count} written
+                  {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} session hrs + {invoiceData.coaching.breakdown.competitionHours.toFixed(1)} comp hrs
+                  {invoiceData.floatSessions.totalHours > 0 ? ` + ${invoiceData.floatSessions.totalHours.toFixed(1)} float hrs` : ''} + {invoiceData.sessionWriting.count} written
                 </p>
               </div>
               <p className="text-3xl font-medium text-primary">£{invoiceData.totals.totalEarnings.toFixed(2)}</p>
@@ -652,6 +738,50 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
             </Card>
           </Collapsible>
 
+          {/* Float Sessions Card - Expandable */}
+          {invoiceData.floatSessions.sessions.length > 0 && (
+            <Collapsible open={floatExpanded} onOpenChange={setFloatExpanded}>
+              <Card className="overflow-hidden">
+                <CollapsibleTrigger className="w-full p-4 text-left hover-elevate active-elevate-2" data-testid="collapsible-float-sessions">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                      <Waves className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground">Float Sessions</p>
+                      <p className="text-2xl font-semibold text-primary">{invoiceData.floatSessions.totalHours.toFixed(1)}</p>
+                      <p className="text-xs text-muted-foreground">{invoiceData.floatSessions.sessions.length} session{invoiceData.floatSessions.sessions.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    {floatExpanded
+                      ? <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      : <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />}
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="border-t bg-muted/20">
+                    <div className="divide-y">
+                      {invoiceData.floatSessions.sessions.map((fs) => {
+                        const fsDate = new Date(fs.sessionDate);
+                        return (
+                          <div key={fs.floatId} className="p-4 space-y-1" data-testid={`float-detail-${fs.floatId}`}>
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium">{format(fsDate, 'EEEE do')}</p>
+                              <p className="font-semibold text-primary">{fs.duration.toFixed(1)} hrs</p>
+                            </div>
+                            <div className="flex items-start justify-between gap-2 text-sm">
+                              <Badge variant="outline" className="font-normal">{fs.locationName}</Badge>
+                              <p className="text-muted-foreground whitespace-nowrap flex-shrink-0">{fs.startTime} - {fs.endTime}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
           {/* Competition Hours Card - Expandable */}
           <Collapsible open={competitionExpanded} onOpenChange={setCompetitionExpanded}>
             <Card className="overflow-hidden">
@@ -719,7 +849,9 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground">Total Payment</p>
                 <p className="text-3xl font-semibold text-primary" data-testid="text-total-earnings">£{invoiceData.totals.totalEarnings.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">This month</p>
+                <p className="text-xs text-muted-foreground">
+                  {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} coaching + {invoiceData.floatSessions.totalHours.toFixed(1)} float hrs
+                </p>
               </div>
             </div>
           </Card>
