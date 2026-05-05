@@ -386,12 +386,12 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
                       onValueChange={v => setCoverForm(f => ({ ...f, sessionId: v, role: '' }))}
                     >
                       <SelectTrigger data-testid="select-cover-session"><SelectValue placeholder="Select a session" /></SelectTrigger>
-                      <SelectContent className="max-w-[min(calc(100vw-2rem),var(--radix-select-trigger-width))]">
+                      <SelectContent className="w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]">
                         {eligibleSessions.map(s => {
                           const sqs = squadNames(s.id, s);
                           return (
                             <SelectItem key={s.id} value={s.id}>
-                              <span className="block truncate">{fmt(s.sessionDate)} — {s.startTime.slice(0, 5)} · {sqs} · {locationName(s.poolId)}</span>
+                              <span className="min-w-0 flex-1 truncate">{fmt(s.sessionDate)} — {s.startTime.slice(0, 5)} · {sqs} · {locationName(s.poolId)}</span>
                             </SelectItem>
                           );
                         })}
