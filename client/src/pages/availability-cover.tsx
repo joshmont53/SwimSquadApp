@@ -391,7 +391,7 @@ export function AvailabilityCover({ onBack, currentCoach, coaches, squads, locat
                           const sqs = squadNames(s.id, s);
                           return (
                             <SelectItem key={s.id} value={s.id}>
-                              <span className="min-w-0 flex-1 truncate">{fmt(s.sessionDate)} — {s.startTime.slice(0, 5)} · {sqs} · {locationName(s.poolId)}</span>
+                              <span className="block whitespace-normal leading-snug">{fmt(s.sessionDate)} — {s.startTime.slice(0, 5)} · {sqs} · {locationName(s.poolId)}</span>
                             </SelectItem>
                           );
                         })}
