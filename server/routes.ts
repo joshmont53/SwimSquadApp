@@ -981,14 +981,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestingUser = await storage.getUser(userId);
       const isAdmin = requestingUser?.role === 'admin';
 
+      let authorizedCoachId: string | null = null;
       if (!isAdmin) {
         const requestingCoach = await storage.getCoachByUserId(userId);
         if (!requestingCoach) {
           return res.status(403).json({ message: "No coach profile found" });
         }
-        const coachId = requestingCoach.id;
-        const isInvolved = [sourceSession.leadCoachId, sourceSession.secondCoachId, sourceSession.helperId, sourceSession.setWriterId].includes(coachId);
-        if (!isInvolved) {
+        authorizedCoachId = requestingCoach.id;
+        const isInvolvedInSource = [sourceSession.leadCoachId, sourceSession.secondCoachId, sourceSession.helperId, sourceSession.setWriterId].includes(authorizedCoachId);
+        if (!isInvolvedInSource) {
           return res.status(403).json({ message: "You can only copy content from sessions you are involved in" });
         }
       }
@@ -1035,6 +1036,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (targetId === sourceSession.id) continue;
         const target = await storage.getSession(targetId);
         if (!target) continue;
+        // Enforce club boundary — target must belong to the same club as the source
+        if (target.clubId !== sourceSession.clubId) continue;
+        // Non-admins must be involved in each target session they want to overwrite
+        if (!isAdmin && authorizedCoachId) {
+          const isInvolvedInTarget = [target.leadCoachId, target.secondCoachId, target.helperId, target.setWriterId].includes(authorizedCoachId);
+          if (!isInvolvedInTarget) {
+            return res.status(403).json({ message: `You are not authorised to modify session ${targetId}` });
+          }
+        }
         await storage.updateSession(targetId, contentPatch as any);
         updatedSessions.push(targetId);
       }
