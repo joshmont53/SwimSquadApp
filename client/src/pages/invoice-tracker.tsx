@@ -36,7 +36,6 @@ import {
   FileText,
   Banknote,
   Copy,
-  Waves,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Coach as BackendCoach, SwimmingSession, CompetitionCoaching, Squad, Competition, Location, FloatSession } from '@shared/schema';
@@ -130,7 +129,6 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
   const [coachingExpanded, setCoachingExpanded] = useState(false);
   const [writingExpanded, setWritingExpanded] = useState(false);
   const [competitionExpanded, setCompetitionExpanded] = useState(false);
-  const [floatExpanded, setFloatExpanded] = useState(false);
 
   // Fetch current user's coach profile
   const { data: coaches = [] } = useQuery<BackendCoach[]>({ 
@@ -643,7 +641,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       {/* Summary Cards - Mobile View */}
       {invoiceData && (
         <div className="p-4 space-y-3 print:hidden overflow-y-auto overflow-x-hidden flex-1 pb-6 scroll-container">
-          {/* Coaching Hours Card - Expandable */}
+          {/* Coaching Hours Card - Expandable (includes float sessions) */}
           <Collapsible open={coachingExpanded} onOpenChange={setCoachingExpanded}>
             <Card className="overflow-hidden">
               <CollapsibleTrigger className="w-full p-4 text-left hover-elevate active-elevate-2" data-testid="collapsible-coaching-hours">
@@ -653,10 +651,10 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">Coaching Hours</p>
-                    <p className="text-2xl font-semibold text-primary">{invoiceData.coaching.breakdown.sessionHours.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">{invoiceData.coaching.sessions.length} session{invoiceData.coaching.sessions.length !== 1 ? 's' : ''}</p>
+                    <p className="text-2xl font-semibold text-primary">{(invoiceData.coaching.breakdown.sessionHours + invoiceData.floatSessions.totalHours).toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">{invoiceData.coaching.sessions.length + invoiceData.floatSessions.sessions.length} session{(invoiceData.coaching.sessions.length + invoiceData.floatSessions.sessions.length) !== 1 ? 's' : ''}</p>
                   </div>
-                  {invoiceData.coaching.sessions.length > 0 && (
+                  {(invoiceData.coaching.sessions.length + invoiceData.floatSessions.sessions.length) > 0 && (
                     coachingExpanded ? 
                       <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" /> : 
                       <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
@@ -677,6 +675,21 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                           <div className="flex items-start justify-between gap-2 text-sm">
                             <Badge variant="outline" className="font-normal whitespace-normal text-left">{session.squadName}</Badge>
                             <p className="text-muted-foreground whitespace-nowrap flex-shrink-0">{session.startTime} - {session.endTime}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {invoiceData.floatSessions.sessions.map((fs) => {
+                      const fsDate = new Date(fs.sessionDate);
+                      return (
+                        <div key={fs.floatId} className="p-4 space-y-1" data-testid={`float-detail-${fs.floatId}`}>
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium">{format(fsDate, 'EEEE do')}</p>
+                            <p className="font-semibold text-primary">{fs.duration.toFixed(1)} hrs</p>
+                          </div>
+                          <div className="flex items-start justify-between gap-2 text-sm">
+                            <Badge variant="outline" className="font-normal">Float</Badge>
+                            <p className="text-muted-foreground whitespace-nowrap flex-shrink-0">{fs.startTime} - {fs.endTime}</p>
                           </div>
                         </div>
                       );
@@ -737,50 +750,6 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               </CollapsibleContent>
             </Card>
           </Collapsible>
-
-          {/* Float Sessions Card - Expandable */}
-          {invoiceData.floatSessions.sessions.length > 0 && (
-            <Collapsible open={floatExpanded} onOpenChange={setFloatExpanded}>
-              <Card className="overflow-hidden">
-                <CollapsibleTrigger className="w-full p-4 text-left hover-elevate active-elevate-2" data-testid="collapsible-float-sessions">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
-                      <Waves className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-muted-foreground">Float Sessions</p>
-                      <p className="text-2xl font-semibold text-primary">{invoiceData.floatSessions.totalHours.toFixed(1)}</p>
-                      <p className="text-xs text-muted-foreground">{invoiceData.floatSessions.sessions.length} session{invoiceData.floatSessions.sessions.length !== 1 ? 's' : ''}</p>
-                    </div>
-                    {floatExpanded
-                      ? <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      : <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="border-t bg-muted/20">
-                    <div className="divide-y">
-                      {invoiceData.floatSessions.sessions.map((fs) => {
-                        const fsDate = new Date(fs.sessionDate);
-                        return (
-                          <div key={fs.floatId} className="p-4 space-y-1" data-testid={`float-detail-${fs.floatId}`}>
-                            <div className="flex items-center justify-between">
-                              <p className="font-medium">{format(fsDate, 'EEEE do')}</p>
-                              <p className="font-semibold text-primary">{fs.duration.toFixed(1)} hrs</p>
-                            </div>
-                            <div className="flex items-start justify-between gap-2 text-sm">
-                              <Badge variant="outline" className="font-normal">{fs.locationName}</Badge>
-                              <p className="text-muted-foreground whitespace-nowrap flex-shrink-0">{fs.startTime} - {fs.endTime}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-          )}
 
           {/* Competition Hours Card - Expandable */}
           <Collapsible open={competitionExpanded} onOpenChange={setCompetitionExpanded}>

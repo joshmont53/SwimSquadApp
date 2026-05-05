@@ -162,7 +162,7 @@ export function ScheduleManager({ onBack, coaches, squads, locations }: Props) {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       <div className="flex-shrink-0 sticky top-0 z-10 bg-background">
-        <div className="max-w-5xl mx-auto">
+        <div>
           <div className="flex items-center gap-3 pb-3 border-b px-2 pt-2">
             <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back-schedule-manager">
               <ArrowLeft className="h-4 w-4" />
@@ -173,11 +173,11 @@ export function ScheduleManager({ onBack, coaches, squads, locations }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto p-2">
+        <div className="p-2">
           <Tabs defaultValue="standard" className="mt-2">
-            <TabsList className="w-full grid grid-cols-3">
+            <TabsList className="w-full grid grid-cols-2 lg:grid-cols-3">
               <TabsTrigger value="standard" data-testid="tab-standard-schedule">Standard Schedule</TabsTrigger>
-              <TabsTrigger value="generate" data-testid="tab-generate-sessions">Generate Sessions</TabsTrigger>
+              <TabsTrigger value="generate" data-testid="tab-generate-sessions" className="hidden lg:block">Generate Sessions</TabsTrigger>
               <TabsTrigger value="alerts" data-testid="tab-alerts">Alerts</TabsTrigger>
             </TabsList>
 
@@ -684,6 +684,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
   const [addSessionOpen, setAddSessionOpen] = useState(false);
   const [addFloatOpen, setAddFloatOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [periodCardOpen, setPeriodCardOpen] = useState(true);
 
   const dateRange = useMemo(() => {
     const nextMonday = startOfWeek(addDays(new Date(), 7), { weekStartsOn: 1 });
@@ -1000,41 +1001,55 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
   return (
     <div className="space-y-4">
       {/* Time period selector */}
-      <Card className="p-4 space-y-4">
-        <h3 className="text-sm font-semibold">Select time period</h3>
-        <div className="flex flex-wrap gap-2">
-          {(['next_week', 'next_4_weeks', 'custom'] as const).map(opt => (
-            <Button
-              key={opt}
-              variant={period === opt ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPeriod(opt)}
-              data-testid={`button-period-${opt}`}
-            >
-              {opt === 'next_week' ? 'Next Week' : opt === 'next_4_weeks' ? 'Next 4 Weeks' : 'Custom Range'}
-            </Button>
-          ))}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Select time period</h3>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setPeriodCardOpen(v => !v)}
+            data-testid="button-toggle-period-card"
+          >
+            {periodCardOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
         </div>
-        {period === 'custom' && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Start Date</Label>
-              <Input type="date" value={customStart} min={today} onChange={e => setCustomStart(e.target.value)} data-testid="input-custom-start" />
+        {periodCardOpen && (
+          <div className="space-y-4 mt-3">
+            <div className="flex flex-wrap gap-2">
+              {(['next_week', 'next_4_weeks', 'custom'] as const).map(opt => (
+                <Button
+                  key={opt}
+                  variant={period === opt ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPeriod(opt)}
+                  data-testid={`button-period-${opt}`}
+                >
+                  {opt === 'next_week' ? 'Next Week' : opt === 'next_4_weeks' ? 'Next 4 Weeks' : 'Custom Range'}
+                </Button>
+              ))}
             </div>
-            <div className="space-y-1.5">
-              <Label>End Date</Label>
-              <Input type="date" value={customEnd} min={customStart || today} onChange={e => setCustomEnd(e.target.value)} data-testid="input-custom-end" />
-            </div>
+            {period === 'custom' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Start Date</Label>
+                  <Input type="date" value={customStart} min={today} onChange={e => setCustomStart(e.target.value)} data-testid="input-custom-start" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>End Date</Label>
+                  <Input type="date" value={customEnd} min={customStart || today} onChange={e => setCustomEnd(e.target.value)} data-testid="input-custom-end" />
+                </div>
+              </div>
+            )}
+            {dateRange.start && dateRange.end && (
+              <p className="text-sm text-muted-foreground">
+                {fmt(dateRange.start)} – {fmt(dateRange.end)} · <span className="font-medium">{previewCount} sessions</span> would be generated
+              </p>
+            )}
+            <Button onClick={generateDraft} disabled={!previewCount && period !== 'custom'} data-testid="button-generate-draft">
+              Generate Draft Sessions
+            </Button>
           </div>
         )}
-        {dateRange.start && dateRange.end && (
-          <p className="text-sm text-muted-foreground">
-            {fmt(dateRange.start)} – {fmt(dateRange.end)} · <span className="font-medium">{previewCount} sessions</span> would be generated
-          </p>
-        )}
-        <Button onClick={generateDraft} disabled={!previewCount && period !== 'custom'} data-testid="button-generate-draft">
-          Generate Draft Sessions
-        </Button>
       </Card>
 
       {/* Draft table */}
@@ -1118,6 +1133,17 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
                 {vacantRoleRows.length > 0 && (
                   <p className="text-amber-600 text-sm">{vacantRoleRows.length} session{vacantRoleRows.length !== 1 ? 's' : ''} will have cover opportunities created for vacant roles.</p>
                 )}
+                {(() => {
+                  const l2Rows = draft?.filter(r => r.type === 'session' && r.issues.some(i => i.includes('Level 2'))) ?? [];
+                  return l2Rows.length > 0 ? (
+                    <div className="space-y-1 border border-amber-200 rounded-md p-2 bg-amber-50/30 dark:bg-amber-900/10">
+                      <p className="text-amber-600 font-medium text-sm">No Level 2+ coach in {l2Rows.length} session{l2Rows.length !== 1 ? 's' : ''}:</p>
+                      {l2Rows.map(r => (
+                        <p key={r.id} className="text-amber-600 text-xs">• {fmt(r.date)} {r.startTime} — {squadN(squads, r.squadIds)}</p>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1273,7 +1299,7 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
               value={row.secondCoachId === null ? '_none' : row.secondCoachId}
               onValueChange={v => onUpdate({ secondCoachId: v === '_none' ? null : v })}
             >
-              <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectTrigger className={cn('h-7 text-xs w-28', row.secondCoachId === '_vacant' && 'border-destructive')}><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">None</SelectItem>
                 <SelectItem value="_vacant">Vacant</SelectItem>
@@ -1286,7 +1312,7 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
               value={row.helperId === null ? '_none' : row.helperId}
               onValueChange={v => onUpdate({ helperId: v === '_none' ? null : v })}
             >
-              <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectTrigger className={cn('h-7 text-xs w-28', row.helperId === '_vacant' && 'border-destructive')}><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">None</SelectItem>
                 <SelectItem value="_vacant">Vacant</SelectItem>

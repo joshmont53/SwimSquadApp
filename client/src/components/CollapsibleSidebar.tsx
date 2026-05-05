@@ -315,6 +315,45 @@ export function CollapsibleSidebar({
               )}
               {collapsed && <div className="h-px bg-border my-2" />}
               <div className="space-y-1">
+                {/* Schedule Manager */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full py-2.5 relative transition-all duration-200",
+                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
+                        isActive('scheduleManager') && "bg-accent/50"
+                      )}
+                      onClick={() => onNavigate('scheduleManager')}
+                      data-testid="button-nav-schedule-manager"
+                    >
+                      {isActive('scheduleManager') && (
+                        <div 
+                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                          style={{ backgroundColor: 'var(--club-primary)' }}
+                        />
+                      )}
+                      <LayoutGrid 
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          collapsed ? "" : "mr-3 ml-2",
+                          "text-muted-foreground"
+                        )}
+                        style={{ color: isActive('scheduleManager') ? 'var(--club-primary)' : undefined }}
+                      />
+                      {!collapsed && (
+                        <span className="flex-1 text-left">Schedule Manager</span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right">
+                      Schedule Manager
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+
                 {/* Coaches */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -935,59 +974,6 @@ export function CollapsibleSidebar({
             </div>
           </div>
 
-          {/* MANAGEMENT Section — admin only: Schedule Manager */}
-          {isAdmin && (
-            <div>
-              {!collapsed && (
-                <div className="px-3 mb-2 mt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Scheduling
-                  </p>
-                </div>
-              )}
-              {collapsed && <div className="h-px bg-border my-2" />}
-              <div className="space-y-1">
-                {/* Schedule Manager */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "w-full py-2.5 relative transition-all duration-200",
-                        collapsed ? "justify-center px-0" : "justify-start hover:scale-[1.02]",
-                        isActive('scheduleManager') && "bg-accent/50"
-                      )}
-                      onClick={() => onNavigate('scheduleManager')}
-                      data-testid="button-nav-schedule-manager"
-                    >
-                      {isActive('scheduleManager') && (
-                        <div 
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: 'var(--club-primary)' }}
-                        />
-                      )}
-                      <LayoutGrid 
-                        className={cn(
-                          "h-4 w-4 transition-colors",
-                          collapsed ? "" : "mr-3 ml-2",
-                          "text-muted-foreground"
-                        )}
-                        style={{ color: isActive('scheduleManager') ? 'var(--club-primary)' : undefined }}
-                      />
-                      {!collapsed && (
-                        <span className="flex-1 text-left">Schedule Manager</span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  {collapsed && (
-                    <TooltipContent side="right">
-                      Schedule Manager
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </div>
-            </div>
-          )}
         </div>
       </nav>
 
