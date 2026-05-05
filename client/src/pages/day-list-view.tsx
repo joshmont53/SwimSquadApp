@@ -1,7 +1,7 @@
 import type { Session, Squad, Location, Coach } from '../lib/typeAdapters';
-import type { Competition, CompetitionCoaching } from '@shared/schema';
+import type { Competition, CompetitionCoaching, FloatSession } from '@shared/schema';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
-import { Trophy } from 'lucide-react';
+import { Trophy, Waves } from 'lucide-react';
 
 interface DayListViewProps {
   sessions: Session[];
@@ -11,6 +11,7 @@ interface DayListViewProps {
   sessionSquadMap: Record<string, string[]>;
   locations: Location[];
   coaches: Coach[];
+  floatSessions?: FloatSession[];
   currentDate: Date;
   onSessionClick: (session: Session) => void;
   onCompetitionClick: (competition: Competition) => void;
@@ -26,6 +27,7 @@ export function DayListView({
   sessionSquadMap,
   locations,
   coaches,
+  floatSessions = [],
   currentDate,
   onSessionClick,
   onCompetitionClick,
@@ -38,6 +40,11 @@ export function DayListView({
 
   const getSessionsForDate = (date: Date) => {
     return sessions.filter((session) => isSameDay(new Date(session.date), date));
+  };
+
+  const getFloatSessionsForDate = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return floatSessions.filter(fs => fs.sessionDate === dateStr);
   };
 
   const getCompetitionsForDate = (date: Date) => {
@@ -104,8 +111,9 @@ export function DayListView({
       {daysInMonth.map((day) => {
         const daySessions = getSessionsForDate(day);
         const dayCompetitions = getCompetitionsForDate(day);
+        const dayFloats = getFloatSessionsForDate(day);
         const isToday = isSameDay(day, today);
-        const hasItems = daySessions.length > 0 || dayCompetitions.length > 0;
+        const hasItems = daySessions.length > 0 || dayCompetitions.length > 0 || dayFloats.length > 0;
 
         return (
           <div
@@ -167,6 +175,28 @@ export function DayListView({
                           </div>
                           <div className="text-sm opacity-75 text-right whitespace-nowrap">
                             {coachCount} {coachCount === 1 ? 'coach' : 'coaches'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Render float sessions */}
+                {dayFloats.map((fs) => {
+                  const location = locations.find(l => l.id === fs.locationId);
+                  return (
+                    <div
+                      key={fs.id}
+                      className="p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700"
+                      data-testid={`float-item-${fs.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Waves className="h-5 w-5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                          <div>
+                            <div className="font-medium text-teal-800 dark:text-teal-200">Float Session</div>
+                            <div className="text-sm text-teal-600 dark:text-teal-400">{fs.startTime.slice(0,5)} - {fs.endTime.slice(0,5)}</div>
+                            {location && <div className="text-sm text-teal-600 dark:text-teal-400">{location.name}</div>}
                           </div>
                         </div>
                       </div>

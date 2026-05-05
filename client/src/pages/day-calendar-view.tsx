@@ -1,7 +1,7 @@
 import type { Session, Squad, Location } from '../lib/typeAdapters';
-import type { Competition, CompetitionCoaching } from '@shared/schema';
+import type { Competition, CompetitionCoaching, FloatSession } from '@shared/schema';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Trophy } from 'lucide-react';
+import { ChevronLeft, Trophy, Waves } from 'lucide-react';
 import { format, parse } from 'date-fns';
 
 interface DayCalendarViewProps {
@@ -11,6 +11,7 @@ interface DayCalendarViewProps {
   squads: Squad[];
   sessionSquadMap: Record<string, string[]>;
   locations: Location[];
+  floatSessions?: FloatSession[];
   selectedDate: Date;
   onBack: () => void;
   onSessionClick: (session: Session) => void;
@@ -26,6 +27,7 @@ export function DayCalendarView({
   squads,
   sessionSquadMap,
   locations,
+  floatSessions = [],
   selectedDate,
   onBack,
   onSessionClick,
@@ -48,6 +50,9 @@ export function DayCalendarView({
       sessionDate.getFullYear() === selectedDate.getFullYear()
     );
   });
+
+  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+  const dayFloatSessions = floatSessions.filter(fs => fs.sessionDate === selectedDateStr);
 
   const dayCompetitions = competitions.filter((comp) => {
     const startDate = parse(comp.startDate, 'yyyy-MM-dd', new Date());
@@ -223,11 +228,11 @@ export function DayCalendarView({
         </div>
       </div>
 
-      {daySessions.length === 0 && dayCompetitions.length === 0 ? (
+      {daySessions.length === 0 && dayCompetitions.length === 0 && dayFloatSessions.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-muted-foreground" data-testid="text-no-sessions">
           No sessions or competitions scheduled for this day
         </div>
-      ) : (daySessions.length > 0 || dayCompetitions.length > 0) && (
+      ) : (daySessions.length > 0 || dayCompetitions.length > 0 || dayFloatSessions.length > 0) && (
         <div className="flex-1 overflow-auto scroll-container">
           <div className="flex gap-4">
             <div className="w-16 flex-shrink-0">
@@ -242,7 +247,8 @@ export function DayCalendarView({
               {locations.map((location) => {
                 const locationSessions = getSessionsForLocation(location.id);
                 const locationCompetitions = getCompetitionsForLocation(location.id);
-                if (locationSessions.length === 0 && locationCompetitions.length === 0) return null;
+                const locationFloats = dayFloatSessions.filter(fs => fs.locationId === location.id);
+                if (locationSessions.length === 0 && locationCompetitions.length === 0 && locationFloats.length === 0) return null;
 
                 const columnLayout = computeColumnLayout(locationSessions);
 
@@ -293,6 +299,31 @@ export function DayCalendarView({
                               <div className="text-xs opacity-90">
                                 {startTime} - {endTime}
                               </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Render float sessions */}
+                        {locationFloats.map((fs) => {
+                          const [fsStartH, fsStartM] = fs.startTime.split(':').map(Number);
+                          const [fsEndH, fsEndM] = fs.endTime.split(':').map(Number);
+                          const fsStartMins = fsStartH * 60 + fsStartM;
+                          const fsEndMins = fsEndH * 60 + fsEndM;
+                          const dayStartMins = 5 * 60 + 30;
+                          const top = ((fsStartMins - dayStartMins) / 60) * 80;
+                          const height = Math.max(20, ((fsEndMins - fsStartMins) / 60) * 80);
+                          return (
+                            <div
+                              key={fs.id}
+                              className="absolute p-2 rounded text-sm overflow-hidden bg-teal-500/20 border border-teal-500 text-teal-800 dark:text-teal-200"
+                              style={{ top: `${top}px`, height: `${height}px`, left: '0', width: '100%' }}
+                              data-testid={`float-block-${fs.id}`}
+                            >
+                              <div className="flex items-center gap-1 font-medium">
+                                <Waves className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">Float Session</span>
+                              </div>
+                              <div className="text-xs opacity-80">{fs.startTime.slice(0,5)} - {fs.endTime.slice(0,5)}</div>
                             </div>
                           );
                         })}

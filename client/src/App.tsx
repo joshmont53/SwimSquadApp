@@ -101,6 +101,7 @@ import type {
   Attendance,
   SessionFeedback,
   SessionSquad,
+  FloatSession,
 } from '@shared/schema';
 
 type View = 'month' | 'day';
@@ -753,6 +754,12 @@ function CalendarApp() {
   // Fetch session feedback for home dashboard
   const { data: sessionFeedback = [] } = useQuery<SessionFeedback[]>({ 
     queryKey: ['/api/feedback'],
+  });
+
+  // Fetch float sessions assigned to the current coach (for calendar views)
+  const { data: myFloatSessions = [] } = useQuery<FloatSession[]>({
+    queryKey: ['/api/float-sessions/mine'],
+    enabled: !!user,
   });
 
   // Fetch all session-squad mappings for multi-squad display
@@ -1836,6 +1843,7 @@ function CalendarApp() {
                   competitionCoaching={competitionCoaching}
                   squads={squads}
                   sessionSquadMap={sessionSquadMap}
+                  floatSessions={myFloatSessions}
                   currentDate={currentDate}
                   onDateChange={setCurrentDate}
                   onDayClick={handleDayClick}
@@ -1856,6 +1864,7 @@ function CalendarApp() {
                   sessionSquadMap={sessionSquadMap}
                   locations={locations}
                   coaches={coaches}
+                  floatSessions={myFloatSessions}
                   currentDate={currentDate}
                   onSessionClick={handleSessionClick}
                   onCompetitionClick={handleCompetitionClick}
@@ -1883,6 +1892,7 @@ function CalendarApp() {
                 squads={squads}
                 sessionSquadMap={sessionSquadMap}
                 locations={locations}
+                floatSessions={myFloatSessions}
                 selectedDate={selectedDate}
                 onBack={handleBackToMonth}
                 onSessionClick={handleSessionClick}

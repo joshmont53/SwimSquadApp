@@ -723,7 +723,59 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
     });
   }
 
+  function minsToTime(m: number) {
+    const h = Math.floor(m / 60).toString().padStart(2, '0');
+    const min = (m % 60).toString().padStart(2, '0');
+    return `${h}:${min}`;
+  }
+
+  function mergeIntervals(intervals: Array<{start: number; end: number}>) {
+    const sorted = [...intervals].sort((a, b) => a.start - b.start);
+    const merged: Array<{start: number; end: number}> = [];
+    for (const iv of sorted) {
+      if (merged.length === 0 || iv.start > merged[merged.length - 1].end) {
+        merged.push({ ...iv });
+      } else {
+        merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, iv.end);
+      }
+    }
+    return merged;
+  }
+
+  function computeL2Gaps(row: DraftRow, allRows: DraftRow[], rowStart: number, rowEnd: number): string[] {
+    const l2Intervals: Array<{start: number; end: number}> = [];
+    for (const r of allRows) {
+      if (r.locationId !== row.locationId || r.date !== row.date) continue;
+      const rStart = timeToMins(r.startTime);
+      const rEnd = timeToMins(r.endTime);
+      if (rStart >= rowEnd || rEnd <= rowStart) continue;
+      const coachIds: string[] = r.type === 'float'
+        ? (r.coachId ? [r.coachId] : [])
+        : ([r.leadCoachId, r.secondCoachId, r.helperId].filter(id => id && id !== '_vacant') as string[]);
+      const hasL2 = coachIds.some(cid => {
+        const c = coaches.find(co => co.id === cid);
+        return c && LEVEL2_LEVELS.includes(c.level);
+      });
+      if (hasL2) l2Intervals.push({ start: Math.max(rStart, rowStart), end: Math.min(rEnd, rowEnd) });
+    }
+    if (l2Intervals.length === 0) {
+      return [`No Level 2+ coach ${minsToTime(rowStart)}–${minsToTime(rowEnd)}`];
+    }
+    const merged = mergeIntervals(l2Intervals);
+    const gaps: string[] = [];
+    let covered = rowStart;
+    for (const iv of merged) {
+      if (iv.start > covered) gaps.push(`No Level 2+ coach ${minsToTime(covered)}–${minsToTime(iv.start)}`);
+      covered = Math.max(covered, iv.end);
+    }
+    if (covered < rowEnd) gaps.push(`No Level 2+ coach ${minsToTime(covered)}–${minsToTime(rowEnd)}`);
+    return gaps;
+  }
+
   function computeStatus(row: DraftRow, allRows: DraftRow[]): { status: DraftRow['status']; issues: string[] } {
+    // Float rows are always OK — they have no lead coach requirement or L2 requirement
+    if (row.type === 'float') return { status: 'ok', issues: [] };
+
     const issues: string[] = [];
     let hasError = false;
 
@@ -734,26 +786,12 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
     if (row.secondCoachId === '_vacant') issues.push('Second coach vacant — cover opportunity will be created');
     if (row.helperId === '_vacant') issues.push('Helper vacant — cover opportunity will be created');
 
-    // L2 check: find all rows (session + float) at same location, same date, with overlapping time window
+    // Interval-based L2 coverage check
     const rowStart = timeToMins(row.startTime);
     const rowEnd = timeToMins(row.endTime);
-    const overlapping = allRows.filter(r =>
-      r.locationId === row.locationId &&
-      r.date === row.date &&
-      timeToMins(r.startTime) < rowEnd &&
-      timeToMins(r.endTime) > rowStart
-    );
-    const hasL2 = overlapping.some(r => {
-      const coachIds: string[] = r.type === 'float'
-        ? (r.coachId ? [r.coachId] : [])
-        : ([r.leadCoachId, r.secondCoachId, r.helperId].filter(cid => cid && cid !== '_vacant') as string[]);
-      return coachIds.some(cid => {
-        const c = coaches.find(co => co.id === cid);
-        return c && LEVEL2_LEVELS.includes(c.level);
-      });
-    });
-    if (!hasL2) {
-      issues.push('No Level 2+ coach at this venue/time block');
+    const l2Gaps = computeL2Gaps(row, allRows, rowStart, rowEnd);
+    if (l2Gaps.length > 0) {
+      l2Gaps.forEach(g => issues.push(g));
       hasError = true;
     }
 
@@ -1014,7 +1052,7 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
             <table className="w-full text-xs">
               <thead className="bg-muted/50">
                 <tr>
-                  {['Status','Date','Time','Type','Squad(s)','Venue','Lead','Second','Helper',''].map(h => (
+                  {['Status','Date','Day','Time','Type','Squad(s)','Venue','Lead','Second','Helper','Set Writer',''].map(h => (
                     <th key={h} className="text-left px-2 py-2 text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -1133,6 +1171,9 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
           data-testid={`input-date-${row.id}`}
         />
       </td>
+      <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">
+        {row.date ? format(parseISO(row.date), 'EEE') : '—'}
+      </td>
       <td className="px-2 py-1.5">
         <div className="flex items-center gap-1">
           <Input
@@ -1246,10 +1287,23 @@ function DraftTableRow({ row, coaches, squads, locations, onUpdate, onRemove }: 
               </SelectContent>
             </Select>
           </td>
+          <td className="px-2 py-1.5">
+            <Select
+              value={row.setWriterId || '_none'}
+              onValueChange={v => onUpdate({ setWriterId: v === '_none' ? null : v })}
+            >
+              <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">None</SelectItem>
+                {coaches.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </td>
         </>
       ) : (
         <>
-          <td className="px-2 py-1.5 text-muted-foreground text-xs" colSpan={3}>Float — {coachN(coaches, row.coachId)}</td>
+          <td className="px-2 py-1.5 text-muted-foreground text-xs" colSpan={4}>Float — {coachN(coaches, row.coachId)}</td>
+          <td className="px-2 py-1.5" />
         </>
       )}
       <td className="px-2 py-1.5">
