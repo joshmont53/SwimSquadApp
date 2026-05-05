@@ -16,7 +16,8 @@ import {
   Users,
   Plus,
   Trophy,
-  MapPin
+  MapPin,
+  PenLine
 } from 'lucide-react';
 import { format, isToday, isPast, isFuture, startOfWeek, endOfWeek, isWithinInterval, addMonths, isBefore, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import {
@@ -74,6 +75,7 @@ export function HomePage({
   const [attendanceSquadFilter, setAttendanceSquadFilter] = useState<string | string[]>('primary');
   const [showAllSwimmers, setShowAllSwimmers] = useState(false);
   const [showAllIncompleteSessions, setShowAllIncompleteSessions] = useState(false);
+  const [showAllSetsToWrite, setShowAllSetsToWrite] = useState(false);
 
   const primarySquads = useMemo(() => {
     return squads.filter(squad => squad.primaryCoachId === coach.id);
@@ -158,6 +160,16 @@ export function HomePage({
   const displayedIncompleteSessions = useMemo(() => {
     return allIncompleteSessions.slice(0, 3);
   }, [allIncompleteSessions]);
+
+  const setsToWrite = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return sessions
+      .filter(s => s.setWriterId === coach.id && !s.content && new Date(s.date) >= today)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [sessions, coach.id]);
+
+  const displayedSetsToWrite = useMemo(() => setsToWrite.slice(0, 3), [setsToWrite]);
 
   const { data: myFloatSessions = [] } = useQuery<FloatSession[]>({
     queryKey: ['/api/float-sessions/mine'],
@@ -382,6 +394,112 @@ export function HomePage({
     };
   }, [coachSessions, thisWeekUpcomingSessions, allIncompleteSessions, currentMonthStart, currentMonthEnd, sessionSquadMap]);
 
+  const actionRequiredCard = allIncompleteSessions.length > 0 ? (
+    <Card
+      className={`border-orange-200 bg-orange-50/50 ${allIncompleteSessions.length > 3 ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      onClick={allIncompleteSessions.length > 3 ? () => setShowAllIncompleteSessions(true) : undefined}
+      data-testid="card-action-required"
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-orange-600" />
+          <CardTitle className="text-lg">Action Required</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground mb-2">
+          {allIncompleteSessions.length} session{allIncompleteSessions.length !== 1 ? 's' : ''} need attention
+        </p>
+        <div className="space-y-1.5">
+          {displayedIncompleteSessions.map(({ session }) => {
+            const squadIds = sessionSquadMap[session.id] || [session.squadId];
+            const sessionSquadsList = squadIds.map(id => squads.find(s => s.id === id)).filter(Boolean);
+            const squadLabel = sessionSquadsList.length > 0
+              ? sessionSquadsList.map(s => s!.name).join(' / ')
+              : squads.find(s => s.id === session.squadId)?.name || 'Unknown';
+            return (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-2 bg-white rounded-lg border border-orange-100 hover:border-orange-300 transition-colors cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); onNavigateToSession(session); }}
+                data-testid={`action-session-${session.id}`}
+              >
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <CalendarDays className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{squadLabel}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(session.date), 'MMM d')} • {session.startTime}</div>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="ml-2 text-xs h-7">Complete</Button>
+              </div>
+            );
+          })}
+          {allIncompleteSessions.length > 3 && (
+            <div className="flex justify-center pt-1">
+              <Badge variant="outline" className="text-xs border-orange-300 text-orange-600 cursor-pointer">
+                +{allIncompleteSessions.length - 3} more
+              </Badge>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  ) : null;
+
+  const setsToWriteCard = setsToWrite.length > 0 ? (
+    <Card
+      className={`border-blue-200 bg-blue-50/50 ${setsToWrite.length > 3 ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      onClick={setsToWrite.length > 3 ? () => setShowAllSetsToWrite(true) : undefined}
+      data-testid="card-sets-to-write"
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <PenLine className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-lg">Sets to Write</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground mb-2">
+          {setsToWrite.length} session{setsToWrite.length !== 1 ? 's' : ''} need{setsToWrite.length === 1 ? 's' : ''} a set
+        </p>
+        <div className="space-y-1.5">
+          {displayedSetsToWrite.map(session => {
+            const squadIds = sessionSquadMap[session.id] || [session.squadId];
+            const sessionSquadsList = squadIds.map(id => squads.find(s => s.id === id)).filter(Boolean);
+            const squadLabel = sessionSquadsList.length > 0
+              ? sessionSquadsList.map(s => s!.name).join(' / ')
+              : squads.find(s => s.id === session.squadId)?.name || 'Unknown';
+            return (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100 hover:border-blue-300 transition-colors cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); onNavigateToSession(session); }}
+                data-testid={`sets-session-${session.id}`}
+              >
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <PenLine className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{squadLabel}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(session.date), 'MMM d')} • {session.startTime}</div>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="ml-2 text-xs h-7">Write Set</Button>
+              </div>
+            );
+          })}
+          {setsToWrite.length > 3 && (
+            <div className="flex justify-center pt-1">
+              <Badge variant="outline" className="text-xs border-blue-300 text-blue-600 cursor-pointer">
+                +{setsToWrite.length - 3} more
+              </Badge>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  ) : null;
+
   return (
     <>
       <div className="space-y-3" data-testid="home-page">
@@ -392,66 +510,16 @@ export function HomePage({
           </p>
         </div>
 
-        {allIncompleteSessions.length > 0 && (
-          <Card 
-            className={`border-orange-200 bg-orange-50/50 ${allIncompleteSessions.length > 3 ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
-            onClick={allIncompleteSessions.length > 3 ? () => setShowAllIncompleteSessions(true) : undefined}
-            data-testid="card-action-required"
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-orange-600" />
-                <CardTitle className="text-lg">Action Required</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground mb-2">
-                {allIncompleteSessions.length} session{allIncompleteSessions.length !== 1 ? 's' : ''} need attention
-              </p>
-              <div className="space-y-1.5">
-                {displayedIncompleteSessions.map(({ session }) => {
-                  const squadIds = sessionSquadMap[session.id] || [session.squadId];
-                  const sessionSquadsList = squadIds
-                    .map(id => squads.find(s => s.id === id))
-                    .filter(Boolean);
-                  const squadLabel = sessionSquadsList.length > 0
-                    ? sessionSquadsList.map(s => s!.name).join(' / ')
-                    : squads.find(s => s.id === session.squadId)?.name || 'Unknown';
-                  
-                  return (
-                    <div 
-                      key={session.id}
-                      className="flex items-center justify-between p-2 bg-white rounded-lg border border-orange-100 hover:border-orange-300 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onNavigateToSession(session);
-                      }}
-                      data-testid={`action-session-${session.id}`}
-                    >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <CalendarDays className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{squadLabel}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(session.date), 'MMM d')} • {session.startTime}
-                          </div>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline" className="ml-2 text-xs h-7">Complete</Button>
-                    </div>
-                  );
-                })}
-                {allIncompleteSessions.length > 3 && (
-                  <div className="flex justify-center pt-1">
-                    <Badge variant="outline" className="text-xs border-orange-300 text-orange-600 cursor-pointer">
-                      +{allIncompleteSessions.length - 3} more
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Desktop: AR + STW side-by-side (or single card if only one) */}
+        {(actionRequiredCard || setsToWriteCard) && (
+          <div className={`hidden lg:grid gap-4 ${actionRequiredCard && setsToWriteCard ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {actionRequiredCard}
+            {setsToWriteCard}
+          </div>
         )}
+
+        {/* Mobile: AR card only (STW appears after Upcoming This Week) */}
+        {actionRequiredCard && <div className="lg:hidden">{actionRequiredCard}</div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card data-testid="card-upcoming-sessions" className="lg:col-span-1">
@@ -574,6 +642,9 @@ export function HomePage({
               </Button>
             </CardContent>
           </Card>
+
+          {/* Mobile only: Sets to Write card appears here, after Upcoming This Week */}
+          {setsToWriteCard && <div className="lg:hidden">{setsToWriteCard}</div>}
 
           <Card 
             className="text-white border-0 cursor-pointer hover:shadow-lg transition-shadow lg:col-span-1"
@@ -962,6 +1033,50 @@ export function HomePage({
                       </div>
                       <span className="text-xs text-muted-foreground">{attended}/{total} sessions</span>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAllSetsToWrite} onOpenChange={setShowAllSetsToWrite}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5 text-blue-600" />
+              All Sessions Needing a Set
+            </DialogTitle>
+            <DialogDescription>
+              {setsToWrite.length} session{setsToWrite.length !== 1 ? 's' : ''} need{setsToWrite.length === 1 ? 's' : ''} a set writing. Click a session to open it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 px-6 pb-6">
+            <div className="grid grid-cols-1 gap-2">
+              {setsToWrite.map(session => {
+                const squadIds = sessionSquadMap[session.id] || [session.squadId];
+                const sessionSquadsList = squadIds.map(id => squads.find(s => s.id === id)).filter(Boolean);
+                const squadLabel = sessionSquadsList.length > 0
+                  ? sessionSquadsList.map(s => s!.name).join(' / ')
+                  : squads.find(s => s.id === session.squadId)?.name || 'Unknown';
+                return (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100 hover:border-blue-300 cursor-pointer transition-colors"
+                    onClick={() => { onNavigateToSession(session); setShowAllSetsToWrite(false); }}
+                    data-testid={`modal-sets-session-${session.id}`}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <PenLine className="h-4 w-4 text-blue-600 flex-shrink-0 self-start mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{squadLabel}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(session.date), 'EEE, MMM d')} • {session.startTime}
+                        </div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="text-xs h-7 ml-2 flex-shrink-0">Write Set</Button>
                   </div>
                 );
               })}
