@@ -852,8 +852,17 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
     });
   };
 
+  const recomputeAll = (rows: DraftRow[]): DraftRow[] =>
+    rows.map(row => {
+      const { status, issues } = computeStatus(row, rows);
+      return { ...row, status, issues };
+    });
+
   const removeRow = (id: string) => {
-    setDraft(prev => prev ? prev.filter(r => r.id !== id) : null);
+    setDraft(prev => {
+      if (!prev) return null;
+      return recomputeAll(prev.filter(r => r.id !== id));
+    });
   };
 
   const addSessionRow = (data: Omit<DraftRow, 'id' | 'type' | 'status' | 'issues'>) => {
@@ -873,9 +882,8 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
       issues: [],
     };
     setDraft(prev => {
-      if (!prev) return [newRow];
-      const updated = [...prev, newRow];
-      return updated.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      const updated = [...(prev ?? []), newRow].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      return recomputeAll(updated);
     });
     setAddSessionOpen(false);
   };
@@ -899,9 +907,8 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
       issues: [],
     };
     setDraft(prev => {
-      if (!prev) return [newRow];
-      const updated = [...prev, newRow];
-      return updated.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      const updated = [...(prev ?? []), newRow].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      return recomputeAll(updated);
     });
     setAddFloatOpen(false);
   };
