@@ -20,6 +20,7 @@ import {
   insertDrillSchema,
   insertSessionFeedbackSchema,
   type SessionFeedback,
+  type InsertSwimmingSession,
 } from "@shared/schema";
 import type { CoachNote, CoachNoteItem } from "./storage";
 import { sendInvitationEmail } from "./emailService";
@@ -999,7 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "At least one target session must be selected" });
       }
 
-      const contentPatch = {
+      const contentPatch: Partial<InsertSwimmingSession> = {
         sessionContent: sourceSession.sessionContent,
         sessionContentHtml: sourceSession.sessionContentHtml,
         detectedDrillIds: sourceSession.detectedDrillIds,
@@ -1045,7 +1046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(403).json({ message: `You are not authorised to modify session ${targetId}` });
           }
         }
-        await storage.updateSession(targetId, contentPatch as any);
+        await storage.updateSession(targetId, contentPatch);
         updatedSessions.push(targetId);
       }
 
