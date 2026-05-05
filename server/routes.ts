@@ -969,6 +969,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Copy session content onto one or more existing sessions
+  app.post("/api/sessions/:id/copy-content", requireAuth, async (req: any, res) => {
+    try {
+      const sourceSession = await storage.getSession(req.params.id);
+      if (!sourceSession) {
+        return res.status(404).json({ message: "Source session not found" });
+      }
+
+      const userId = req.user?.id || req.user?.claims?.sub;
+      const requestingUser = await storage.getUser(userId);
+      const isAdmin = requestingUser?.role === 'admin';
+
+      if (!isAdmin) {
+        const requestingCoach = await storage.getCoachByUserId(userId);
+        if (!requestingCoach) {
+          return res.status(403).json({ message: "No coach profile found" });
+        }
+        const coachId = requestingCoach.id;
+        const isInvolved = [sourceSession.leadCoachId, sourceSession.secondCoachId, sourceSession.helperId, sourceSession.setWriterId].includes(coachId);
+        if (!isInvolved) {
+          return res.status(403).json({ message: "You can only copy content from sessions you are involved in" });
+        }
+      }
+
+      const { targetSessionIds } = req.body;
+      if (!targetSessionIds || !Array.isArray(targetSessionIds) || targetSessionIds.length === 0) {
+        return res.status(400).json({ message: "At least one target session must be selected" });
+      }
+
+      const contentPatch = {
+        sessionContent: sourceSession.sessionContent,
+        sessionContentHtml: sourceSession.sessionContentHtml,
+        detectedDrillIds: sourceSession.detectedDrillIds,
+        totalDistance: sourceSession.totalDistance,
+        totalFrontCrawlSwim: sourceSession.totalFrontCrawlSwim,
+        totalFrontCrawlDrill: sourceSession.totalFrontCrawlDrill,
+        totalFrontCrawlKick: sourceSession.totalFrontCrawlKick,
+        totalFrontCrawlPull: sourceSession.totalFrontCrawlPull,
+        totalBackstrokeSwim: sourceSession.totalBackstrokeSwim,
+        totalBackstrokeDrill: sourceSession.totalBackstrokeDrill,
+        totalBackstrokeKick: sourceSession.totalBackstrokeKick,
+        totalBackstrokePull: sourceSession.totalBackstrokePull,
+        totalBreaststrokeSwim: sourceSession.totalBreaststrokeSwim,
+        totalBreaststrokeDrill: sourceSession.totalBreaststrokeDrill,
+        totalBreaststrokeKick: sourceSession.totalBreaststrokeKick,
+        totalBreaststrokePull: sourceSession.totalBreaststrokePull,
+        totalButterflySwim: sourceSession.totalButterflySwim,
+        totalButterflyDrill: sourceSession.totalButterflyDrill,
+        totalButterflyKick: sourceSession.totalButterflyKick,
+        totalButterflyPull: sourceSession.totalButterflyPull,
+        totalIMSwim: sourceSession.totalIMSwim,
+        totalIMDrill: sourceSession.totalIMDrill,
+        totalIMKick: sourceSession.totalIMKick,
+        totalIMPull: sourceSession.totalIMPull,
+        totalNo1Swim: sourceSession.totalNo1Swim,
+        totalNo1Drill: sourceSession.totalNo1Drill,
+        totalNo1Kick: sourceSession.totalNo1Kick,
+        totalNo1Pull: sourceSession.totalNo1Pull,
+        duplicatedFromSessionId: sourceSession.id,
+      };
+
+      const updatedSessions: string[] = [];
+      for (const targetId of targetSessionIds) {
+        if (targetId === sourceSession.id) continue;
+        const target = await storage.getSession(targetId);
+        if (!target) continue;
+        await storage.updateSession(targetId, contentPatch as any);
+        updatedSessions.push(targetId);
+      }
+
+      console.log(`[Session CopyContent] Content from ${sourceSession.id} copied to ${updatedSessions.length} session(s): ${updatedSessions.join(', ')}`);
+      res.json({ updated: updatedSessions.length, sessionIds: updatedSessions });
+    } catch (error: any) {
+      console.error("Error copying session content:", error);
+      res.status(400).json({ message: error.message || "Failed to copy session content" });
+    }
+  });
+
   app.put("/api/sessions/:id", requireAuth, async (req: any, res) => {
     try {
       const { squadIds, ...sessionBody } = req.body;
