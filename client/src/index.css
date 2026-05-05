@@ -351,3 +351,9 @@
     inset: -1px;
   }
 }
+
+/* Hide native browser calendar/clock picker icons on compact table inputs */
+td input[type="date"]::-webkit-calendar-picker-indicator,
+td input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
