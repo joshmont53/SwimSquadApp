@@ -1,6 +1,6 @@
 import type { Session, Squad } from '../lib/typeAdapters';
-import type { Competition, CompetitionCoaching, FloatSession } from '@shared/schema';
-import { ChevronLeft, ChevronRight, Trophy, Search, Waves } from 'lucide-react';
+import type { Competition, CompetitionCoaching } from '@shared/schema';
+import { ChevronLeft, ChevronRight, Trophy, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parse } from 'date-fns';
 
@@ -10,7 +10,6 @@ interface MonthCalendarViewProps {
   competitionCoaching: CompetitionCoaching[];
   squads: Squad[];
   sessionSquadMap: Record<string, string[]>;
-  floatSessions?: FloatSession[];
   currentDate: Date;
   onDateChange: (date: Date) => void;
   onDayClick: (date: Date) => void;
@@ -27,7 +26,6 @@ export function MonthCalendarView({
   competitionCoaching,
   squads,
   sessionSquadMap,
-  floatSessions = [],
   currentDate,
   onDateChange,
   onDayClick,
@@ -64,10 +62,6 @@ export function MonthCalendarView({
     });
   };
 
-  const getFloatSessionsForDate = (date: Date) => {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    return floatSessions.filter(fs => fs.sessionDate === dateStr);
-  };
 
   const getCompetitionsForDate = (date: Date) => {
     return competitions.filter((comp) => {
@@ -163,7 +157,6 @@ export function MonthCalendarView({
           const date = day ? new Date(year, month, day) : null;
           const daySessions = date ? getSessionsForDate(date) : [];
           const dayCompetitions = date ? getCompetitionsForDate(date) : [];
-          const dayFloats = date ? getFloatSessionsForDate(date) : [];
 
           return (
             <div
@@ -205,18 +198,6 @@ export function MonthCalendarView({
                         </div>
                       );
                     })}
-                    {/* Render float sessions */}
-                    {dayFloats.map((fs) => (
-                      <div
-                        key={fs.id}
-                        className="text-xs px-2 py-1 rounded truncate bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200 flex items-center gap-1"
-                        title={`Float Session ${fs.startTime.slice(0,5)}–${fs.endTime.slice(0,5)}`}
-                        data-testid={`float-badge-${fs.id}`}
-                      >
-                        <Waves className="h-2.5 w-2.5 flex-shrink-0" />
-                        <span className="truncate">Float</span>
-                      </div>
-                    ))}
                     {/* Render competitions with diagonal stripes */}
                     {dayCompetitions.map((comp) => (
                       <div
