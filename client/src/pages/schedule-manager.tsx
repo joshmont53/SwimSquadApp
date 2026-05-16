@@ -922,6 +922,10 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
   const confirmCreate = async () => {
     if (!draft) return;
     setCreating(true);
+    let sessionSuccessCount = 0;
+    let sessionFailCount = 0;
+    let floatSuccessCount = 0;
+    let floatFailCount = 0;
     try {
       for (const row of sessionRows) {
         if (!row.leadCoachId) continue;
@@ -931,66 +935,87 @@ function GenerateSessionsTab({ recurringSessions, absences, coaches, squads, loc
         const endM = parseInt(row.endTime.split(':')[1]);
         const duration = ((endH * 60 + endM) - (startH * 60 + startM)) / 60;
         const mainSquad = row.squadIds[0] ?? '';
-        const res = await apiRequest('POST', '/api/sessions', {
-          sessionDate: row.date,
-          startTime: row.startTime,
-          endTime: row.endTime,
-          duration: duration.toFixed(2),
-          poolId: row.locationId,
-          squadId: mainSquad,
-          leadCoachId: row.leadCoachId,
-          secondCoachId: row.secondCoachId === '_vacant' ? null : (row.secondCoachId || null),
-          helperId: row.helperId === '_vacant' ? null : (row.helperId || null),
-          setWriterId: row.setWriterId || row.leadCoachId,
-          focus: 'Aerobic capacity',
-          totalDistance: 0,
-          totalFrontCrawlSwim: 0, totalFrontCrawlDrill: 0, totalFrontCrawlKick: 0, totalFrontCrawlPull: 0,
-          totalBackstrokeSwim: 0, totalBackstrokeDrill: 0, totalBackstrokeKick: 0, totalBackstrokePull: 0,
-          totalBreaststrokeSwim: 0, totalBreaststrokeDrill: 0, totalBreaststrokeKick: 0, totalBreaststrokePull: 0,
-          totalButterflySwim: 0, totalButterflyDrill: 0, totalButterflyKick: 0, totalButterflyPull: 0,
-          totalIMSwim: 0, totalIMDrill: 0, totalIMKick: 0, totalIMPull: 0,
-          totalNo1Swim: 0, totalNo1Drill: 0, totalNo1Kick: 0, totalNo1Pull: 0,
-        });
-        const created = await res.json();
-        // Create session squad links for additional squads
-        for (const squadId of row.squadIds) {
-          await apiRequest('POST', '/api/session-squads', { sessionId: created.id, squadId }).catch(() => {});
-        }
-        // Create cover opportunities for vacant roles
-        const rsForCover = recurringSessions.find(r => r.id === row.recurringId);
-        if (row.secondCoachId === '_vacant') {
-          const reqCoachId = rsForCover?.secondCoachId || row.leadCoachId;
-          await apiRequest('POST', '/api/cover-opportunities', {
-            sessionId: created.id, role: 'second', reason: 'Coach absence', requesterCoachId: reqCoachId,
-          }).catch(() => {});
-        }
-        if (row.helperId === '_vacant') {
-          const reqCoachId = rsForCover?.helperId || row.leadCoachId;
-          await apiRequest('POST', '/api/cover-opportunities', {
-            sessionId: created.id, role: 'helper', reason: 'Coach absence', requesterCoachId: reqCoachId,
-          }).catch(() => {});
+        try {
+          const res = await apiRequest('POST', '/api/sessions', {
+            sessionDate: row.date,
+            startTime: row.startTime,
+            endTime: row.endTime,
+            duration: duration.toFixed(2),
+            poolId: row.locationId,
+            squadId: mainSquad,
+            leadCoachId: row.leadCoachId,
+            secondCoachId: row.secondCoachId === '_vacant' ? null : (row.secondCoachId || null),
+            helperId: row.helperId === '_vacant' ? null : (row.helperId || null),
+            setWriterId: row.setWriterId || row.leadCoachId,
+            focus: 'Aerobic capacity',
+            totalDistance: 0,
+            totalFrontCrawlSwim: 0, totalFrontCrawlDrill: 0, totalFrontCrawlKick: 0, totalFrontCrawlPull: 0,
+            totalBackstrokeSwim: 0, totalBackstrokeDrill: 0, totalBackstrokeKick: 0, totalBackstrokePull: 0,
+            totalBreaststrokeSwim: 0, totalBreaststrokeDrill: 0, totalBreaststrokeKick: 0, totalBreaststrokePull: 0,
+            totalButterflySwim: 0, totalButterflyDrill: 0, totalButterflyKick: 0, totalButterflyPull: 0,
+            totalIMSwim: 0, totalIMDrill: 0, totalIMKick: 0, totalIMPull: 0,
+            totalNo1Swim: 0, totalNo1Drill: 0, totalNo1Kick: 0, totalNo1Pull: 0,
+          });
+          const created = await res.json();
+          sessionSuccessCount++;
+          for (const squadId of row.squadIds) {
+            await apiRequest('POST', '/api/session-squads', { sessionId: created.id, squadId }).catch(() => {});
+          }
+          const rsForCover = recurringSessions.find(r => r.id === row.recurringId);
+          if (row.secondCoachId === '_vacant') {
+            const reqCoachId = rsForCover?.secondCoachId || row.leadCoachId;
+            await apiRequest('POST', '/api/cover-opportunities', {
+              sessionId: created.id, role: 'second', reason: 'Coach absence', requesterCoachId: reqCoachId,
+            }).catch(() => {});
+          }
+          if (row.helperId === '_vacant') {
+            const reqCoachId = rsForCover?.helperId || row.leadCoachId;
+            await apiRequest('POST', '/api/cover-opportunities', {
+              sessionId: created.id, role: 'helper', reason: 'Coach absence', requesterCoachId: reqCoachId,
+            }).catch(() => {});
+          }
+        } catch {
+          sessionFailCount++;
         }
       }
       for (const row of floatRows) {
-        await apiRequest('POST', '/api/float-sessions', {
-          sessionDate: row.date,
-          startTime: row.startTime,
-          endTime: row.endTime,
-          coachId: row.coachId,
-          locationId: row.locationId,
-          notes: row.notes || null,
-        });
+        try {
+          await apiRequest('POST', '/api/float-sessions', {
+            sessionDate: row.date,
+            startTime: row.startTime,
+            endTime: row.endTime,
+            coachId: row.coachId,
+            locationId: row.locationId,
+            notes: row.notes || null,
+          });
+          floatSuccessCount++;
+        } catch {
+          floatFailCount++;
+        }
       }
       qc.invalidateQueries({ queryKey: ['/api/sessions'] });
       qc.invalidateQueries({ queryKey: ['/api/float-sessions'] });
       qc.invalidateQueries({ queryKey: ['/api/cover-opportunities'] });
       qc.invalidateQueries({ queryKey: ['/api/session-squads'] });
-      toast({ title: 'Sessions created', description: `${sessionRows.filter(r => r.leadCoachId).length} sessions and ${floatRows.length} float sessions created.` });
+      const failTotal = sessionFailCount + floatFailCount;
+      const parts: string[] = [];
+      if (sessionSuccessCount > 0) parts.push(`${sessionSuccessCount} session${sessionSuccessCount !== 1 ? 's' : ''}`);
+      if (floatSuccessCount > 0) parts.push(`${floatSuccessCount} float session${floatSuccessCount !== 1 ? 's' : ''}`);
+      if (failTotal > 0) {
+        toast({
+          title: 'Sessions partially created',
+          description: `${parts.length > 0 ? parts.join(' and ') + ' created successfully. ' : ''}${failTotal} session${failTotal !== 1 ? 's' : ''} could not be created and will need to be added manually.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: `${parts.join(' and ')} created successfully.`,
+        });
+      }
       setDraft(null);
       setConfirmOpen(false);
       onRefresh();
-    } catch (e: any) {
-      toast({ title: 'Error creating sessions', description: e.message, variant: 'destructive' });
     } finally {
       setCreating(false);
     }
