@@ -1113,13 +1113,17 @@ export function SessionDetail({
                 {sessionSquadsList.map((sq, squadIndex) => {
                   const swimmersInSquad = squadSwimmers.filter(s => s.squadId === sq.id);
                   if (swimmersInSquad.length === 0) return null;
+                  const presentCount = swimmersInSquad.filter(sw => {
+                    const rec = attendanceRecords.find(r => r.swimmerId === sw.id);
+                    return (rec?.status || 'Present') !== 'Absent';
+                  }).length;
                   return (
                     <div key={sq.id}>
                       {squadIndex > 0 && <div className="border-t my-3" />}
                       <div className="flex items-center gap-2 mb-2 px-2 md:px-3 pt-1">
                         <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: sq.color }} />
                         <h3 className="text-sm font-semibold text-muted-foreground">{sq.name}</h3>
-                        <span className="text-xs text-muted-foreground">({swimmersInSquad.length})</span>
+                        <span className="text-xs text-muted-foreground">({presentCount}/{swimmersInSquad.length})</span>
                       </div>
                       <div className="space-y-1">
                         {swimmersInSquad.map((swimmer) => {
