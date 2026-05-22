@@ -218,13 +218,13 @@ export default function LoginPage() {
             {!isNativeApp && (
               <div className="mt-4 pt-4 border-t text-center">
                 <p className="text-sm text-muted-foreground mb-1">New to the platform?</p>
-                <Link
+                <button
                   data-testid="link-register-club"
-                  href="/register-club"
+                  onClick={() => toast({ title: "Coming soon!", description: "Club registration will be available shortly. Stay tuned!" })}
                   className="text-sm font-medium text-[#059467] hover:underline transition-all"
                 >
                   Register your club
-                </Link>
+                </button>
               </div>
             )}
           </div>
