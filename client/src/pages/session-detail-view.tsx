@@ -205,6 +205,7 @@ export function SessionDetail({
   // Background calculation states - user can continue working while these are true
   const [isCalculatingDistances, setIsCalculatingDistances] = useState(false);
   const [isCalculatingDrills, setIsCalculatingDrills] = useState(false);
+  const [allMarkedAbsent, setAllMarkedAbsent] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [isHelperOpen, setIsHelperOpen] = useState(false);
@@ -525,9 +526,15 @@ export function SessionDetail({
       dob.getUTCDate() === sessionDate.getUTCDate();
   };
 
-  const handleMarkAllAbsent = () => {
+  const handleToggleAllAbsent = () => {
+    const next = !allMarkedAbsent;
+    setAllMarkedAbsent(next);
     setAttendanceRecords((prev) =>
-      prev.map((record) => ({ ...record, status: 'Absent' as AttendanceStatus, notes: '-' as AttendanceNote }))
+      prev.map((record) => ({
+        ...record,
+        status: (next ? 'Absent' : 'Present') as AttendanceStatus,
+        notes: (next ? '-' : '-') as AttendanceNote,
+      }))
     );
   };
 
@@ -1117,9 +1124,15 @@ export function SessionDetail({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button onClick={handleMarkAllAbsent} size="sm" variant="outline" data-testid="button-mark-all-absent">
+                <Button
+                  onClick={handleToggleAllAbsent}
+                  size="sm"
+                  variant="outline"
+                  className={`toggle-elevate${allMarkedAbsent ? ' toggle-elevated' : ''}`}
+                  data-testid="button-mark-all-absent"
+                >
                   <UserX className="h-4 w-4 mr-2" />
-                  Mark All Absent
+                  {allMarkedAbsent ? 'Mark All Present' : 'Mark All Absent'}
                 </Button>
                 <Button onClick={handleSaveAttendance} size="sm" data-testid="button-save-attendance">
                   <Save className="h-4 w-4 mr-2" />
