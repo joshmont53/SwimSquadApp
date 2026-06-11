@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks, BookOpen } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks, BookOpen, Cake, UserX } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid } from 'date-fns';
@@ -516,6 +516,20 @@ export function SessionDetail({
   const setWriter = coaches.find((c) => c.id === session.setWriterId);
 
   const squadSwimmers = swimmers.filter((s) => activeSessionSquadIds.includes(s.squadId));
+
+  const isSwimmerBirthday = (swimmer: Swimmer): boolean => {
+    if (!swimmer.dateOfBirth || !session?.date) return false;
+    const dob = new Date(swimmer.dateOfBirth);
+    const sessionDate = new Date(session.date);
+    return dob.getUTCMonth() === sessionDate.getUTCMonth() &&
+      dob.getUTCDate() === sessionDate.getUTCDate();
+  };
+
+  const handleMarkAllAbsent = () => {
+    setAttendanceRecords((prev) =>
+      prev.map((record) => ({ ...record, status: 'Absent' as AttendanceStatus, notes: '-' as AttendanceNote }))
+    );
+  };
 
   const getCoachName = (coachId?: string) => {
     if (!coachId) return null;
@@ -1095,17 +1109,23 @@ export function SessionDetail({
 
         {activeTab === 'attendance' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
               <div>
                 <h2>Attendance Register</h2>
                 <p className="text-sm text-muted-foreground">
                   {squadSwimmers.length} swimmers
                 </p>
               </div>
-              <Button onClick={handleSaveAttendance} size="sm" data-testid="button-save-attendance">
-                <Save className="h-4 w-4 mr-2" />
-                Save Attendance
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleMarkAllAbsent} size="sm" variant="outline" data-testid="button-mark-all-absent">
+                  <UserX className="h-4 w-4 mr-2" />
+                  Mark All Absent
+                </Button>
+                <Button onClick={handleSaveAttendance} size="sm" data-testid="button-save-attendance">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Attendance
+                </Button>
+              </div>
             </div>
 
             <div className="border rounded-lg p-4 md:p-6 bg-card">
@@ -1131,17 +1151,23 @@ export function SessionDetail({
                           const status = record?.status || 'Present';
                           const notes = record?.notes || '-';
                           const isAbsent = status === 'Absent';
+                          const hasBirthday = isSwimmerBirthday(swimmer);
 
                           return (
                             <div
                               key={swimmer.id}
-                              className="grid grid-cols-[1fr_100px_75px] md:grid-cols-[1fr_110px_80px] gap-2 md:gap-3 items-center p-2 md:p-3"
+                              className={`grid grid-cols-[1fr_100px_75px] md:grid-cols-[1fr_110px_80px] gap-2 md:gap-3 items-center p-2 md:p-3 rounded-md${hasBirthday ? ' bg-amber-50 dark:bg-amber-950/30' : ''}`}
                               data-testid={`attendance-row-${swimmer.id}`}
                             >
                               <div className="min-w-0">
-                                <p className="text-sm md:text-base">
-                                  {swimmer.firstName} {swimmer.lastName}
-                                </p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm md:text-base">
+                                    {swimmer.firstName} {swimmer.lastName}
+                                  </p>
+                                  {hasBirthday && (
+                                    <Cake className="w-4 h-4 text-amber-500 shrink-0" aria-label="Birthday today" />
+                                  )}
+                                </div>
                               </div>
                               <div>
                                 <Select
