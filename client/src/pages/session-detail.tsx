@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Calendar, Clock, Target, Trash2, Save, Edit, MessageSquare, Copy, ChevronRight, FileText, Ruler } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Target, Trash2, Save, Edit, MessageSquare, Copy, ChevronRight, FileText, Ruler, Cake, UserX } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useState, useEffect } from "react";
 import type { SwimmingSession, Coach, Squad, Location, Swimmer, Attendance } from "@shared/schema";
@@ -156,6 +156,22 @@ export default function SessionDetail() {
     ? activeSessionSquadIds
     : session?.squadId ? [session.squadId] : [];
   const squadSwimmers = swimmers?.filter(s => allSquadIds.includes(s.squadId)) || [];
+
+  const isSwimmerBirthday = (swimmer: Swimmer): boolean => {
+    if (!swimmer.dob || !session?.sessionDate) return false;
+    const dob = new Date(swimmer.dob);
+    const sessionDate = new Date(session.sessionDate);
+    return dob.getUTCMonth() === sessionDate.getUTCMonth() &&
+      dob.getUTCDate() === sessionDate.getUTCDate();
+  };
+
+  const handleMarkAllAbsent = () => {
+    const updated: Record<string, { status: string, notes: string | null }> = {};
+    squadSwimmers.forEach(swimmer => {
+      updated[swimmer.id] = { status: "Absent", notes: null };
+    });
+    setAttendanceData(updated);
+  };
 
   const strokeData = [
     {
@@ -458,15 +474,26 @@ export default function SessionDetail() {
                         : getSquadName(session.squadId)}
                     </CardDescription>
                   </div>
-                  <Button
-                    size="default"
-                    onClick={handleSaveAttendance}
-                    disabled={saveAttendanceMutation.isPending}
-                    data-testid="button-save-attendance"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {saveAttendanceMutation.isPending ? "Saving..." : "Save Attendance"}
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      size="default"
+                      variant="outline"
+                      onClick={handleMarkAllAbsent}
+                      data-testid="button-mark-all-absent"
+                    >
+                      <UserX className="w-4 h-4 mr-2" />
+                      Mark All Absent
+                    </Button>
+                    <Button
+                      size="default"
+                      onClick={handleSaveAttendance}
+                      disabled={saveAttendanceMutation.isPending}
+                      data-testid="button-save-attendance"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {saveAttendanceMutation.isPending ? "Saving..." : "Save Attendance"}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -478,17 +505,23 @@ export default function SessionDetail() {
                       notes: existingAttendance?.notes ?? null,
                     };
                     const isAbsent = data.status === "Absent";
+                    const hasBirthday = isSwimmerBirthday(swimmer);
 
                     return (
                       <div
                         key={swimmer.id}
-                        className="flex items-center justify-between gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border"
+                        className={`flex items-center justify-between gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border${hasBirthday ? " border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30" : ""}`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm sm:text-base font-medium truncate">
-                              {swimmer.firstName} {swimmer.lastName}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm sm:text-base font-medium truncate">
+                                {swimmer.firstName} {swimmer.lastName}
+                              </p>
+                              {hasBirthday && (
+                                <Cake className="w-4 h-4 text-amber-500 shrink-0" aria-label="Birthday today" />
+                              )}
+                            </div>
                             <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">ASA: {swimmer.asaNumber}</p>
                           </div>
                         </div>
