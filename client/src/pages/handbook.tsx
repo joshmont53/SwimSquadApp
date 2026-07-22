@@ -1115,11 +1115,34 @@ function ExcelPreview({ document }: { document: Document }) {
       
       workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
-        sheets.push({
-          name: sheetName,
-          data: jsonData as string[][],
-        });
+        const ref = worksheet['!ref'];
+        if (!ref) {
+          sheets.push({ name: sheetName, data: [] });
+          return;
+        }
+
+        const range = XLSX.utils.decode_range(ref);
+        const rows: string[][] = [];
+
+        for (let r = range.s.r; r <= range.e.r; r++) {
+          const row: string[] = [];
+          for (let c = range.s.c; c <= range.e.c; c++) {
+            const cellAddress = XLSX.utils.encode_cell({ r, c });
+            const cell = worksheet[cellAddress];
+            if (!cell) {
+              row.push('');
+            } else if (cell.w !== undefined) {
+              row.push(cell.w);
+            } else if (cell.v !== undefined) {
+              row.push(String(cell.v));
+            } else {
+              row.push('');
+            }
+          }
+          rows.push(row);
+        }
+
+        sheets.push({ name: sheetName, data: rows });
       });
       
       return sheets;
