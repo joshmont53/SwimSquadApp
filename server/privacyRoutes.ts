@@ -247,6 +247,17 @@ export function registerPrivacyRoutes(app: Express) {
       <tr><td><strong>Replit / PostgreSQL</strong></td><td>Application hosting and database</td><td>All App data, stored on Replit's managed infrastructure</td></tr>
     </table>
 
+    <h2>8a. International Data Transfers</h2>
+    <p>Some of the third-party services listed in Section 8 are based in the United States of America, which means that personal data processed by them is transferred to and stored in a country outside the United Kingdom.</p>
+    <p>This applies to:</p>
+    <ul>
+      <li><strong>Replit / PostgreSQL</strong> — application hosting and database storage (USA)</li>
+      <li><strong>OpenAI</strong> — AI session parsing and coaching assistant (USA)</li>
+      <li><strong>Resend</strong> — email delivery (USA)</li>
+    </ul>
+    <p>These transfers are lawful under UK GDPR. Each provider operates under <strong>Standard Contractual Clauses (SCCs)</strong> — a legal mechanism approved under UK data protection law that requires these providers to protect your data to a standard equivalent to UK law.</p>
+    <p>We have reviewed the data handling commitments of each provider and are satisfied that appropriate safeguards are in place.</p>
+
     <h2>9. Data Isolation Between Clubs</h2>
     <p>Swim Squad serves multiple swimming clubs. Data entered by one club is completely isolated from all other clubs. Coaches can only access data belonging to their own club. There is no cross-club data sharing of any kind.</p>
 
@@ -374,6 +385,16 @@ export function registerPrivacyRoutes(app: Express) {
     <div class="callout"><strong>Your child's name, individual date of birth, Swim England number, gender, and attendance records are never sent to the AI.</strong></div>
     <h3>Who runs the AI?</h3>
     <p>The AI is provided by <strong>OpenAI</strong> (the company behind ChatGPT), using their professional business API. Under OpenAI's business API terms, data sent through the API is <strong>not used to train their AI models</strong>. Swim Squad has reviewed OpenAI's data handling commitments and is satisfied that this use is appropriate, proportionate, and does not put your child's personal information at risk.</p>
+
+    <h2>5a. Where Is This Information Stored?</h2>
+    <p>Swim Squad uses trusted cloud services to run the platform and store data. Some of these services are based in the United States of America, which means your child's information may be stored on servers located outside the United Kingdom.</p>
+    <p>This applies to:</p>
+    <ul>
+      <li><strong>Replit / PostgreSQL</strong> — the platform that hosts the app and its database</li>
+      <li><strong>OpenAI</strong> — the AI service that helps coaches plan training sessions</li>
+      <li><strong>Resend</strong> — the service used to send emails to coaches</li>
+    </ul>
+    <p>This is lawful under UK data protection law. Each provider is required to protect your child's data to a standard equivalent to UK law, through a legal arrangement called <strong>Standard Contractual Clauses</strong>. We have checked each provider's commitments and are satisfied that your child's information is properly protected.</p>
 
     <h2>6. Why Are We Allowed to Hold This Information?</h2>
     <p>Under UK data protection law (UK GDPR), organisations must have a lawful reason to hold and use personal information. We hold your child's information on the basis of our <strong>legitimate interests</strong> as a sports club providing a structured swimming programme. These include: running a safe and well-organised training programme; monitoring attendance as part of our duty of care; ensuring training is appropriate for each swimmer's age and ability; and planning and improving the quality of coaching.</p>
