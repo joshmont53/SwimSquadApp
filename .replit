@@ -54,3 +54,7 @@ APP_URL = "https://www.swimsquadapp.co.uk"
 [userenv.development]
 STRIPE_PRODUCT_ID = "prod_UFGxJEbEgEpM7P"
 STRIPE_SUBSCRIPTION_PRICE_ID = "price_1TGmPvD28dJq0fFqF8LLozlx"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
