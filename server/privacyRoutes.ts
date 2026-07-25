@@ -165,9 +165,9 @@ export function registerPrivacyRoutes(app: Express) {
 
     <h1>Privacy Policy</h1>
     <div class="meta">
-      <span>Version 1.0</span>
-      <span>Last updated: 29 March 2026</span>
-      <span>Effective: 29 March 2026</span>
+      <span>Version 1.1</span>
+      <span>Last updated: 25 July 2026</span>
+      <span>Effective: 25 July 2026</span>
     </div>
 
     <h2>1. Introduction</h2>
@@ -300,7 +300,7 @@ export function registerPrivacyRoutes(app: Express) {
     <a href="mailto:admin@swimsquadapp.co.uk">admin@swimsquadapp.co.uk</a></p>
 
     <div class="footer">
-      Swim Squad Privacy Policy &mdash; Version 1.0 &mdash; 29 March 2026<br>
+      Swim Squad Privacy Policy &mdash; Version 1.1 &mdash; 25 July 2026<br>
       <a href="/privacy/swimmers">View: Data Notice for Parents and Swimmers</a>
     </div>
   </div>
@@ -327,8 +327,8 @@ export function registerPrivacyRoutes(app: Express) {
 
     <h1>Data Notice for Parents, Guardians, and Swimmers</h1>
     <div class="meta">
-      <span>Version 1.0</span>
-      <span>Last updated: 29 March 2026</span>
+      <span>Version 1.1</span>
+      <span>Last updated: 25 July 2026</span>
       <span>Issued by Swim Squad on behalf of your swimming club</span>
     </div>
 
@@ -432,7 +432,7 @@ export function registerPrivacyRoutes(app: Express) {
     <p>For questions specific to how your club manages its data, please contact your club's administrator directly.</p>
 
     <div class="footer">
-      Swim Squad — Data Notice for Parents and Swimmers &mdash; Version 1.0 &mdash; 29 March 2026<br>
+      Swim Squad — Data Notice for Parents and Swimmers &mdash; Version 1.1 &mdash; 25 July 2026<br>
       <a href="/privacy">View: Coach Privacy Policy</a>
     </div>
   </div>
