@@ -33,6 +33,7 @@ export function ManageInvitations({ onBack }: ManageInvitationsProps) {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [reissuingId, setReissuingId] = useState<string | null>(null);
   const [revokingInvitation, setRevokingInvitation] = useState<AuthorizedInvitation | null>(null);
 
   const [formData, setFormData] = useState({
@@ -103,6 +104,31 @@ export function ManageInvitations({ onBack }: ManageInvitationsProps) {
     },
   });
 
+  const reissueMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest('POST', `/api/invitations/${id}/reissue`);
+    },
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/invitations'] });
+      toast({
+        title: 'Invitation Reissued',
+        description: response.emailSent
+          ? 'A new invitation email has been sent successfully'
+          : response.emailError || 'Invitation reissued but email delivery failed. You can resend it.',
+        variant: response.emailSent ? 'default' : 'destructive',
+      });
+      setReissuingId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reissue invitation',
+        variant: 'destructive',
+      });
+      setReissuingId(null);
+    },
+  });
+
   const revokeMutation = useMutation({
     mutationFn: async (id: string) => {
       return await apiRequest('PATCH', `/api/invitations/${id}/revoke`);
@@ -151,6 +177,11 @@ export function ManageInvitations({ onBack }: ManageInvitationsProps) {
   const handleResend = (id: string) => {
     setResendingId(id);
     resendMutation.mutate(id);
+  };
+
+  const handleReissue = (id: string) => {
+    setReissuingId(id);
+    reissueMutation.mutate(id);
   };
 
   const handleRevoke = (invitation: AuthorizedInvitation) => {
@@ -290,6 +321,18 @@ export function ManageInvitations({ onBack }: ManageInvitationsProps) {
                           >
                             <Mail className="h-4 w-4 mr-1" />
                             {resendingId === invitation.id ? 'Sending...' : 'Resend'}
+                          </Button>
+                        )}
+                        {invitation.status === 'revoked' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleReissue(invitation.id)}
+                            disabled={reissuingId === invitation.id}
+                            data-testid={`button-reissue-${invitation.id}`}
+                          >
+                            <Mail className="h-4 w-4 mr-1" />
+                            {reissuingId === invitation.id ? 'Sending...' : 'Reissue'}
                           </Button>
                         )}
                         {canRevoke(invitation) && (

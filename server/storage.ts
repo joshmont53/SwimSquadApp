@@ -778,6 +778,32 @@ export class DatabaseStorage implements IStorage {
     return updatedInvitation;
   }
 
+  async reissueInvitation(
+    id: string,
+    inviteToken: string,
+    expiresAt: Date,
+  ): Promise<AuthorizedInvitation> {
+    const [updatedInvitation] = await db
+      .update(authorizedInvitations)
+      .set({
+        inviteToken,
+        status: 'pending',
+        expiresAt,
+        acceptedAt: null,
+      })
+      .where(and(
+        eq(authorizedInvitations.id, id),
+        eq(authorizedInvitations.status, 'revoked'),
+      ))
+      .returning();
+
+    if (!updatedInvitation) {
+      throw new Error("Only revoked invitations can be reissued");
+    }
+
+    return updatedInvitation;
+  }
+
   // Atomically claim an invitation (only succeeds if status is 'pending')
   async claimInvitation(id: string): Promise<AuthorizedInvitation> {
     const [claimedInvitation] = await db

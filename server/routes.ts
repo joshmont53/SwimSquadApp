@@ -237,6 +237,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reissue a revoked invitation with a new token and expiry
+  app.post("/api/invitations/:id/reissue", requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      const invitations = await storage.getAllInvitations(req.user.clubId);
+      const invitation = invitations.find(inv => inv.id === id);
+
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+
+      if (invitation.status !== 'revoked') {
+        return res.status(400).json({
+          message: `Cannot reissue invitation with status: ${invitation.status}`,
+        });
+      }
+
+      const coach = await storage.getCoach(invitation.coachId);
+      if (!coach) {
+        return res.status(404).json({ message: "Coach not found" });
+      }
+
+      const inviteToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 48);
+
+      const reissuedInvitation = await storage.reissueInvitation(
+        id,
+        inviteToken,
+        expiresAt,
+      );
+
+      try {
+        await sendInvitationEmail(
+          reissuedInvitation.email,
+          inviteToken,
+          `${coach.firstName} ${coach.lastName}`,
+        );
+        console.log(`✅ Invitation reissued and email sent to ${reissuedInvitation.email}`);
+        res.json({
+          ...sanitizeInvitation(reissuedInvitation),
+          emailSent: true,
+        });
+      } catch (emailError) {
+        console.error('Email send error:', emailError);
+        res.json({
+          ...sanitizeInvitation(reissuedInvitation),
+          emailSent: false,
+          emailError: "Invitation reissued but email delivery failed. You can resend it.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error reissuing invitation:", error);
+      res.status(500).json({ message: error.message || "Failed to reissue invitation" });
+    }
+  });
+
   // Revoke invitation
   app.patch("/api/invitations/:id/revoke", requireAuth, requireAdmin, async (req: any, res) => {
     try {
