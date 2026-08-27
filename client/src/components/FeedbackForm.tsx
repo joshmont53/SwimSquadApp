@@ -146,17 +146,42 @@ export function FeedbackForm({ sessionId, coachId }: FeedbackFormProps) {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest('POST', '/api/feedback', {
+      const response = await apiRequest('POST', '/api/feedback', {
         sessionId,
         coachId,
         isPrivate,
         ...ratings,
         notes: notes.trim() || null,
       });
+      return await response.json() as SessionFeedback;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/feedback/session', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/feedback'] });
+    onSuccess: async (savedFeedback) => {
+      // Update both feedback queries immediately so the Home dashboard reflects
+      // the saved record as soon as the coach returns from this session.
+      queryClient.setQueryData<SessionFeedback>(
+        ['/api/feedback/session', sessionId],
+        savedFeedback,
+      );
+      queryClient.setQueryData<SessionFeedback[]>(
+        ['/api/feedback'],
+        (currentFeedback = []) => {
+          const existingIndex = currentFeedback.findIndex(
+            feedback => feedback.sessionId === savedFeedback.sessionId,
+          );
+
+          if (existingIndex === -1) {
+            return [...currentFeedback, savedFeedback];
+          }
+
+          return currentFeedback.map((feedback, index) =>
+            index === existingIndex ? savedFeedback : feedback,
+          );
+        },
+      );
+
+      // Confirm the optimistic cache update with the server response. This is
+      // awaited so navigation cannot beat the dashboard refresh.
+      await queryClient.refetchQueries({ queryKey: ['/api/feedback'] });
       setIsSaved(true);
       toast({
         title: 'Success',
