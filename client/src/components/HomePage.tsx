@@ -134,14 +134,21 @@ export function HomePage({
 
   const allIncompleteSessions = useMemo(() => {
     return coachSessions.filter(session => {
-      const sessionDate = new Date(session.date);
-      const isPastOrToday = isPast(sessionDate) || isToday(sessionDate);
+      const sessionEnd = new Date(session.date);
+      const [endHour, endMinute, endSecond = 0] = session.endTime
+        .split(':')
+        .map(Number);
+      sessionEnd.setHours(endHour, endMinute, endSecond, 0);
+
+      // A session only requires attendance or feedback after it has ended.
+      // Checking the date alone incorrectly flags later sessions on the same day.
+      const hasEnded = isPast(sessionEnd);
       const isLead = session.leadCoachId === coach.id;
       const hasFeedback = sessionFeedback.some(f => f.sessionId === session.id);
       const sessionAttendance = attendance.filter(a => a.sessionId === session.id);
-      const missingAttendance = isPastOrToday && sessionAttendance.length === 0;
+      const missingAttendance = hasEnded && sessionAttendance.length === 0;
       
-      return isPastOrToday && isLead && (!hasFeedback || missingAttendance);
+      return hasEnded && isLead && (!hasFeedback || missingAttendance);
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map(session => {

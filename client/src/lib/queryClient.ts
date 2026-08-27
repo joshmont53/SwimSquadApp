@@ -31,6 +31,10 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      // React Query owns client-side caching. Bypass the browser HTTP cache so
+      // authenticated API reads cannot reuse an outdated 304 response after
+      // records change in the database.
+      cache: "no-store",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

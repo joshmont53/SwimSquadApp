@@ -11,7 +11,7 @@ import {
   locations, competitions, authorizedInvitations, coachingRates,
   drills, sessionTemplates, sessionFeedback, coachNotes,
 } from "@shared/schema";
-import { eq, isNull } from "drizzle-orm";
+import { eq, isNull, sql } from "drizzle-orm";
 
 const app = express();
 
@@ -346,11 +346,22 @@ async function repairHartStripeSetup() {
 // Runs on every startup but is a no-op once all records are already linked.
 async function repairMissingClubIds() {
   try {
+    // Feedback belongs to the same club as its linked session. Repair both
+    // missing and incorrectly assigned values rather than choosing an
+    // arbitrary club in a multi-club database.
+    await db.execute(sql`
+      UPDATE session_feedback AS feedback
+      SET club_id = session.club_id
+      FROM swimming_sessions AS session
+      WHERE feedback.session_id = session.id
+        AND feedback.club_id IS DISTINCT FROM session.club_id
+    `);
+    log('[ClubIdRepair] session_feedback: aligned records with their sessions');
+
     const [club] = await db.select({ id: clubs.id }).from(clubs);
     if (!club) return;
 
     const tables: Array<{ name: string; table: any }> = [
-      { name: 'session_feedback', table: sessionFeedback },
       { name: 'coach_notes',      table: coachNotes },
     ];
 

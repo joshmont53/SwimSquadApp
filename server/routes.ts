@@ -2484,7 +2484,18 @@ Note on definitions:
   // Create or update feedback for a session
   app.post("/api/feedback", requireAuth, async (req: any, res) => {
     try {
-      const validatedData = insertSessionFeedbackSchema.parse(req.body);
+      const session = await storage.getSession(req.body.sessionId);
+      if (!session || session.clubId !== req.user.clubId) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      // Never trust or omit the club association from the client. Feedback is
+      // scoped to the authenticated user's club so it is returned by the
+      // dashboard's club-filtered feedback query.
+      const validatedData = insertSessionFeedbackSchema.parse({
+        ...req.body,
+        clubId: session.clubId,
+      });
       const feedback = await storage.createOrUpdateFeedback(validatedData);
       res.json(feedback);
     } catch (error: any) {
