@@ -43,6 +43,7 @@ import { HomePage } from '@/components/HomePage';
 import { SwimmerProfiles } from '@/components/SwimmerProfiles';
 import { SwimmerProfilePage } from '@/components/SwimmerProfilePage';
 import { SessionSearch } from '@/components/SessionSearch';
+import { CalendarTableView } from '@/pages/calendar-table-view';
 import { Button } from './components/ui/button';
 import { Switch as ToggleSwitch } from './components/ui/switch';
 import { Label } from './components/ui/label';
@@ -105,6 +106,7 @@ import type {
 
 type View = 'month' | 'day';
 type MobileView = 'calendar' | 'list' | 'search';
+type DesktopCalendarView = 'calendar' | 'table';
 type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing' | 'availabilityCover' | 'scheduleManager';
 
 // Global storage for pending session ID from notification deep link
@@ -631,6 +633,7 @@ function CalendarApp() {
   const [selectedSwimmerId, setSelectedSwimmerId] = useState<string | null>(null);
   const [view, setView] = useState<View>('month');
   const [mobileView, setMobileView] = useState<MobileView>('calendar');
+  const [desktopCalendarView, setDesktopCalendarView] = useState<DesktopCalendarView>('calendar');
   const [managementView, setManagementView] = useState<ManagementView>('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1646,6 +1649,23 @@ function CalendarApp() {
                   </TabsList>
                 </Tabs>
               </div>
+              <div className="hidden lg:block ml-auto">
+                <Tabs
+                  value={desktopCalendarView}
+                  onValueChange={(value) => setDesktopCalendarView(value as DesktopCalendarView)}
+                >
+                  <TabsList>
+                    <TabsTrigger value="calendar" className="gap-1.5" data-testid="tab-desktop-calendar">
+                      <CalendarDays className="h-4 w-4" />
+                      Calendar
+                    </TabsTrigger>
+                    <TabsTrigger value="table" className="gap-1.5" data-testid="tab-desktop-table">
+                      <List className="h-4 w-4" />
+                      Table
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
           )}
         </header>
@@ -1829,19 +1849,42 @@ function CalendarApp() {
               )}
 
               {/* Calendar: Always visible on mobile when mobileView='calendar', visible on desktop when search has no query */}
-              <div className={`${mobileView === 'calendar' ? 'block' : 'hidden lg:block'} ${desktopSearchActive && desktopSearchQuery.trim() ? 'lg:hidden' : ''}`}>
+              <div className={cn(
+                desktopCalendarView === 'calendar'
+                  ? (mobileView === 'calendar' ? 'block' : 'hidden lg:block')
+                  : (mobileView === 'calendar' ? 'block lg:hidden' : 'hidden'),
+                desktopSearchActive && desktopSearchQuery.trim() ? 'lg:hidden' : ''
+              )}>
                 <MonthCalendarView
+                    sessions={filteredSessions}
+                    competitions={filteredCompetitions}
+                    competitionCoaching={competitionCoaching}
+                    squads={squads}
+                    sessionSquadMap={sessionSquadMap}
+                    currentDate={currentDate}
+                    onDateChange={setCurrentDate}
+                    onDayClick={handleDayClick}
+                    onCompetitionClick={handleCompetitionClick}
+                    showMySessionsOnly={showMySessionsOnly}
+                    currentCoachId={currentCoachId}
+                    onSearchClick={() => setDesktopSearchActive(!desktopSearchActive)}
+                    isSearchActive={desktopSearchActive}
+                  />
+              </div>
+
+              <div className={cn(
+                desktopCalendarView === 'table' ? 'hidden lg:block' : 'hidden',
+                desktopSearchActive && desktopSearchQuery.trim() ? 'lg:hidden' : ''
+              )}>
+                <CalendarTableView
                   sessions={filteredSessions}
-                  competitions={filteredCompetitions}
-                  competitionCoaching={competitionCoaching}
                   squads={squads}
+                  locations={locations}
+                  coaches={coaches}
                   sessionSquadMap={sessionSquadMap}
                   currentDate={currentDate}
                   onDateChange={setCurrentDate}
-                  onDayClick={handleDayClick}
-                  onCompetitionClick={handleCompetitionClick}
-                  showMySessionsOnly={showMySessionsOnly}
-                  currentCoachId={currentCoachId}
+                  onSessionDoubleClick={handleSessionClick}
                   onSearchClick={() => setDesktopSearchActive(!desktopSearchActive)}
                   isSearchActive={desktopSearchActive}
                 />
