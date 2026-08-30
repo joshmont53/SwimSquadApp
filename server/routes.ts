@@ -19,6 +19,7 @@ import {
   insertSessionTemplateSchema,
   insertDrillSchema,
   insertSessionFeedbackSchema,
+  seasonPlanEntriesSchema,
   type SessionFeedback,
   type InsertSwimmingSession,
 } from "@shared/schema";
@@ -29,6 +30,7 @@ import { calculateSessionDistancesAI, validateDistances, detectDrillsInSession, 
 import { parseSessionText } from "@shared/sessionParser";
 import { getNextAvailableColor } from "./squadColors";
 import { syncSubscriptionQuantity, cancelStripeSubscription } from "./stripeClient";
+import { generateSeasonPlanEntries, validateSeasonPlanEntries } from "./seasonPlanner";
 
 // Helper function to sanitize invitation data (remove sensitive fields)
 function sanitizeInvitation(invitation: any) {
@@ -3904,6 +3906,164 @@ CRITICAL RULES:
       res.json({ message: "Deleted" });
     } catch (e: any) {
       res.status(500).json({ message: "Failed to delete recurring session" });
+    }
+  });
+
+  // ============================================================================
+  // Season Planner API
+  // ============================================================================
+
+  const seasonPlanDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+  app.get("/api/season-plans", requireAuth, async (req: any, res) => {
+    try {
+      const squadId = typeof req.query.squadId === "string" ? req.query.squadId : undefined;
+      const plans = await storage.getSeasonPlans(req.user.clubId, squadId);
+      res.json(plans);
+    } catch (e: any) {
+      console.error("Error fetching season plans:", e);
+      res.status(500).json({ message: "Failed to fetch season plans" });
+    }
+  });
+
+  app.get("/api/season-plans/:id", requireAuth, async (req: any, res) => {
+    try {
+      const plan = await storage.getSeasonPlan(req.params.id, req.user.clubId);
+      if (!plan) return res.status(404).json({ message: "Season plan not found" });
+      res.json(plan);
+    } catch (e: any) {
+      console.error("Error fetching season plan:", e);
+      res.status(500).json({ message: "Failed to fetch season plan" });
+    }
+  });
+
+  app.post("/api/season-plans", requireAuth, async (req: any, res) => {
+    try {
+      const input = z.object({
+        name: z.string().trim().min(1).max(200),
+        startDate: seasonPlanDate,
+        endDate: seasonPlanDate,
+        squadIds: z.array(z.string().min(1)).min(1).max(100),
+      }).safeParse(req.body);
+      if (!input.success) return res.status(400).json({ message: "Invalid plan name, dates, or squads" });
+      if (input.data.startDate > input.data.endDate) {
+        return res.status(400).json({ message: "Start date must be before end date" });
+      }
+
+      const clubSquads = await storage.getSquads(req.user.clubId);
+      const clubSquadIds = new Set(clubSquads.map(squad => squad.id));
+      const squadIds = Array.from(new Set(input.data.squadIds));
+      if (squadIds.some(squadId => !clubSquadIds.has(squadId))) {
+        return res.status(400).json({ message: "One or more squads are not part of this club" });
+      }
+
+      const recurring = await storage.getRecurringSessions(req.user.clubId);
+      const competitions = await storage.getCompetitions(req.user.clubId);
+      const entries = generateSeasonPlanEntries(
+        { startDate: input.data.startDate, endDate: input.data.endDate },
+        squadIds,
+        recurring,
+        competitions,
+      );
+      const plan = await storage.createSeasonPlan({
+        clubId: req.user.clubId,
+        name: input.data.name,
+        startDate: input.data.startDate,
+        endDate: input.data.endDate,
+        entries,
+        createdByUserId: req.user.id,
+      }, squadIds);
+      res.status(201).json(plan);
+    } catch (e: any) {
+      console.error("Error creating season plan:", e);
+      res.status(500).json({ message: "Failed to create season plan" });
+    }
+  });
+
+  app.patch("/api/season-plans/:id", requireAuth, async (req: any, res) => {
+    try {
+      const plan = await storage.getSeasonPlan(req.params.id, req.user.clubId);
+      if (!plan) return res.status(404).json({ message: "Season plan not found" });
+      if (plan.createdByUserId !== req.user.id && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Only the plan creator or a club admin can edit this plan" });
+      }
+
+      const input = z.object({
+        name: z.string().trim().min(1).max(200).optional(),
+        entries: seasonPlanEntriesSchema.optional(),
+        version: z.number().int().positive(),
+      }).strict().safeParse(req.body);
+      if (!input.success || (!input.data.name && !input.data.entries)) {
+        return res.status(400).json({ message: "A plan name or entries are required" });
+      }
+      if (input.data.entries) {
+        const invariantError = validateSeasonPlanEntries(
+          input.data.entries,
+          plan.squadIds,
+          plan.startDate,
+          plan.endDate,
+        );
+        if (invariantError) return res.status(400).json({ message: invariantError });
+      }
+      const updated = await storage.updateSeasonPlan(
+        req.params.id,
+        req.user.clubId,
+        { name: input.data.name, entries: input.data.entries },
+        input.data.version,
+      );
+      if (!updated) return res.status(409).json({ message: "This plan was changed by someone else. Reload it before saving." });
+      res.json(updated);
+    } catch (e: any) {
+      console.error("Error updating season plan:", e);
+      res.status(500).json({ message: "Failed to update season plan" });
+    }
+  });
+
+  app.delete("/api/season-plans/:id", requireAuth, async (req: any, res) => {
+    try {
+      const plan = await storage.getSeasonPlan(req.params.id, req.user.clubId);
+      if (!plan) return res.status(404).json({ message: "Season plan not found" });
+      if (plan.createdByUserId !== req.user.id && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Only the plan creator or a club admin can delete this plan" });
+      }
+      const deleted = await storage.deleteSeasonPlan(req.params.id, req.user.clubId);
+      if (!deleted) return res.status(404).json({ message: "Season plan not found" });
+      res.json({ message: "Season plan deleted" });
+    } catch (e: any) {
+      console.error("Error deleting season plan:", e);
+      res.status(500).json({ message: "Failed to delete season plan" });
+    }
+  });
+
+  app.get("/api/sessions/:id/season-planner", requireAuth, async (req: any, res) => {
+    try {
+      const session = await storage.getSession(req.params.id);
+      if (!session || session.clubId !== req.user.clubId) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const sessionDate = String(session.sessionDate).slice(0, 10);
+      const squadIds = (await storage.getSessionSquads(session.id)).map(row => row.squadId);
+      if (squadIds.length === 0) squadIds.push(session.squadId);
+      const matches = await storage.getSeasonPlanMatches(
+        req.user.clubId,
+        squadIds,
+        sessionDate,
+        session.startTime,
+        session.endTime,
+      );
+      res.json({
+        sessionId: session.id,
+        date: sessionDate,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        squads: squadIds.map(squadId => ({
+          squadId,
+          match: matches.find(item => item.squadId === squadId) || null,
+        })),
+      });
+    } catch (e: any) {
+      console.error("Error matching season planner entry:", e);
+      res.status(500).json({ message: "Failed to load season planner details" });
     }
   });
 

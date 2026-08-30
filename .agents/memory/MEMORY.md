@@ -1,0 +1,1 @@
+- [Season Planner snapshot contract](season-planner-contract.md) — plans snapshot schedules and match real sessions by canonical squad/date/time, never by generated-session identity.

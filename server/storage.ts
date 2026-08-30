@@ -27,6 +27,8 @@ import {
   handbookDocuments,
   recurringSessions,
   recurringSessionSquads,
+  seasonPlans,
+  seasonPlanSquads,
   absencePeriods,
   coverOpportunities,
   floatSessions,
@@ -83,6 +85,10 @@ import {
   type InsertRecurringSession,
   type RecurringSessionSquad,
   type InsertRecurringSessionSquad,
+  type SeasonPlan,
+  type InsertSeasonPlan,
+  type SeasonPlanEntry,
+  type SeasonPlanEntries,
   type AbsencePeriod,
   type InsertAbsencePeriod,
   type CoverOpportunity,
@@ -91,9 +97,35 @@ import {
   type InsertFloatSession,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, count, gte, lte, or } from "drizzle-orm";
+import { eq, and, inArray, count, gte, lte, or, desc, sql } from "drizzle-orm";
 
 export type { Club, InsertClub, CoachNote, InsertCoachNote, CoachNoteItem, InsertCoachNoteItem, CoachNoteSquad };
+
+export type SeasonPlanRecord = SeasonPlan & {
+  squadIds: string[];
+  creatorName: string;
+};
+
+export type SeasonPlanMatch = {
+  squadId: string;
+  planId: string;
+  planName: string;
+  entry: SeasonPlanEntry;
+};
+
+export type SeasonPlanCreateData = {
+  clubId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  entries: SeasonPlanEntries;
+  createdByUserId: string;
+};
+
+export type SeasonPlanUpdateData = {
+  name?: string;
+  entries?: SeasonPlanEntries;
+};
 
 export interface IStorage {
   // User operations (required for Replit Auth + Email/Password Auth)
@@ -262,6 +294,25 @@ export interface IStorage {
   createRecurringSession(data: InsertRecurringSession, squadIds: string[]): Promise<RecurringSession & { squadIds: string[] }>;
   updateRecurringSession(id: string, clubId: string, data: Partial<InsertRecurringSession>, squadIds?: string[]): Promise<RecurringSession & { squadIds: string[] }>;
   deleteRecurringSession(id: string, clubId: string): Promise<void>;
+
+  // Season Planner operations
+  getSeasonPlans(clubId: string, squadId?: string): Promise<SeasonPlanRecord[]>;
+  getSeasonPlan(id: string, clubId: string): Promise<SeasonPlanRecord | undefined>;
+  createSeasonPlan(data: SeasonPlanCreateData, squadIds: string[]): Promise<SeasonPlanRecord>;
+  updateSeasonPlan(
+    id: string,
+    clubId: string,
+    data: SeasonPlanUpdateData,
+    expectedVersion: number,
+  ): Promise<SeasonPlanRecord | undefined>;
+  deleteSeasonPlan(id: string, clubId: string): Promise<boolean>;
+  getSeasonPlanMatches(
+    clubId: string,
+    squadIds: string[],
+    sessionDate: string,
+    startTime: string,
+    endTime: string,
+  ): Promise<SeasonPlanMatch[]>;
 
   // Absence Periods operations
   getAbsencePeriods(clubId: string): Promise<AbsencePeriod[]>;
@@ -1415,6 +1466,187 @@ export class DatabaseStorage implements IStorage {
   async deleteRecurringSession(id: string, clubId: string): Promise<void> {
     await db.update(recurringSessions).set({ recordStatus: "inactive" })
       .where(and(eq(recurringSessions.id, id), eq(recurringSessions.clubId, clubId)));
+  }
+
+  // ─── Season Planner ───────────────────────────────────────────────────────
+
+  private _seasonPlanRecord(
+    plan: SeasonPlan,
+    squadIds: string[],
+    firstName?: string | null,
+    lastName?: string | null,
+  ): SeasonPlanRecord {
+    return {
+      ...plan,
+      squadIds: Array.from(new Set(squadIds)),
+      creatorName: [firstName, lastName].filter(Boolean).join(" ") || "Unknown",
+    };
+  }
+
+  async getSeasonPlans(clubId: string, squadId?: string): Promise<SeasonPlanRecord[]> {
+    const whereClause = squadId
+      ? and(
+          eq(seasonPlans.clubId, clubId),
+          eq(seasonPlans.recordStatus, "active"),
+          eq(seasonPlanSquads.squadId, squadId),
+        )
+      : and(eq(seasonPlans.clubId, clubId), eq(seasonPlans.recordStatus, "active"));
+
+    const rows = await db
+      .select({
+        plan: seasonPlans,
+        squadId: seasonPlanSquads.squadId,
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+      })
+      .from(seasonPlans)
+      .leftJoin(seasonPlanSquads, eq(seasonPlanSquads.seasonPlanId, seasonPlans.id))
+      .leftJoin(users, eq(users.id, seasonPlans.createdByUserId))
+      .where(whereClause)
+      .orderBy(desc(seasonPlans.createdAt));
+
+    const grouped = new Map<string, SeasonPlanRecord>();
+    for (const row of rows) {
+      const existing = grouped.get(row.plan.id);
+      if (existing) {
+        if (row.squadId) existing.squadIds.push(row.squadId);
+      } else {
+        grouped.set(
+          row.plan.id,
+          this._seasonPlanRecord(
+            row.plan,
+            row.squadId ? [row.squadId] : [],
+            row.creatorFirstName,
+            row.creatorLastName,
+          ),
+        );
+      }
+    }
+    return Array.from(grouped.values());
+  }
+
+  async getSeasonPlan(id: string, clubId: string): Promise<SeasonPlanRecord | undefined> {
+    const [row] = await db
+      .select({
+        plan: seasonPlans,
+        squadId: seasonPlanSquads.squadId,
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+      })
+      .from(seasonPlans)
+      .leftJoin(seasonPlanSquads, eq(seasonPlanSquads.seasonPlanId, seasonPlans.id))
+      .leftJoin(users, eq(users.id, seasonPlans.createdByUserId))
+      .where(and(eq(seasonPlans.id, id), eq(seasonPlans.clubId, clubId), eq(seasonPlans.recordStatus, "active")));
+
+    if (!row) return undefined;
+    const rows = await db
+      .select({ squadId: seasonPlanSquads.squadId })
+      .from(seasonPlanSquads)
+      .where(eq(seasonPlanSquads.seasonPlanId, id));
+    return this._seasonPlanRecord(
+      row.plan,
+      rows.map(r => r.squadId),
+      row.creatorFirstName,
+      row.creatorLastName,
+    );
+  }
+
+  async createSeasonPlan(data: SeasonPlanCreateData, squadIds: string[]): Promise<SeasonPlanRecord> {
+    const uniqueSquadIds = Array.from(new Set(squadIds));
+    return db.transaction(async (tx) => {
+      const [plan] = await tx.insert(seasonPlans).values(data).returning();
+      if (uniqueSquadIds.length > 0) {
+        await tx.insert(seasonPlanSquads).values(
+          uniqueSquadIds.map(squadId => ({ seasonPlanId: plan.id, squadId })),
+        );
+      }
+      return this._seasonPlanRecord(plan, uniqueSquadIds);
+    });
+  }
+
+  async updateSeasonPlan(
+    id: string,
+    clubId: string,
+    data: SeasonPlanUpdateData,
+    expectedVersion: number,
+  ): Promise<SeasonPlanRecord | undefined> {
+    const where = and(
+      eq(seasonPlans.id, id),
+      eq(seasonPlans.clubId, clubId),
+      eq(seasonPlans.recordStatus, "active"),
+      eq(seasonPlans.version, expectedVersion),
+    );
+    const [updated] = await db
+      .update(seasonPlans)
+      .set({
+        ...data,
+        version: sql`${seasonPlans.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(where)
+      .returning();
+    if (!updated) return undefined;
+    return this.getSeasonPlan(id, clubId);
+  }
+
+  async deleteSeasonPlan(id: string, clubId: string): Promise<boolean> {
+    const result = await db
+      .update(seasonPlans)
+      .set({ recordStatus: "inactive", updatedAt: new Date() })
+      .where(and(eq(seasonPlans.id, id), eq(seasonPlans.clubId, clubId), eq(seasonPlans.recordStatus, "active")))
+      .returning({ id: seasonPlans.id });
+    return result.length > 0;
+  }
+
+  async getSeasonPlanMatches(
+    clubId: string,
+    squadIds: string[],
+    sessionDate: string,
+    startTime: string,
+    endTime: string,
+  ): Promise<SeasonPlanMatch[]> {
+    if (squadIds.length === 0) return [];
+    const rows = await db
+      .select({ plan: seasonPlans })
+      .from(seasonPlans)
+      .innerJoin(seasonPlanSquads, eq(seasonPlanSquads.seasonPlanId, seasonPlans.id))
+      .where(and(
+        eq(seasonPlans.clubId, clubId),
+        eq(seasonPlans.recordStatus, "active"),
+        inArray(seasonPlanSquads.squadId, squadIds),
+        lte(seasonPlans.startDate, sessionDate),
+        gte(seasonPlans.endDate, sessionDate),
+      ))
+      .orderBy(desc(seasonPlans.createdAt));
+
+    const plans = Array.from(new Map(rows.map(row => [row.plan.id, row.plan])).values());
+    const matches = new Map<string, SeasonPlanMatch>();
+    const normaliseTime = (value: string | null | undefined) => value ? value.slice(0, 5) : "";
+    const requestedStart = normaliseTime(startTime);
+    const requestedEnd = normaliseTime(endTime);
+
+    for (const plan of plans) {
+      for (const squadId of squadIds) {
+        if (matches.has(squadId)) continue;
+        const entry = (plan.entries || []).find(candidate =>
+          !candidate.removed &&
+          candidate.type !== "holiday" &&
+          candidate.squadIds.includes(squadId) &&
+          candidate.date === sessionDate &&
+          normaliseTime(candidate.startTime) === requestedStart &&
+          normaliseTime(candidate.endTime) === requestedEnd,
+        );
+        if (entry) {
+          matches.set(squadId, {
+            squadId,
+            planId: plan.id,
+            planName: plan.name,
+            entry,
+          });
+        }
+      }
+    }
+    return squadIds.map(squadId => matches.get(squadId)).filter(Boolean) as SeasonPlanMatch[];
   }
 
   // ─── Absence Periods ──────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { Session, Squad, Location, Coach, Swimmer, AttendanceRecord, SessionFocus } from '../lib/typeAdapters';
 import { adaptSession, adaptSquad } from '../lib/typeAdapters';
-import type { SwimmingSession as BackendSession, Squad as BackendSquad, SessionTemplate, Drill } from '@shared/schema';
+import type { SwimmingSession as BackendSession, Squad as BackendSquad, SessionTemplate, Drill, SeasonPlanEntry } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks, BookOpen, Cake, UserX } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks, BookOpen, Cake, UserX, CalendarRange } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isValid } from 'date-fns';
@@ -48,6 +48,19 @@ interface SessionDetailProps {
 type TabType = 'detail' | 'session' | 'attendance' | 'feedback';
 type AttendanceStatus = 'Present' | '1st half only' | '2nd half only' | 'Absent';
 type AttendanceNote = '-' | 'Late' | 'Very Late';
+
+interface SessionPlannerResponse {
+  sessionId: string;
+  squads: {
+    squadId: string;
+    match: {
+      squadId: string;
+      planId: string;
+      planName: string;
+      entry: SeasonPlanEntry;
+    } | null;
+  }[];
+}
 
 const sessionFocusOptions: SessionFocus[] = [
   'Aerobic capacity',
@@ -211,6 +224,16 @@ export function SessionDetail({
   const [isHelperOpen, setIsHelperOpen] = useState(false);
   const [aiChatPanelOpen, setAiChatPanelOpen] = useState(false);
   const [drillsLibrarySidebarOpen, setDrillsLibrarySidebarOpen] = useState(false);
+  const [seasonPlannerOpen, setSeasonPlannerOpen] = useState(false);
+
+  const { data: sessionPlannerData, isLoading: seasonPlannerLoading } = useQuery<SessionPlannerResponse>({
+    queryKey: ['/api/sessions', sessionId, 'season-planner'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/sessions/${sessionId}/season-planner`);
+      return response.json();
+    },
+    enabled: seasonPlannerOpen,
+  });
   
   const formatSessionDate = (date: Date | string): string => {
     if (!date) return '';
@@ -707,6 +730,15 @@ export function SessionDetail({
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setSeasonPlannerOpen(true)}
+                data-testid="button-open-season-planner"
+                title="Season Planner"
+              >
+                <CalendarRange className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Season Planner</span>
+              </Button>
               <Button variant="outline" size="icon" onClick={() => setIsDuplicateModalOpen(true)} data-testid="button-duplicate-session">
                 <Copy className="h-4 w-4" />
               </Button>
@@ -1968,6 +2000,67 @@ export function SessionDetail({
               )}
             </ScrollArea>
           </div>
+        </>
+      )}
+
+      {seasonPlannerOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/35 z-[59]" onClick={() => setSeasonPlannerOpen(false)} />
+          <aside
+            className="fixed z-[60] bg-card border shadow-xl flex flex-col bottom-0 left-0 right-0 h-[72vh] rounded-t-2xl lg:rounded-none lg:inset-y-0 lg:left-auto lg:w-[380px] lg:h-auto"
+            data-testid="session-season-planner-panel"
+          >
+            <div className="lg:hidden flex justify-center pt-2"><div className="w-10 h-1 rounded-full bg-muted-foreground/30" /></div>
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div className="flex items-center gap-2">
+                <CalendarRange className="h-5 w-5" style={{ color: 'var(--club-primary)' }} />
+                <div>
+                  <h2 className="font-semibold">Season Planner</h2>
+                  <p className="text-xs text-muted-foreground">Plan details for this session</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSeasonPlannerOpen(false)} data-testid="button-close-season-planner">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-5 space-y-4">
+                {seasonPlannerLoading ? (
+                  <div className="space-y-3"><Skeleton className="h-32 w-full" /><Skeleton className="h-32 w-full" /></div>
+                ) : !sessionPlannerData || sessionPlannerData.squads.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-10">No squad is assigned to this session.</p>
+                ) : (
+                  sessionPlannerData.squads.map(result => {
+                    const squadName = squads.find(item => item.id === result.squadId)?.name || 'Unknown squad';
+                    const entry = result.match?.entry;
+                    return (
+                      <Card key={result.squadId} className="p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold">{squadName}</h3>
+                          {result.match && <Badge variant="outline">{result.match.planName}</Badge>}
+                        </div>
+                        {!entry ? (
+                          <p className="text-sm text-muted-foreground mt-3">No matching plan data for this squad, date, and time.</p>
+                        ) : (
+                          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                            <div><p className="text-xs text-muted-foreground">Training week</p><p>Week {entry.trainingWeek}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Phase</p><p>{entry.trainingPhase || 'Not set'}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Intensity</p><p>{entry.intensity || 'Not set'}</p></div>
+                            <div><p className="text-xs text-muted-foreground">Test set</p><p>{entry.testSet ? 'Yes' : 'No'}</p></div>
+                            <div className="col-span-2"><p className="text-xs text-muted-foreground">Main focus</p><p>{entry.mainFocus || 'Not set'}</p></div>
+                            <div className="col-span-2"><p className="text-xs text-muted-foreground">Secondary focus</p><p>{entry.secondaryFocus || 'Not set'}</p></div>
+                            {entry.competitionEvent && <div className="col-span-2"><p className="text-xs text-muted-foreground">Competition</p><Badge className="mt-1 bg-blue-600">{entry.competitionEvent}</Badge></div>}
+                            {entry.holidayName && <div className="col-span-2"><p className="text-xs text-muted-foreground">Holiday</p><p className="text-amber-800">{entry.holidayName}</p></div>}
+                            <div className="col-span-2"><p className="text-xs text-muted-foreground">Notes</p><p className="whitespace-pre-wrap">{entry.notes || 'No notes'}</p></div>
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </aside>
         </>
       )}
 

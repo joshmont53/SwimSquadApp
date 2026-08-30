@@ -38,6 +38,7 @@ import { Handbook } from '@/pages/handbook';
 import { BillingPage } from '@/pages/billing';
 import { AvailabilityCover } from '@/pages/availability-cover';
 import { ScheduleManager } from '@/pages/schedule-manager';
+import { SeasonPlanner } from '@/pages/season-planner';
 import { CompetitionDetailModal } from '@/components/CompetitionDetailModal';
 import { HomePage } from '@/components/HomePage';
 import { SwimmerProfiles } from '@/components/SwimmerProfiles';
@@ -107,7 +108,7 @@ import type {
 type View = 'month' | 'day';
 type MobileView = 'calendar' | 'list' | 'search';
 type DesktopCalendarView = 'calendar' | 'table';
-type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing' | 'availabilityCover' | 'scheduleManager';
+type ManagementView = 'home' | 'calendar' | 'coaches' | 'squads' | 'swimmers' | 'locations' | 'invitations' | 'competitions' | 'addSession' | 'invoices' | 'coachingRates' | 'sessionLibrary' | 'drillsLibrary' | 'feedbackAnalytics' | 'attendanceAnalysis' | 'swimmerProfiles' | 'swimmerProfile' | 'handbook' | 'clubSettings' | 'billing' | 'availabilityCover' | 'scheduleManager' | 'seasonPlanner';
 
 // Global storage for pending session ID from notification deep link
 // This is set before CalendarApp mounts and read when it does
@@ -1773,6 +1774,11 @@ function CalendarApp() {
               coaches={coaches}
               squads={squads}
               locations={locations}
+            />
+          ) : managementView === 'seasonPlanner' ? (
+            <SeasonPlanner
+              squads={squads}
+              onBack={handleBackToHome}
             />
           ) : managementView === 'home' ? (
             currentCoach ? (

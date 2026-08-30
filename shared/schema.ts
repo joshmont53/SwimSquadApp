@@ -891,6 +891,101 @@ export type ClubRegistrationInput = z.infer<typeof clubRegistrationSchema>;
 // Scheduling — Recurring Sessions, Absences, Cover, Float Sessions
 // ============================================================================
 
+// Season Planner — persisted planning documents. Planner entries are intentionally
+// stored inside the plan JSON rather than as swimming-session records or a
+// separate row table. They represent planning metadata only.
+export const seasonPlanEntrySchema = z.object({
+  id: z.string().min(1),
+  squadIds: z.array(z.string().min(1)).min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable(),
+  endTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable(),
+  type: z.enum(["session", "manual", "holiday"]),
+  trainingWeek: z.number().int().positive(),
+  sourceRecurringSessionId: z.string().min(1).nullable().optional(),
+  competitionId: z.string().min(1).nullable().optional(),
+  competitionEvent: z.string().max(300).default(""),
+  trainingPhase: z.enum([
+    "General Prep", "Build", "Race Prep", "Race Week",
+    "Recovery", "Maintenance", "Speed", "",
+  ]),
+  intensity: z.enum([
+    "1 - Recovery", "2 - Low", "3 - Moderate", "4 - High", "5 - Maximum", "",
+  ]),
+  mainFocus: z.string().max(500).default(""),
+  secondaryFocus: z.string().max(500).default(""),
+  testSet: z.boolean().default(false),
+  notes: z.string().max(2000).default(""),
+  holidayName: z.string().max(200).nullable().optional(),
+  isInHoliday: z.boolean().default(false),
+  removed: z.boolean().default(false),
+  locationId: z.string().min(1).nullable().optional(),
+});
+
+export type SeasonPlanEntry = z.infer<typeof seasonPlanEntrySchema>;
+
+export const seasonPlanEntriesSchema = z.array(seasonPlanEntrySchema).max(2000);
+export type SeasonPlanEntries = z.infer<typeof seasonPlanEntriesSchema>;
+
+export const seasonPlans = pgTable("season_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clubId: varchar("club_id").notNull().references(() => clubs.id),
+  name: varchar("name").notNull(),
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }).notNull(),
+  entries: jsonb("entries").$type<SeasonPlanEntries>().notNull().default(sql`'[]'::jsonb`),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  version: integer("version").notNull().default(1),
+  recordStatus: varchar("record_status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("season_plans_club_status_dates_idx").on(
+    table.clubId,
+    table.recordStatus,
+    table.startDate,
+    table.endDate,
+    table.createdAt,
+  ),
+]);
+
+export const seasonPlanSquads = pgTable("season_plan_squads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  seasonPlanId: varchar("season_plan_id").notNull().references(() => seasonPlans.id, { onDelete: "cascade" }),
+  squadId: varchar("squad_id").notNull().references(() => squads.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique().on(table.seasonPlanId, table.squadId),
+  index("season_plan_squads_squad_plan_idx").on(table.squadId, table.seasonPlanId),
+]);
+
+export const seasonPlansRelations = relations(seasonPlans, ({ one, many }) => ({
+  club: one(clubs, { fields: [seasonPlans.clubId], references: [clubs.id] }),
+  creator: one(users, { fields: [seasonPlans.createdByUserId], references: [users.id] }),
+  squadLinks: many(seasonPlanSquads),
+}));
+
+export const seasonPlanSquadsRelations = relations(seasonPlanSquads, ({ one }) => ({
+  plan: one(seasonPlans, { fields: [seasonPlanSquads.seasonPlanId], references: [seasonPlans.id] }),
+  squad: one(squads, { fields: [seasonPlanSquads.squadId], references: [squads.id] }),
+}));
+
+export type SeasonPlan = typeof seasonPlans.$inferSelect;
+export type SeasonPlanSquad = typeof seasonPlanSquads.$inferSelect;
+export const insertSeasonPlanSchema = createInsertSchema(seasonPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  version: true,
+  recordStatus: true,
+});
+export type InsertSeasonPlan = z.infer<typeof insertSeasonPlanSchema>;
+export const insertSeasonPlanSquadSchema = createInsertSchema(seasonPlanSquads).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSeasonPlanSquad = z.infer<typeof insertSeasonPlanSquadSchema>;
+
 export const recurringSessions = pgTable("recurring_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clubId: varchar("club_id").notNull().references(() => clubs.id),
