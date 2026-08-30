@@ -889,9 +889,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/session-squads", requireAuth, async (req, res) => {
+  app.get("/api/session-squads", requireAuth, async (req: any, res) => {
     try {
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       res.json(allSessionSquads);
     } catch (error) {
       console.error("Error fetching all session squads:", error);
@@ -899,9 +899,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/session-squads/:sessionId", requireAuth, async (req, res) => {
+  app.get("/api/session-squads/:sessionId", requireAuth, async (req: any, res) => {
     try {
-      const sessionSquadRecords = await storage.getSessionSquads(req.params.sessionId);
+      const session = await storage.getSessionForClub(req.params.sessionId, req.user.clubId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      const sessionSquadRecords = await storage.getSessionSquads(req.params.sessionId, req.user.clubId);
       res.json(sessionSquadRecords);
     } catch (error) {
       console.error("Error fetching session squads:", error);
@@ -1326,7 +1331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { session } = sessionData;
 
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       const sessionSquadIds = allSessionSquads
         .filter(ss => ss.sessionId === sessionId && ss.recordStatus === 'active')
         .map(ss => ss.squadId);
@@ -1453,7 +1458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { session } = sessionData;
       
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       const sessionSquadIds = allSessionSquads
         .filter(ss => ss.sessionId === sessionId && ss.recordStatus === 'active')
         .map(ss => ss.squadId);
@@ -2297,7 +2302,7 @@ Note on definitions:
       const allSquads = await storage.getSquads(req.user.clubId);
       const squadMap = new Map(allSquads.map(squad => [squad.id, squad]));
 
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       const sessionSquadMap = new Map<string, string[]>();
       for (const ss of allSessionSquads.filter(ss => ss.recordStatus === 'active')) {
         const existing = sessionSquadMap.get(ss.sessionId) || [];
@@ -2536,7 +2541,7 @@ Note on definitions:
       const allSessions = await storage.getSessions(req.user.clubId);
       const allSquads = await storage.getSquads(req.user.clubId);
       const allCoaches = await storage.getCoaches(req.user.clubId);
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
 
       // Build session-to-squads lookup (multi-squad support)
       const sessionSquadMap = new Map<string, string[]>();
@@ -2846,7 +2851,7 @@ Note on definitions:
       const allFeedback = await storage.getAllFeedback(req.user.clubId);
       const allSessions = await storage.getSessions(req.user.clubId);
       const allSquads = await storage.getSquads(req.user.clubId);
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       
       // Build session-to-squads lookup (multi-squad support)
       const sessionSquadMap = new Map<string, string[]>();
@@ -2999,7 +3004,7 @@ Note on definitions:
       const allSessions = await storage.getSessions(req.user.clubId);
       const allSquads = await storage.getSquads(req.user.clubId);
       const allCoaches = await storage.getCoaches(req.user.clubId);
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       
       // Build session-to-squads lookup (multi-squad support)
       const sessionSquadMap = new Map<string, string[]>();
@@ -3301,7 +3306,7 @@ CRITICAL RULES:
 
       const allFeedback = await storage.getAllFeedback(req.user.clubId);
       const allSessions = await storage.getSessions(req.user.clubId);
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       
       // Build session-to-squads lookup (multi-squad support)
       const sessionSquadMap = new Map<string, string[]>();
@@ -3423,7 +3428,7 @@ CRITICAL RULES:
       const allFeedback = await storage.getAllFeedback(req.user.clubId);
       const allSessions = await storage.getSessions(req.user.clubId);
       const allSquads = await storage.getSquads(req.user.clubId);
-      const allSessionSquads = await storage.getAllSessionSquads();
+      const allSessionSquads = await storage.getAllSessionSquads(req.user.clubId);
       
       // Build session-to-squads lookup (multi-squad support)
       const sessionSquadMap = new Map<string, string[]>();
@@ -4042,7 +4047,7 @@ CRITICAL RULES:
         return res.status(404).json({ message: "Session not found" });
       }
       const sessionDate = String(session.sessionDate).slice(0, 10);
-      const squadIds = (await storage.getSessionSquads(session.id)).map(row => row.squadId);
+      const squadIds = (await storage.getSessionSquads(session.id, req.user.clubId)).map(row => row.squadId);
       if (squadIds.length === 0) squadIds.push(session.squadId);
       const matches = await storage.getSeasonPlanMatches(
         req.user.clubId,

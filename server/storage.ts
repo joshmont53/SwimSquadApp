@@ -182,6 +182,7 @@ export interface IStorage {
   // Session operations
   getSessions(clubId: string): Promise<SwimmingSession[]>;
   getSession(id: string): Promise<SwimmingSession | undefined>;
+  getSessionForClub(id: string, clubId: string): Promise<SwimmingSession | undefined>;
   getSessionsByDate(date: string, clubId?: string): Promise<SwimmingSession[]>;
   getSessionWithAttendance(id: string): Promise<{ session: SwimmingSession; attendance: Attendance[] } | undefined>;
   createSession(session: InsertSwimmingSession): Promise<SwimmingSession>;
@@ -249,8 +250,8 @@ export interface IStorage {
   deleteDrill(id: string): Promise<void>;
   
   // Session Squads operations
-  getAllSessionSquads(): Promise<SessionSquad[]>;
-  getSessionSquads(sessionId: string): Promise<SessionSquad[]>;
+  getAllSessionSquads(clubId: string): Promise<SessionSquad[]>;
+  getSessionSquads(sessionId: string, clubId: string): Promise<SessionSquad[]>;
   createSessionSquad(sessionSquad: InsertSessionSquad): Promise<SessionSquad>;
   deactivateSessionSquad(sessionId: string, squadId: string): Promise<void>;
 
@@ -707,6 +708,17 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
+  async getSessionForClub(id: string, clubId: string): Promise<SwimmingSession | undefined> {
+    const [session] = await db.select().from(swimmingSessions).where(
+      and(
+        eq(swimmingSessions.id, id),
+        eq(swimmingSessions.clubId, clubId),
+        eq(swimmingSessions.recordStatus, 'active'),
+      ),
+    );
+    return session;
+  }
+
   async getSessionsByDate(date: string, clubId?: string): Promise<SwimmingSession[]> {
     if (clubId) {
       return await db.select().from(swimmingSessions).where(
@@ -1122,14 +1134,33 @@ export class DatabaseStorage implements IStorage {
   // Session Squads operations (Multi-Squad Sessions Feature)
   // ============================================================================
 
-  async getAllSessionSquads(): Promise<SessionSquad[]> {
-    return await db.select().from(sessionSquads)
-      .where(eq(sessionSquads.recordStatus, "active"));
+  async getAllSessionSquads(clubId: string): Promise<SessionSquad[]> {
+    const records = await db
+      .select({ sessionSquad: sessionSquads })
+      .from(sessionSquads)
+      .innerJoin(swimmingSessions, eq(sessionSquads.sessionId, swimmingSessions.id))
+      .where(
+        and(
+          eq(sessionSquads.recordStatus, "active"),
+          eq(swimmingSessions.clubId, clubId),
+        ),
+      );
+    return records.map(({ sessionSquad }) => sessionSquad);
   }
 
-  async getSessionSquads(sessionId: string): Promise<SessionSquad[]> {
-    return await db.select().from(sessionSquads)
-      .where(and(eq(sessionSquads.sessionId, sessionId), eq(sessionSquads.recordStatus, "active")));
+  async getSessionSquads(sessionId: string, clubId: string): Promise<SessionSquad[]> {
+    const records = await db
+      .select({ sessionSquad: sessionSquads })
+      .from(sessionSquads)
+      .innerJoin(swimmingSessions, eq(sessionSquads.sessionId, swimmingSessions.id))
+      .where(
+        and(
+          eq(sessionSquads.sessionId, sessionId),
+          eq(sessionSquads.recordStatus, "active"),
+          eq(swimmingSessions.clubId, clubId),
+        ),
+      );
+    return records.map(({ sessionSquad }) => sessionSquad);
   }
 
   async createSessionSquad(sessionSquad: InsertSessionSquad): Promise<SessionSquad> {
