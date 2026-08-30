@@ -21,6 +21,10 @@ function timeToMinutes(time: string): number {
   return (hours || 0) * 60 + (minutes || 0);
 }
 
+function formatTime(time: string): string {
+  return time.slice(0, 5);
+}
+
 function coachName(coaches: Coach[], coachId: string | null | undefined): string {
   if (!coachId) return '—';
   const coach = coaches.find(candidate => candidate.id === coachId);
@@ -173,7 +177,7 @@ export function CalendarTableView({
                       title="Double-click to open session"
                     >
                       <td className="px-3 py-3 whitespace-nowrap">
-                        {session.startTime}–{session.endTime}
+                        {formatTime(session.startTime)} - {formatTime(session.endTime)}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-wrap gap-1.5">

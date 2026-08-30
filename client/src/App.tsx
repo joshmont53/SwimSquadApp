@@ -1603,6 +1603,25 @@ function CalendarApp() {
                   <SidebarContent />
                 </SheetContent>
               </Sheet>
+              {managementView === 'calendar' && (
+                <div className="hidden lg:block">
+                  <Tabs
+                    value={desktopCalendarView}
+                    onValueChange={(value) => setDesktopCalendarView(value as DesktopCalendarView)}
+                  >
+                    <TabsList>
+                      <TabsTrigger value="calendar" className="gap-1.5" data-testid="tab-desktop-calendar">
+                        <CalendarDays className="h-4 w-4" />
+                        Calendar
+                      </TabsTrigger>
+                      <TabsTrigger value="table" className="gap-1.5" data-testid="tab-desktop-table">
+                        <List className="h-4 w-4" />
+                        List
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
@@ -1645,23 +1664,6 @@ function CalendarApp() {
                     <TabsTrigger value="search" className="gap-1.5" data-testid="tab-search">
                       <Search className="h-4 w-4" />
                       <span className="hidden sm:inline">Search</span>
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-              <div className="hidden lg:block ml-auto">
-                <Tabs
-                  value={desktopCalendarView}
-                  onValueChange={(value) => setDesktopCalendarView(value as DesktopCalendarView)}
-                >
-                  <TabsList>
-                    <TabsTrigger value="calendar" className="gap-1.5" data-testid="tab-desktop-calendar">
-                      <CalendarDays className="h-4 w-4" />
-                      Calendar
-                    </TabsTrigger>
-                    <TabsTrigger value="table" className="gap-1.5" data-testid="tab-desktop-table">
-                      <List className="h-4 w-4" />
-                      Table
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
