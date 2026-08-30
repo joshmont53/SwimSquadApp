@@ -24,11 +24,6 @@ export const ENGLAND_2026_27_HOLIDAYS = [
   { startDate: "2027-07-22", endDate: "2027-08-31", name: "Summer holidays (England baseline)" },
 ] as const;
 
-const TRAINING_PHASES = [
-  "General Prep", "Build", "Race Prep", "Race Week",
-  "Recovery", "Maintenance", "Speed",
-] as const;
-
 function dateKey(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
@@ -66,16 +61,6 @@ function competitionForDate(date: string, competitions: Competition[]) {
   );
 }
 
-function defaultPhase(trainingWeek: number, date: string, competitions: Competition[]): SeasonPlanEntry["trainingPhase"] {
-  const nearbyCompetition = competitions.some(competition => {
-    const distance = daysBetween(date, competition.startDate);
-    return distance >= 0 && distance <= 14;
-  });
-  if (nearbyCompetition) return "Race Prep";
-  if (trainingWeek <= 4) return "General Prep";
-  return TRAINING_PHASES[1];
-}
-
 export function generateSeasonPlanEntries(
   range: PlannerDateRange,
   squadIds: string[],
@@ -92,7 +77,6 @@ export function generateSeasonPlanEntries(
     const trainingWeek = Math.floor(offset / 7) + 1;
     const holiday = holidayForDate(date);
     const dateCompetitions = competitionForDate(date, competitions);
-    const phase = defaultPhase(trainingWeek, date, competitions);
 
     for (const recurring of recurringSessions) {
       if (isoWeekday(date) !== recurring.dayOfWeek) continue;
@@ -127,8 +111,8 @@ export function generateSeasonPlanEntries(
         sourceRecurringSessionId: recurring.id,
         competitionId: dateCompetitions[0]?.id || null,
         competitionEvent: dateCompetitions.map(c => c.competitionName).join(", "),
-        trainingPhase: phase,
-        intensity: holiday ? "2 - Low" : "3 - Moderate",
+        trainingPhase: "",
+        intensity: "",
         mainFocus: "",
         secondaryFocus: "",
         testSet: false,
@@ -159,8 +143,8 @@ export function generateSeasonPlanEntries(
             sourceRecurringSessionId: null,
             competitionId: null,
             competitionEvent: "",
-            trainingPhase: "Recovery",
-            intensity: "1 - Recovery",
+            trainingPhase: "",
+            intensity: "",
             mainFocus: "",
             secondaryFocus: "",
             testSet: false,

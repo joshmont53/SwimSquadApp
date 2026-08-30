@@ -33,6 +33,8 @@ test("uses ISO weekdays and creates only matching Standard Schedule slots", () =
   assert.equal(entries.length, 1);
   assert.equal(entries[0].date, "2026-09-07");
   assert.equal(entries[0].trainingWeek, 1);
+  assert.equal(entries[0].trainingPhase, "");
+  assert.equal(entries[0].intensity, "");
 });
 
 test("deduplicates joint slots and retains all selected squad IDs", () => {
@@ -111,6 +113,8 @@ test("keeps a holiday marker when there is no training session", () => {
   assert.equal(entries.length, 1);
   assert.equal(entries[0].type, "holiday");
   assert.equal(entries[0].startTime, null);
+  assert.equal(entries[0].trainingPhase, "");
+  assert.equal(entries[0].intensity, "");
 });
 
 test("rejects entry squads and dates outside the persisted plan boundaries", () => {

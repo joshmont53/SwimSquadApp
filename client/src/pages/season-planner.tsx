@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  ArrowLeft, CalendarRange, Check, Edit2, Plus, Save, Trash2,
+  ArrowLeft, CalendarRange, Check, Edit2, Plus, Save, Trash2, X,
 } from "lucide-react";
 import type { SeasonPlanEntry } from "@shared/schema";
 import type { Squad } from "@/lib/typeAdapters";
@@ -86,6 +86,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
   const [squadFilter, setSquadFilter] = useState("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [weekFilter, setWeekFilter] = useState("all");
+  const [isEditing, setIsEditing] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
     startDate: "2026-09-01",
@@ -105,26 +106,69 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
     queryKey: ["/api/season-plans"],
   });
 
-  useEffect(() => {
-    if (!selectedPlanId && plans.length > 0) setSelectedPlanId(plans[0].id);
-  }, [plans, selectedPlanId]);
-
-  useEffect(() => {
-    const plan = plans.find(item => item.id === selectedPlanId);
-    setDraft(plan ? structuredClone(plan) : null);
-  }, [plans, selectedPlanId]);
-
-  const canEdit = Boolean(draft && (user?.role === "admin" || draft.createdByUserId === user?.id));
+  const canManage = Boolean(draft && (user?.role === "admin" || draft.createdByUserId === user?.id));
+  const persistedPlan = plans.find(item => item.id === selectedPlanId) || null;
+  const isDirty = Boolean(draft && persistedPlan && JSON.stringify(draft) !== JSON.stringify(persistedPlan));
+  const visiblePlans = useMemo(
+    () => plans.filter(plan => squadFilter === "all" || plan.squadIds.includes(squadFilter)),
+    [plans, squadFilter],
+  );
   const activeEntries = draft?.entries.filter(entry => !entry.removed) || [];
   const weeks = useMemo(
     () => Array.from(new Set(activeEntries.map(entry => entry.trainingWeek))).sort((a, b) => a - b),
     [activeEntries],
   );
   const filteredEntries = useMemo(() => activeEntries.filter(entry =>
-    (squadFilter === "all" || entry.squadIds.includes(squadFilter)) &&
     (phaseFilter === "all" || entry.trainingPhase === phaseFilter) &&
     (weekFilter === "all" || entry.trainingWeek === Number(weekFilter)),
-  ), [activeEntries, squadFilter, phaseFilter, weekFilter]);
+  ), [activeEntries, phaseFilter, weekFilter]);
+
+  useEffect(() => {
+    if (!selectedPlanId && !draft && visiblePlans.length > 0) {
+      setSelectedPlanId(visiblePlans[0].id);
+      setDraft(structuredClone(visiblePlans[0]));
+    }
+  }, [visiblePlans, selectedPlanId, draft]);
+
+  const confirmDiscard = () => !isEditing || !isDirty || window.confirm("Discard your unsaved season plan changes?");
+
+  const selectPlan = (planId: string) => {
+    if (planId === selectedPlanId || !confirmDiscard()) return;
+    const plan = plans.find(item => item.id === planId);
+    setSelectedPlanId(planId);
+    setDraft(plan ? structuredClone(plan) : null);
+    setIsEditing(false);
+  };
+
+  const cancelEditing = () => {
+    if (!confirmDiscard()) return;
+    setDraft(persistedPlan ? structuredClone(persistedPlan) : null);
+    setIsEditing(false);
+  };
+
+  const openCreatePlan = () => {
+    if (!confirmDiscard()) return;
+    if (isEditing) {
+      setDraft(persistedPlan ? structuredClone(persistedPlan) : null);
+      setIsEditing(false);
+    }
+    setCreateOpen(true);
+  };
+
+  const changeSquadFilter = (nextFilter: string) => {
+    const nextPlans = plans.filter(plan => nextFilter === "all" || plan.squadIds.includes(nextFilter));
+    const selectedRemainsVisible = nextPlans.some(plan => plan.id === selectedPlanId);
+    const nextPlan = selectedRemainsVisible
+      ? plans.find(plan => plan.id === selectedPlanId) || null
+      : nextPlans[0] || null;
+    if (nextPlan?.id !== selectedPlanId && !confirmDiscard()) return;
+    setSquadFilter(nextFilter);
+    if (nextPlan?.id !== selectedPlanId) {
+      setSelectedPlanId(nextPlan?.id || null);
+      setDraft(nextPlan ? structuredClone(nextPlan) : null);
+      setIsEditing(false);
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -132,8 +176,11 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
       return response.json() as Promise<SeasonPlanRecord>;
     },
     onSuccess: async plan => {
+      setSquadFilter("all");
       await queryClient.invalidateQueries({ queryKey: ["/api/season-plans"] });
       setSelectedPlanId(plan.id);
+      setDraft(structuredClone(plan));
+      setIsEditing(false);
       setCreateOpen(false);
       setCreateForm(form => ({ ...form, name: "", squadIds: [] }));
       toast({ title: "Season plan created", description: `${plan.name} is ready to edit.` });
@@ -154,6 +201,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
     onSuccess: async plan => {
       await queryClient.invalidateQueries({ queryKey: ["/api/season-plans"] });
       setDraft(structuredClone(plan));
+      setIsEditing(false);
       toast({ title: "Season plan saved" });
     },
     onError: (error: Error) => toast({ title: "Could not save plan", description: error.message, variant: "destructive" }),
@@ -165,9 +213,16 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
       await apiRequest("DELETE", `/api/season-plans/${draft.id}`);
     },
     onSuccess: async () => {
-      setSelectedPlanId(null);
-      setDraft(null);
       setDeleteOpen(false);
+      queryClient.setQueryData<SeasonPlanRecord[]>(["/api/season-plans"], current =>
+        (current || []).filter(plan => plan.id !== draft?.id),
+      );
+      const remainingPlans = queryClient.getQueryData<SeasonPlanRecord[]>(["/api/season-plans"]) || [];
+      const visibleRemaining = remainingPlans.filter(plan => squadFilter === "all" || plan.squadIds.includes(squadFilter));
+      const nextPlan = visibleRemaining[0] || null;
+      setSelectedPlanId(nextPlan?.id || null);
+      setDraft(nextPlan ? structuredClone(nextPlan) : null);
+      setIsEditing(false);
       await queryClient.invalidateQueries({ queryKey: ["/api/season-plans"] });
       toast({ title: "Season plan deleted" });
     },
@@ -175,7 +230,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
   });
 
   const updateEntry = (entryId: string, patch: Partial<SeasonPlanEntry>) => {
-    if (!canEdit) return;
+    if (!canManage || !isEditing) return;
     setDraft(current => current ? {
       ...current,
       entries: current.entries.map(entry => entry.id === entryId ? { ...entry, ...patch } : entry),
@@ -239,7 +294,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
 
       <div className="hidden lg:flex h-full min-h-[650px] border rounded-xl bg-card overflow-hidden" data-testid="season-planner">
         <aside className="w-64 shrink-0 border-r bg-muted/20 p-4 flex flex-col">
-          <Button variant="ghost" className="justify-start mb-4 -ml-2" onClick={onBack}>
+          <Button variant="ghost" className="justify-start mb-4 -ml-2" onClick={() => confirmDiscard() && onBack()}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Back
           </Button>
           <div className="flex items-center gap-2 mb-1">
@@ -247,15 +302,25 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
             <h1 className="font-semibold">Season Planner</h1>
           </div>
           <p className="text-xs text-muted-foreground mb-4">Snapshot plans built from the Standard Schedule.</p>
-          <Button onClick={() => setCreateOpen(true)} data-testid="button-create-season-plan">
+          <Button onClick={openCreatePlan} data-testid="button-create-season-plan">
             <Plus className="h-4 w-4 mr-2" /> New plan
           </Button>
+          <div className="mt-4">
+            <Label className="text-xs text-muted-foreground">Squad</Label>
+            <Select value={squadFilter} onValueChange={changeSquadFilter}>
+              <SelectTrigger className="mt-1 bg-background" data-testid="select-plan-squad-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All squads</SelectItem>
+                {squads.map(squad => <SelectItem key={squad.id} value={squad.id}>{squad.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="mt-5 space-y-2 overflow-y-auto">
-            {plans.map(plan => (
+            {visiblePlans.map(plan => (
               <button
                 key={plan.id}
                 type="button"
-                onClick={() => setSelectedPlanId(plan.id)}
+                onClick={() => selectPlan(plan.id)}
                 className={`w-full rounded-lg border p-3 text-left transition-colors ${
                   selectedPlanId === plan.id ? "bg-background border-primary" : "bg-card hover:bg-accent"
                 }`}
@@ -266,8 +331,10 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
                 <div className="text-xs text-muted-foreground mt-1">{plan.squadIds.length} squad{plan.squadIds.length === 1 ? "" : "s"}</div>
               </button>
             ))}
-            {!isLoading && plans.length === 0 && (
-              <div className="text-sm text-muted-foreground text-center py-8">No season plans yet.</div>
+            {!isLoading && visiblePlans.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                {plans.length === 0 ? "No season plans yet." : "No plans match this squad."}
+              </div>
             )}
           </div>
         </aside>
@@ -278,7 +345,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
               <header className="border-b p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    {canEdit ? (
+                    {isEditing ? (
                       <Input
                         value={draft.name}
                         onChange={event => setDraft({ ...draft, name: event.target.value })}
@@ -291,30 +358,38 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
                     <p className="text-sm text-muted-foreground mt-1">
                       {draft.startDate} to {draft.endDate} · Created by {draft.creatorName}
                     </p>
-                    <p className="text-xs text-amber-700 mt-1">School holidays use an England 2026/27 baseline; local dates may vary.</p>
                   </div>
-                  {canEdit && (
+                  {canManage && (
                     <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" onClick={() => setManualOpen(true)} data-testid="button-add-manual-entry">
-                        <Plus className="h-4 w-4 mr-2" /> Manual entry
-                      </Button>
-                      <Button variant="outline" onClick={() => setDeleteOpen(true)} data-testid="button-delete-season-plan">
-                        <Trash2 className="h-4 w-4 mr-2" /> Delete
-                      </Button>
-                      <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !draft.name.trim()} data-testid="button-save-season-plan">
-                        <Save className="h-4 w-4 mr-2" /> Save
-                      </Button>
+                      {isEditing ? (
+                        <>
+                          <Button variant="outline" onClick={() => setManualOpen(true)} data-testid="button-add-manual-entry">
+                            <Plus className="h-4 w-4 mr-2" /> Manual entry
+                          </Button>
+                          <Button variant="ghost" onClick={cancelEditing} data-testid="button-cancel-season-plan">
+                            <X className="h-4 w-4 mr-2" /> Cancel
+                          </Button>
+                          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !draft.name.trim() || !isDirty} data-testid="button-save-season-plan">
+                            <Save className="h-4 w-4 mr-2" /> {saveMutation.isPending ? "Saving…" : "Save"}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-700 mr-1" data-testid="status-season-plan-saved">
+                            <Check className="h-4 w-4" /> Saved
+                          </div>
+                          <Button variant="outline" onClick={() => setDeleteOpen(true)} data-testid="button-delete-season-plan">
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </Button>
+                          <Button variant="outline" onClick={() => setIsEditing(true)} data-testid="button-edit-season-plan">
+                            <Edit2 className="h-4 w-4 mr-2" /> Edit
+                          </Button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-4 max-w-3xl">
-                  <Select value={squadFilter} onValueChange={setSquadFilter}>
-                    <SelectTrigger data-testid="select-plan-squad-filter"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All squads</SelectItem>
-                      {draft.squadIds.map(id => <SelectItem key={id} value={id}>{squads.find(s => s.id === id)?.name || "Unknown squad"}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-3 mt-4 max-w-xl">
                   <Select value={weekFilter} onValueChange={setWeekFilter}>
                     <SelectTrigger data-testid="select-plan-week-filter"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -343,7 +418,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
                   </thead>
                   <tbody>
                     {filteredEntries.map(entry => (
-                      <tr key={entry.id} className={`${entry.competitionEvent ? "bg-blue-50/60" : entry.isInHoliday ? "bg-amber-50/70" : ""} border-b align-top`}>
+                      <tr key={entry.id} className={`${entry.competitionEvent ? "bg-[#fffaf0]" : entry.isInHoliday ? "bg-slate-50/80" : ""} border-b align-top`}>
                         <td className="px-3 py-3 whitespace-nowrap">
                           <div className="font-medium">{displayDate(entry.date)}</div>
                           {entry.type !== "session" && <Badge variant="outline" className="mt-1 text-[10px]">{entry.type}</Badge>}
@@ -352,28 +427,28 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
                         <td className="px-3 py-3 whitespace-nowrap">{displayTime(entry.startTime, entry.endTime)}</td>
                         <td className="px-3 py-3">W{entry.trainingWeek}</td>
                         <td className="px-3 py-3 min-w-[190px]">
-                          {entry.competitionEvent && <Badge className="mb-1 bg-blue-600">{entry.competitionEvent}</Badge>}
-                          {entry.holidayName && <div className="text-xs text-amber-800">{entry.holidayName}</div>}
+                          {entry.competitionEvent && <Badge className="mb-1 border border-[#ead27a] bg-[#f7e7a8] text-[#6b5200] hover:bg-[#f7e7a8]">{entry.competitionEvent}</Badge>}
+                          {entry.holidayName && <div className="text-xs text-slate-600">{entry.holidayName}</div>}
                           {!entry.competitionEvent && !entry.holidayName && "—"}
                         </td>
                         <td className="px-3 py-2 min-w-[160px]">
-                          <Select disabled={!canEdit || entry.type === "holiday"} value={entry.trainingPhase || "none"} onValueChange={value => updateEntry(entry.id, { trainingPhase: value === "none" ? "" : value as SeasonPlanEntry["trainingPhase"] })}>
+                          {isEditing ? <Select disabled={entry.type === "holiday"} value={entry.trainingPhase || "none"} onValueChange={value => updateEntry(entry.id, { trainingPhase: value === "none" ? "" : value as SeasonPlanEntry["trainingPhase"] })}>
                             <SelectTrigger><SelectValue placeholder="Choose phase" /></SelectTrigger>
                             <SelectContent><SelectItem value="none">Not set</SelectItem>{PHASES.map(phase => <SelectItem key={phase} value={phase}>{phase}</SelectItem>)}</SelectContent>
-                          </Select>
+                          </Select> : <span>{entry.trainingPhase || "Not set"}</span>}
                         </td>
                         <td className="px-3 py-2 min-w-[150px]">
-                          <Select disabled={!canEdit || entry.type === "holiday"} value={entry.intensity || "none"} onValueChange={value => updateEntry(entry.id, { intensity: value === "none" ? "" : value as SeasonPlanEntry["intensity"] })}>
+                          {isEditing ? <Select disabled={entry.type === "holiday"} value={entry.intensity || "none"} onValueChange={value => updateEntry(entry.id, { intensity: value === "none" ? "" : value as SeasonPlanEntry["intensity"] })}>
                             <SelectTrigger><SelectValue placeholder="Intensity" /></SelectTrigger>
                             <SelectContent><SelectItem value="none">Not set</SelectItem>{INTENSITIES.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
-                          </Select>
+                          </Select> : <span>{entry.intensity || "Not set"}</span>}
                         </td>
-                        <td className="px-3 py-2 min-w-[180px]"><Input disabled={!canEdit || entry.type === "holiday"} value={entry.mainFocus} onChange={event => updateEntry(entry.id, { mainFocus: event.target.value })} /></td>
-                        <td className="px-3 py-2 min-w-[180px]"><Input disabled={!canEdit || entry.type === "holiday"} value={entry.secondaryFocus} onChange={event => updateEntry(entry.id, { secondaryFocus: event.target.value })} /></td>
-                        <td className="px-3 py-3 text-center"><Checkbox disabled={!canEdit || entry.type === "holiday"} checked={entry.testSet} onCheckedChange={checked => updateEntry(entry.id, { testSet: checked === true })} /></td>
-                        <td className="px-3 py-2 min-w-[220px]"><Textarea disabled={!canEdit} value={entry.notes} onChange={event => updateEntry(entry.id, { notes: event.target.value })} className="min-h-9 h-9 resize-y" /></td>
+                        <td className="px-3 py-2 min-w-[180px]">{isEditing ? <Input disabled={entry.type === "holiday"} value={entry.mainFocus} onChange={event => updateEntry(entry.id, { mainFocus: event.target.value })} /> : <span>{entry.mainFocus || "—"}</span>}</td>
+                        <td className="px-3 py-2 min-w-[180px]">{isEditing ? <Input disabled={entry.type === "holiday"} value={entry.secondaryFocus} onChange={event => updateEntry(entry.id, { secondaryFocus: event.target.value })} /> : <span>{entry.secondaryFocus || "—"}</span>}</td>
+                        <td className="px-3 py-3 text-center">{isEditing ? <Checkbox disabled={entry.type === "holiday"} checked={entry.testSet} onCheckedChange={checked => updateEntry(entry.id, { testSet: checked === true })} /> : entry.testSet ? "Yes" : "No"}</td>
+                        <td className="px-3 py-2 min-w-[220px]">{isEditing ? <Textarea value={entry.notes} onChange={event => updateEntry(entry.id, { notes: event.target.value })} className="min-h-9 h-9 resize-y" /> : <span className="whitespace-pre-wrap">{entry.notes || "—"}</span>}</td>
                         <td className="px-3 py-2">
-                          {canEdit && <Button variant="ghost" size="icon" onClick={() => updateEntry(entry.id, { removed: true })} title="Remove row"><Trash2 className="h-4 w-4" /></Button>}
+                          {isEditing && <Button variant="ghost" size="icon" onClick={() => updateEntry(entry.id, { removed: true })} title="Remove row"><Trash2 className="h-4 w-4" /></Button>}
                         </td>
                       </tr>
                     ))}
@@ -388,7 +463,7 @@ export function SeasonPlanner({ squads, onBack }: SeasonPlannerProps) {
                 <CalendarRange className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
                 <h2 className="font-semibold">Create your first season plan</h2>
                 <p className="text-sm text-muted-foreground mt-1 max-w-md">Choose squads and dates to snapshot their Standard Schedule without creating calendar sessions.</p>
-                <Button className="mt-4" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-2" /> New plan</Button>
+                <Button className="mt-4" onClick={openCreatePlan}><Plus className="h-4 w-4 mr-2" /> New plan</Button>
               </div>
             </div>
           )}
