@@ -184,14 +184,14 @@ export interface IStorage {
   getSession(id: string): Promise<SwimmingSession | undefined>;
   getSessionForClub(id: string, clubId: string): Promise<SwimmingSession | undefined>;
   getSessionsByDate(date: string, clubId?: string): Promise<SwimmingSession[]>;
-  getSessionWithAttendance(id: string): Promise<{ session: SwimmingSession; attendance: Attendance[] } | undefined>;
+  getSessionWithAttendance(id: string, clubId: string): Promise<{ session: SwimmingSession; attendance: Attendance[] } | undefined>;
   createSession(session: InsertSwimmingSession): Promise<SwimmingSession>;
   updateSession(id: string, session: Partial<InsertSwimmingSession>): Promise<SwimmingSession>;
   deleteSession(id: string): Promise<void>;
   
   // Attendance operations
   getAllAttendance(clubId: string): Promise<Attendance[]>;
-  getAttendanceBySession(sessionId: string): Promise<Attendance[]>;
+  getAttendanceBySession(sessionId: string, clubId?: string): Promise<Attendance[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   deleteAttendanceBySession(sessionId: string): Promise<void>;
   
@@ -256,7 +256,7 @@ export interface IStorage {
   deactivateSessionSquad(sessionId: string, squadId: string): Promise<void>;
 
   // Session Feedback operations
-  getFeedbackBySession(sessionId: string): Promise<SessionFeedback | undefined>;
+  getFeedbackBySession(sessionId: string, clubId?: string): Promise<SessionFeedback | undefined>;
   getAllFeedback(clubId: string): Promise<SessionFeedback[]>;
   createOrUpdateFeedback(feedback: InsertSessionFeedback): Promise<SessionFeedback>;
   deleteFeedback(id: string): Promise<void>;
@@ -730,8 +730,14 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getSessionWithAttendance(id: string): Promise<{ session: SwimmingSession; attendance: Attendance[] } | undefined> {
-    const [session] = await db.select().from(swimmingSessions).where(and(eq(swimmingSessions.id, id), eq(swimmingSessions.recordStatus, 'active')));
+  async getSessionWithAttendance(id: string, clubId: string): Promise<{ session: SwimmingSession; attendance: Attendance[] } | undefined> {
+    const [session] = await db.select().from(swimmingSessions).where(
+      and(
+        eq(swimmingSessions.id, id),
+        eq(swimmingSessions.clubId, clubId),
+        eq(swimmingSessions.recordStatus, 'active'),
+      ),
+    );
     if (!session) {
       return undefined;
     }
@@ -786,8 +792,22 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  async getAttendanceBySession(sessionId: string): Promise<Attendance[]> {
-    return await db.select().from(attendance).where(and(eq(attendance.sessionId, sessionId), eq(attendance.recordStatus, 'active')));
+  async getAttendanceBySession(sessionId: string, clubId?: string): Promise<Attendance[]> {
+    const conditions = [
+      eq(attendance.sessionId, sessionId),
+      eq(attendance.recordStatus, 'active'),
+    ];
+
+    if (clubId) {
+      const records = await db
+        .select({ attendance })
+        .from(attendance)
+        .innerJoin(swimmingSessions, eq(attendance.sessionId, swimmingSessions.id))
+        .where(and(...conditions, eq(swimmingSessions.clubId, clubId)));
+      return records.map(({ attendance: attendanceRecord }) => attendanceRecord);
+    }
+
+    return await db.select().from(attendance).where(and(...conditions));
   }
 
   async createAttendance(attendanceRecord: InsertAttendance): Promise<Attendance> {
@@ -1210,8 +1230,12 @@ export class DatabaseStorage implements IStorage {
   // Session Feedback operations (Feedback Feature - No impact on existing functionality)
   // ============================================================================
 
-  async getFeedbackBySession(sessionId: string): Promise<SessionFeedback | undefined> {
-    const [feedback] = await db.select().from(sessionFeedback).where(eq(sessionFeedback.sessionId, sessionId));
+  async getFeedbackBySession(sessionId: string, clubId?: string): Promise<SessionFeedback | undefined> {
+    const conditions = [eq(sessionFeedback.sessionId, sessionId)];
+    if (clubId) {
+      conditions.push(eq(sessionFeedback.clubId, clubId));
+    }
+    const [feedback] = await db.select().from(sessionFeedback).where(and(...conditions));
     return feedback;
   }
 

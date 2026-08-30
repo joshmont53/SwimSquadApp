@@ -877,7 +877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/sessions/:id", requireAuth, async (req, res) => {
     try {
-      const result = await storage.getSessionWithAttendance(req.params.id);
+      const result = await storage.getSessionWithAttendance(req.params.id, (req as any).user.clubId);
       if (!result) {
         return res.status(404).json({ message: "Session not found" });
       }
@@ -938,7 +938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sessions/:id/duplicate", requireAuth, async (req: any, res) => {
     try {
-      const sourceSession = await storage.getSession(req.params.id);
+      const sourceSession = await storage.getSessionForClub(req.params.id, req.user.clubId);
       if (!sourceSession) {
         return res.status(404).json({ message: "Source session not found" });
       }
@@ -1038,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Copy session content onto one or more existing sessions
   app.post("/api/sessions/:id/copy-content", requireAuth, async (req: any, res) => {
     try {
-      const sourceSession = await storage.getSession(req.params.id);
+      const sourceSession = await storage.getSessionForClub(req.params.id, req.user.clubId);
       if (!sourceSession) {
         return res.status(404).json({ message: "Source session not found" });
       }
@@ -1075,7 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedTargets: typeof sourceSession[] = [];
       for (const targetId of targetSessionIds) {
         if (targetId === sourceSession.id) continue;
-        const target = await storage.getSession(targetId);
+        const target = await storage.getSessionForClub(targetId, userClubId);
         if (!target) {
           return res.status(404).json({ message: `Target session ${targetId} not found` });
         }
@@ -1324,7 +1324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AI assistant module imported below for streaming
       
       // First, get the context (reusing the same logic)
-      const sessionData = await storage.getSessionWithAttendance(sessionId);
+      const sessionData = await storage.getSessionWithAttendance(sessionId, req.user.clubId);
       if (!sessionData) {
         return res.status(404).json({ message: "Session not found" });
       }
@@ -1451,7 +1451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionId = req.params.id;
       
       // Get the current session
-      const sessionData = await storage.getSessionWithAttendance(sessionId);
+      const sessionData = await storage.getSessionWithAttendance(sessionId, req.user.clubId);
       if (!sessionData) {
         return res.status(404).json({ message: "Session not found" });
       }
@@ -1579,9 +1579,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/attendance/:sessionId", requireAuth, async (req, res) => {
+  app.get("/api/attendance/:sessionId", requireAuth, async (req: any, res) => {
     try {
-      const attendanceRecords = await storage.getAttendanceBySession(req.params.sessionId);
+      const session = await storage.getSessionForClub(req.params.sessionId, req.user.clubId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      const attendanceRecords = await storage.getAttendanceBySession(req.params.sessionId, req.user.clubId);
       res.json(attendanceRecords);
     } catch (error) {
       console.error("Error fetching attendance:", error);
@@ -2466,7 +2470,7 @@ Note on definitions:
   // Get feedback for a specific session
   app.get("/api/feedback/session/:sessionId", requireAuth, async (req, res) => {
     try {
-      const feedback = await storage.getFeedbackBySession(req.params.sessionId);
+      const feedback = await storage.getFeedbackBySession(req.params.sessionId, (req as any).user.clubId);
       if (!feedback) {
         return res.status(404).json({ message: "Feedback not found" });
       }
@@ -2491,8 +2495,8 @@ Note on definitions:
   // Create or update feedback for a session
   app.post("/api/feedback", requireAuth, async (req: any, res) => {
     try {
-      const session = await storage.getSession(req.body.sessionId);
-      if (!session || session.clubId !== req.user.clubId) {
+      const session = await storage.getSessionForClub(req.body.sessionId, req.user.clubId);
+      if (!session) {
         return res.status(404).json({ message: "Session not found" });
       }
 
@@ -4042,8 +4046,8 @@ CRITICAL RULES:
 
   app.get("/api/sessions/:id/season-planner", requireAuth, async (req: any, res) => {
     try {
-      const session = await storage.getSession(req.params.id);
-      if (!session || session.clubId !== req.user.clubId) {
+      const session = await storage.getSessionForClub(req.params.id, req.user.clubId);
+      if (!session) {
         return res.status(404).json({ message: "Session not found" });
       }
       const sessionDate = String(session.sessionDate).slice(0, 10);
@@ -4158,8 +4162,8 @@ CRITICAL RULES:
       if (!coachId) return res.status(400).json({ message: "No coach profile found" });
 
       // Verify the session belongs to this coach's club
-      const session = await storage.getSession(sessionId);
-      if (!session || session.clubId !== req.user.clubId) {
+      const session = await storage.getSessionForClub(sessionId, req.user.clubId);
+      if (!session) {
         return res.status(403).json({ message: "Session not found or access denied" });
       }
 
@@ -4214,8 +4218,8 @@ CRITICAL RULES:
       }
 
       // Verify the referenced session belongs to this club before updating it
-      const session = await storage.getSession(opp.sessionId);
-      if (!session || session.clubId !== req.user.clubId) {
+      const session = await storage.getSessionForClub(opp.sessionId, req.user.clubId);
+      if (!session) {
         return res.status(403).json({ message: "Session not found or access denied" });
       }
 
