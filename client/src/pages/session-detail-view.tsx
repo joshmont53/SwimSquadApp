@@ -817,7 +817,7 @@ export function SessionDetail({
           modal
         >
           <DrawerContent
-            className="lg:hidden mt-0 h-[100dvh] max-h-[calc(100dvh-env(safe-area-inset-top))] rounded-t-2xl border bg-card pb-[env(safe-area-inset-bottom)]"
+            className="lg:hidden z-[60] mt-0 h-[100dvh] max-h-[calc(100dvh-env(safe-area-inset-top))] rounded-t-2xl border bg-card pb-[env(safe-area-inset-bottom)]"
             overlayClassName="lg:hidden z-[59] !bg-black/35"
             data-testid="session-season-planner-drawer"
             data-snap-point={seasonPlannerSnapPoint ?? undefined}
