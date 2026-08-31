@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Pencil, Trash2, Calendar as CalendarIcon, Clock, MapPin, ChevronRight, ChevronDown, Target, Save, Loader2, FileText, Play, Lightbulb, Sparkles, X, Copy, ListChecks, BookOpen, Cake, UserX } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '@/components/ui/drawer';
 import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/RichTextEditor';
@@ -79,6 +80,7 @@ const attendanceStatusOptions: AttendanceStatus[] = [
 ];
 
 const attendanceNoteOptions: AttendanceNote[] = ['-', 'Late', 'Very Late'];
+const seasonPlannerSnapPoints: (number | string)[] = [0.42, 0.72, 0.92];
 
 function stripHtmlTags(html: string): string {
   const tmp = document.createElement('div');
@@ -225,6 +227,26 @@ export function SessionDetail({
   const [aiChatPanelOpen, setAiChatPanelOpen] = useState(false);
   const [drillsLibrarySidebarOpen, setDrillsLibrarySidebarOpen] = useState(false);
   const [seasonPlannerOpen, setSeasonPlannerOpen] = useState(false);
+  const [isMobileDrawer, setIsMobileDrawer] = useState(false);
+  const [seasonPlannerSnapPoint, setSeasonPlannerSnapPoint] = useState<number | string | null>(0.72);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const updateMobileDrawer = () => setIsMobileDrawer(mediaQuery.matches);
+
+    updateMobileDrawer();
+    mediaQuery.addEventListener('change', updateMobileDrawer);
+    return () => mediaQuery.removeEventListener('change', updateMobileDrawer);
+  }, []);
+
+  const toggleSeasonPlanner = () => {
+    if (seasonPlannerOpen) {
+      setSeasonPlannerOpen(false);
+    } else {
+      setSeasonPlannerSnapPoint(0.72);
+      setSeasonPlannerOpen(true);
+    }
+  };
 
   const { data: sessionPlannerData, isLoading: seasonPlannerLoading } = useQuery<SessionPlannerResponse>({
     queryKey: ['/api/sessions', sessionId, 'season-planner'],
@@ -709,70 +731,105 @@ export function SessionDetail({
     deleteSessionMutation.mutate();
   };
 
+  const seasonPlannerPanelContent = (
+    <>
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        <div className="flex items-center gap-2">
+          <ListChecks className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
+          <h2 className="font-semibold text-sm">Season Planner</h2>
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSeasonPlannerOpen(false)} data-testid="button-close-season-planner">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-4 space-y-5">
+          {seasonPlannerLoading ? (
+            <div className="space-y-3"><Skeleton className="h-32 w-full" /><Skeleton className="h-32 w-full" /></div>
+          ) : !sessionPlannerData || sessionPlannerData.squads.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">No squad is assigned to this session.</p>
+          ) : (
+            sessionPlannerData.squads.map(result => {
+              const squadName = squads.find(item => item.id === result.squadId)?.name || 'Unknown squad';
+              const entry = result.match?.entry;
+              return (
+                <section key={result.squadId} className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Squad</p>
+                      <h3 className="font-semibold text-sm">{squadName}</h3>
+                    </div>
+                    {result.match && <Badge variant="outline" className="text-[10px] font-normal max-w-[150px] truncate">{result.match.planName}</Badge>}
+                  </div>
+                  {!entry ? (
+                    <p className="text-sm text-muted-foreground border-t pt-3">No matching plan data for this squad, date, and time.</p>
+                  ) : (
+                    <div className="border-t pt-3">
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--club-primary)' }} />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Performance</span>
+                      </div>
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+                        <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Training week</dt><dd className="mt-0.5 font-medium">Week {entry.trainingWeek}</dd></div>
+                        <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Training phase</dt><dd className="mt-0.5 font-medium">{entry.trainingPhase || 'Not set'}</dd></div>
+                        <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Intensity</dt><dd className="mt-0.5 font-medium">{entry.intensity || 'Not set'}</dd></div>
+                        <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Test set?</dt><dd className="mt-0.5 font-medium">{entry.testSet ? 'Yes' : 'No'}</dd></div>
+                        <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Main focus</dt><dd className="mt-0.5 font-medium">{entry.mainFocus || 'Not set'}</dd></div>
+                        <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Secondary focus / set type</dt><dd className="mt-0.5 text-muted-foreground">{entry.secondaryFocus || 'Not set'}</dd></div>
+                        {entry.competitionEvent && <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Competition</dt><dd><Badge className="mt-1 border border-[#ead27a] bg-[#f7e7a8] text-[#6b5200] hover:bg-[#f7e7a8]">{entry.competitionEvent}</Badge></dd></div>}
+                        {entry.holidayName && <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Holiday</dt><dd className="mt-0.5 text-slate-600">{entry.holidayName}</dd></div>}
+                        <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Notes / adjustments</dt><dd className="mt-0.5 whitespace-pre-wrap text-muted-foreground">{entry.notes || 'No notes'}</dd></div>
+                      </dl>
+                    </div>
+                  )}
+                </section>
+              );
+            })
+          )}
+        </div>
+      </ScrollArea>
+    </>
+  );
+
   const seasonPlannerPanel = seasonPlannerOpen ? (
     <>
-      <div className="fixed inset-0 bg-black/35 z-[59] lg:hidden" onClick={() => setSeasonPlannerOpen(false)} />
       <aside
-        className="fixed z-[60] bg-card border shadow-xl flex flex-col bottom-0 left-0 right-0 h-[72vh] rounded-t-2xl lg:static lg:z-auto lg:h-full lg:min-h-[400px] lg:w-full lg:rounded-lg lg:shadow-none"
+        className="hidden lg:flex lg:static lg:z-auto bg-card border shadow-none flex-col h-full min-h-[400px] w-full rounded-lg"
         data-testid="session-season-planner-panel"
       >
-        <div className="lg:hidden flex justify-center pt-2"><div className="w-10 h-1 rounded-full bg-muted-foreground/30" /></div>
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="flex items-center gap-2">
-            <ListChecks className="h-4 w-4" style={{ color: 'var(--club-primary)' }} />
-            <h2 className="font-semibold text-sm">Season Planner</h2>
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSeasonPlannerOpen(false)} data-testid="button-close-season-planner">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-5">
-            {seasonPlannerLoading ? (
-              <div className="space-y-3"><Skeleton className="h-32 w-full" /><Skeleton className="h-32 w-full" /></div>
-            ) : !sessionPlannerData || sessionPlannerData.squads.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-10">No squad is assigned to this session.</p>
-            ) : (
-              sessionPlannerData.squads.map(result => {
-                const squadName = squads.find(item => item.id === result.squadId)?.name || 'Unknown squad';
-                const entry = result.match?.entry;
-                return (
-                  <section key={result.squadId} className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Squad</p>
-                        <h3 className="font-semibold text-sm">{squadName}</h3>
-                      </div>
-                      {result.match && <Badge variant="outline" className="text-[10px] font-normal max-w-[150px] truncate">{result.match.planName}</Badge>}
-                    </div>
-                    {!entry ? (
-                      <p className="text-sm text-muted-foreground border-t pt-3">No matching plan data for this squad, date, and time.</p>
-                    ) : (
-                      <div className="border-t pt-3">
-                        <div className="flex items-center gap-2 mb-4">
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--club-primary)' }} />
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Performance</span>
-                        </div>
-                        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                          <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Training week</dt><dd className="mt-0.5 font-medium">Week {entry.trainingWeek}</dd></div>
-                          <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Training phase</dt><dd className="mt-0.5 font-medium">{entry.trainingPhase || 'Not set'}</dd></div>
-                          <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Intensity</dt><dd className="mt-0.5 font-medium">{entry.intensity || 'Not set'}</dd></div>
-                          <div><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Test set?</dt><dd className="mt-0.5 font-medium">{entry.testSet ? 'Yes' : 'No'}</dd></div>
-                          <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Main focus</dt><dd className="mt-0.5 font-medium">{entry.mainFocus || 'Not set'}</dd></div>
-                          <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Secondary focus / set type</dt><dd className="mt-0.5 text-muted-foreground">{entry.secondaryFocus || 'Not set'}</dd></div>
-                          {entry.competitionEvent && <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Competition</dt><dd><Badge className="mt-1 border border-[#ead27a] bg-[#f7e7a8] text-[#6b5200] hover:bg-[#f7e7a8]">{entry.competitionEvent}</Badge></dd></div>}
-                          {entry.holidayName && <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Holiday</dt><dd className="mt-0.5 text-slate-600">{entry.holidayName}</dd></div>}
-                          <div className="col-span-2"><dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Notes / adjustments</dt><dd className="mt-0.5 whitespace-pre-wrap text-muted-foreground">{entry.notes || 'No notes'}</dd></div>
-                        </dl>
-                      </div>
-                    )}
-                  </section>
-                );
-              })
-            )}
-          </div>
-        </ScrollArea>
+        {seasonPlannerPanelContent}
       </aside>
+      {isMobileDrawer && (
+        <Drawer
+          open={seasonPlannerOpen}
+          onOpenChange={(open) => {
+            setSeasonPlannerOpen(open);
+            if (open) setSeasonPlannerSnapPoint(0.72);
+          }}
+          shouldScaleBackground={false}
+          snapPoints={seasonPlannerSnapPoints}
+          activeSnapPoint={seasonPlannerSnapPoint}
+          setActiveSnapPoint={setSeasonPlannerSnapPoint}
+          closeThreshold={0.25}
+          handleOnly
+          snapToSequentialPoint
+          dismissible
+          modal
+        >
+          <DrawerContent
+            className="lg:hidden mt-0 h-[100dvh] max-h-[calc(100dvh-env(safe-area-inset-top))] rounded-t-2xl border bg-card pb-[env(safe-area-inset-bottom)]"
+            overlayClassName="lg:hidden z-[59] !bg-black/35"
+            data-testid="session-season-planner-drawer"
+            data-snap-point={seasonPlannerSnapPoint ?? undefined}
+          >
+            <DrawerTitle className="sr-only">Season Planner</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              Season plan details matched to this session and its assigned squads.
+            </DrawerDescription>
+            {seasonPlannerPanelContent}
+          </DrawerContent>
+        </Drawer>
+      )}
     </>
   ) : null;
 
@@ -996,7 +1053,7 @@ export function SessionDetail({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setSeasonPlannerOpen(!seasonPlannerOpen)}
+                      onClick={toggleSeasonPlanner}
                       style={seasonPlannerOpen ? { backgroundColor: 'var(--club-primary-faint)', borderColor: 'var(--club-primary)' } : undefined}
                       data-testid="button-open-season-planner"
                       title="Season Planner"
@@ -1077,7 +1134,7 @@ export function SessionDetail({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSeasonPlannerOpen(!seasonPlannerOpen)}
+                    onClick={toggleSeasonPlanner}
                     style={seasonPlannerOpen ? { backgroundColor: 'var(--club-primary-faint)', borderColor: 'var(--club-primary)' } : undefined}
                     data-testid="button-open-season-planner"
                   >
