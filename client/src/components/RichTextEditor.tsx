@@ -200,13 +200,13 @@ export function RichTextEditor({
 
       {sessionTimeEstimate && (
         <div
-          className="pointer-events-none sticky top-0 z-10 flex h-0 justify-end overflow-visible"
+          className="pointer-events-none sticky top-0 z-10 h-0 overflow-visible"
           data-testid="session-time-estimate"
           role="status"
           aria-live="polite"
           aria-atomic="true"
         >
-          <div className="pointer-events-auto flex w-fit max-w-[90%] items-center rounded-bl-lg border-b border-l bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90">
+          <div className="pointer-events-auto absolute right-0 top-0 flex w-fit max-w-[90%] items-center rounded-bl-lg border-b border-l bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90">
             <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
                 <Timer className="h-3.5 w-3.5" style={{ color: 'var(--club-primary)' }} />
