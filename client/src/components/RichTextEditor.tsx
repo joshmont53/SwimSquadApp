@@ -206,7 +206,7 @@ export function RichTextEditor({
           aria-live="polite"
           aria-atomic="true"
         >
-          <div className="pointer-events-auto flex w-4/5 items-center rounded-bl-lg border-b border-l bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90 sm:w-1/4 sm:px-3">
+          <div className="pointer-events-auto flex w-fit max-w-[90%] items-center rounded-bl-lg border-b border-l bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90">
             <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
                 <Timer className="h-3.5 w-3.5" style={{ color: 'var(--club-primary)' }} />
