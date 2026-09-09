@@ -200,7 +200,7 @@ export function RichTextEditor({
 
       {sessionTimeEstimate && (
         <div
-          className="pointer-events-none sticky top-0 z-10 flex justify-end"
+          className="pointer-events-none sticky top-0 z-10 flex h-0 justify-end overflow-visible"
           data-testid="session-time-estimate"
           role="status"
           aria-live="polite"
