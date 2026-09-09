@@ -1889,7 +1889,10 @@ function CalendarApp() {
                   squads={squads}
                   locations={locations}
                   coaches={coaches}
+                  attendance={allAttendance}
+                  sessionFeedback={sessionFeedback}
                   sessionSquadMap={sessionSquadMap}
+                  isAdmin={isAdmin}
                   currentDate={currentDate}
                   onDateChange={setCurrentDate}
                   onSessionDoubleClick={handleSessionClick}

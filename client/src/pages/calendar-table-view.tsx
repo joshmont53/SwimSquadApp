@@ -1,14 +1,19 @@
+import type { Attendance, SessionFeedback } from '@shared/schema';
 import type { Coach, Location, Session, Squad } from '../lib/typeAdapters';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Minus, Search, X } from 'lucide-react';
 import { format, isSameMonth } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface CalendarTableViewProps {
   sessions: Session[];
   squads: Squad[];
   locations: Location[];
   coaches: Coach[];
+  attendance: Attendance[];
+  sessionFeedback: SessionFeedback[];
   sessionSquadMap: Record<string, string[]>;
+  isAdmin: boolean;
   currentDate: Date;
   onDateChange: (date: Date) => void;
   onSessionDoubleClick: (session: Session) => void;
@@ -35,18 +40,68 @@ function dateKey(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
+function hasWrittenSet(session: Session): boolean {
+  const plainText = session.content?.trim();
+  const htmlText = session.contentHtml?.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  return Boolean(plainText || htmlText);
+}
+
+function hasSessionEnded(session: Session): boolean {
+  const sessionEnd = new Date(session.date);
+  const [hours, minutes, seconds = 0] = session.endTime.split(':').map(Number);
+  sessionEnd.setHours(hours || 0, minutes || 0, seconds || 0, 0);
+  return sessionEnd.getTime() < Date.now();
+}
+
+function StatusIndicator({
+  status,
+  label,
+}: {
+  status: 'complete' | 'incomplete' | 'not-due';
+  label: string;
+}) {
+  if (status === 'not-due') {
+    return (
+      <span className="inline-flex text-muted-foreground" title={`${label}: not due`} aria-label={`${label}: not due`}>
+        <Minus className="h-4 w-4" />
+      </span>
+    );
+  }
+
+  const isComplete = status === 'complete';
+  return (
+    <span
+      className={cn(
+        'inline-flex h-6 w-6 items-center justify-center rounded-full border',
+        isComplete
+          ? 'border-green-600 bg-green-50 text-green-600'
+          : 'border-red-600 bg-red-50 text-red-600',
+      )}
+      title={`${label}: ${isComplete ? 'complete' : 'incomplete'}`}
+      aria-label={`${label}: ${isComplete ? 'complete' : 'incomplete'}`}
+    >
+      {isComplete ? <Check className="h-4 w-4 stroke-[2.5]" /> : <X className="h-4 w-4 stroke-[2.5]" />}
+    </span>
+  );
+}
+
 export function CalendarTableView({
   sessions,
   squads,
   locations,
   coaches,
+  attendance,
+  sessionFeedback,
   sessionSquadMap,
+  isAdmin,
   currentDate,
   onDateChange,
   onSessionDoubleClick,
   onSearchClick,
   isSearchActive = false,
 }: CalendarTableViewProps) {
+  const sessionsWithAttendance = new Set(attendance.map(record => record.sessionId));
+  const sessionsWithFeedback = new Set(sessionFeedback.map(record => record.sessionId));
   const monthSessions = sessions
     .filter(session => isSameMonth(new Date(session.date), currentDate))
     .sort((a, b) => {
@@ -130,7 +185,7 @@ export function CalendarTableView({
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[1180px] text-sm border-collapse">
+          <table className={cn('w-full text-sm border-collapse', isAdmin ? 'min-w-[1420px]' : 'min-w-[1180px]')}>
             <thead className="bg-muted/60">
               <tr className="border-b">
                 <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Time</th>
@@ -142,13 +197,20 @@ export function CalendarTableView({
                 <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Set Writer</th>
                 <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Session Focus</th>
                 <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Total Distance</th>
+                {isAdmin && (
+                  <>
+                    <th className="px-3 py-3 text-center font-semibold whitespace-nowrap">Set written</th>
+                    <th className="px-3 py-3 text-center font-semibold whitespace-nowrap">Attendance</th>
+                    <th className="px-3 py-3 text-center font-semibold whitespace-nowrap">Feedback</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
               {groupedSessions.flatMap(group => [
                 <tr key={`date-${dateKey(group.date)}`} className="bg-muted/30 border-y">
                   <th
-                    colSpan={9}
+                    colSpan={isAdmin ? 12 : 9}
                     scope="colgroup"
                     className="px-3 py-2.5 text-left font-semibold"
                     data-testid={`table-date-${dateKey(group.date)}`}
@@ -163,11 +225,20 @@ export function CalendarTableView({
                     .filter((squad): squad is Squad => Boolean(squad));
                   const location = locations.find(candidate => candidate.id === session.locationId);
                   const totalDistance = session.distanceBreakdown?.total ?? 0;
+                  const sessionEnded = hasSessionEnded(session);
+                  const attendanceComplete = sessionsWithAttendance.has(session.id);
+                  const feedbackComplete = sessionsWithFeedback.has(session.id);
+                  const requiresAction = isAdmin && sessionEnded && (!attendanceComplete || !feedbackComplete);
 
                   return (
                     <tr
                       key={session.id}
-                      className="border-b last:border-b-0 hover:bg-muted/20 cursor-pointer transition-colors"
+                      className={cn(
+                        'border-b last:border-b-0 cursor-pointer transition-colors',
+                        requiresAction
+                          ? 'bg-orange-50/50 hover:bg-orange-100/60'
+                          : 'hover:bg-muted/20',
+                      )}
                       onDoubleClick={() => onSessionDoubleClick(session)}
                       onKeyDown={event => {
                         if (event.key === 'Enter') onSessionDoubleClick(session);
@@ -207,6 +278,28 @@ export function CalendarTableView({
                       <td className="px-3 py-3 text-right whitespace-nowrap">
                         {totalDistance.toLocaleString()}m
                       </td>
+                      {isAdmin && (
+                        <>
+                          <td className="px-3 py-3 text-center">
+                            <StatusIndicator
+                              status={hasWrittenSet(session) ? 'complete' : 'incomplete'}
+                              label="Set written"
+                            />
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <StatusIndicator
+                              status={!sessionEnded ? 'not-due' : attendanceComplete ? 'complete' : 'incomplete'}
+                              label="Attendance"
+                            />
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <StatusIndicator
+                              status={!sessionEnded ? 'not-due' : feedbackComplete ? 'complete' : 'incomplete'}
+                              label="Feedback"
+                            />
+                          </td>
+                        </>
+                      )}
                     </tr>
                   );
                 }),
