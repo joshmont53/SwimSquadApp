@@ -74,7 +74,18 @@ test('reports unrecognised numbered lines while ignoring headings', () => {
 });
 
 test('converts common rich text blocks into session lines', () => {
-  assert.equal(htmlToSessionText('<div>4 x 50m FC</div><div>2 x 100m BK</div>'), '4 x 50m FC\n2 x 100m BK\n');
+  assert.equal(htmlToSessionText('<div>4 x 50m FC</div><div>2 x 100m BK</div>'), '\n4 x 50m FC\n\n2 x 100m BK\n');
+});
+
+test('keeps a new contenteditable block separate while it is being typed', () => {
+  const firstLine = '4 x 100 @ 2:45';
+  for (const partialSecondLine of ['2', '20']) {
+    const text = htmlToSessionText(`${firstLine}<div>${partialSecondLine}</div>`);
+    assert.equal(estimateSessionTime(text, 60).totalSeconds, 660);
+  }
+
+  const complete = htmlToSessionText(`${firstLine}<div>200 kick</div>`);
+  assert.equal(estimateSessionTime(complete, 60).totalSeconds, 900);
 });
 
 test('estimates dense coach shorthand consistently with the confirmed manual calculation', () => {

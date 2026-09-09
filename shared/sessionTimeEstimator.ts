@@ -95,8 +95,8 @@ function isIgnorableLine(line: string): boolean {
 export function htmlToSessionText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<(?:div|p|li|h[1-6])\b[^>]*>/gi, '\n')
     .replace(/<\/(?:div|p|li|h[1-6])>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
