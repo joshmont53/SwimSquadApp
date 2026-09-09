@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { estimateSessionTime, htmlToSessionText } from './sessionTimeEstimator';
+import {
+  estimateSessionTime,
+  formatEstimatedSwimmingTime,
+  htmlToSessionText,
+} from './sessionTimeEstimator';
+
+test('formats rounded estimates using hours and minutes only', () => {
+  assert.equal(formatEstimatedSwimmingTime(45 * 60), '~45 mins');
+  assert.equal(formatEstimatedSwimmingTime(70 * 60), '~1 hour 10 mins');
+  assert.equal(formatEstimatedSwimmingTime(7410), '~2 hours 4 mins');
+});
 
 test('uses explicit turnaround time per repeat', () => {
   assert.equal(estimateSessionTime('2 x 200m FC @ 4', 60).totalSeconds, 480);
@@ -29,7 +39,7 @@ test('recognizes common distances written without an m', () => {
 });
 
 test('does not treat numbered coaching instructions as distances', () => {
-  const estimate = estimateSessionTime('1: Fast BO\n3 on each stroke IMO', 60);
+  const estimate = estimateSessionTime('1: Fast BO\n1: Fast 25m\n1: Fast 35m\n3 on each stroke IMO', 60);
   assert.equal(estimate.recognizedLineCount, 0);
   assert.equal(estimate.totalSeconds, 0);
 });
@@ -65,4 +75,76 @@ test('reports unrecognised numbered lines while ignoring headings', () => {
 
 test('converts common rich text blocks into session lines', () => {
   assert.equal(htmlToSessionText('<div>4 x 50m FC</div><div>2 x 100m BK</div>'), '4 x 50m FC\n2 x 100m BK\n');
+});
+
+test('estimates dense coach shorthand consistently with the confirmed manual calculation', () => {
+  const session = `Warm Up ALL WITH 15seconds rest
+
+200fc dps, 100IM drill
+
+200fc build,  100IM Tech
+
+200fc @pace, 100IM fast
+
+Mini set kick / swim hvo / pull
+
+6 x 50 kick 1st 25 fast ease down for
+
+2 TR 1.15
+
+4 fast TR 1.00
+
+2x100  TR 2.00 1: no 1 working break out, turn and finish max
+
+2: fc working break out, turn and finish max
+
+4x150 TR 2.30 PULL FC or BC
+
+paddles descend 1-3 snorks for fc
+
+MAIN:
+
+3x200 IM  TR 3.30
+
+100 dps ez choice
+
+4x
+
+      100 TR 2.00
+
+      2x50 TR 1.00
+
+ONE BLOCK ON EACH STROKE IMO
+
+(IM ORDER eg Rd 1 fly Rd 2 Bc etc no extra rest between blocks)
+
+100Ez O/C
+
+3x200 FC TR 3.00 descend
+
+kick @ wall turns SPRINT 25s ease down to 50m in pairs. 8x50 as 4: Bc 4: Fc LIFO
+
+400 FC SNORKS / FINS / PADS DPS FEEL FAST LONG STROKE UNCOMFORTABLE BUT NOT MAX
+
+IF TIME
+
+      12x50 RS TR 1.30
+
+      3 on each stroke IMO
+
+      1: Fast BO
+
+      1: Fast 25m
+
+      1: Fast 35m
+
+Warm down
+
+      100kick with effort
+
+      200pull alt 50s fc / bc
+
+      200 brst-fc 50s dps`;
+
+  assert.equal(estimateSessionTime(session, 60).totalSeconds, 7410);
 });

@@ -10,21 +10,16 @@ import {
   Timer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { SessionTimeEstimate } from '@shared/sessionTimeEstimator';
+import {
+  formatEstimatedSwimmingTime,
+  type SessionTimeEstimate,
+} from '@shared/sessionTimeEstimator';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   sessionTimeEstimate?: SessionTimeEstimate;
-}
-
-function formatEstimatedTime(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes === 0) return `~${seconds} sec`;
-  if (seconds === 0) return `~${minutes} min`;
-  return `~${minutes} min ${seconds} sec`;
 }
 
 export function RichTextEditor({
@@ -215,7 +210,7 @@ export function RichTextEditor({
                 <p className="whitespace-nowrap text-[10px] font-medium leading-none text-muted-foreground">Estimated swimming time</p>
                 {sessionTimeEstimate.recognizedLineCount > 0 ? (
                   <p className="text-base font-semibold leading-tight" data-testid="text-estimated-session-time">
-                    {formatEstimatedTime(sessionTimeEstimate.totalSeconds)}
+                    {formatEstimatedSwimmingTime(sessionTimeEstimate.totalSeconds)}
                   </p>
                 ) : (
                   <p className="truncate text-xs font-medium leading-tight" data-testid="text-estimated-session-time">
