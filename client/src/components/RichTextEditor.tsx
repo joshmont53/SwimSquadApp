@@ -200,37 +200,29 @@ export function RichTextEditor({
 
       {sessionTimeEstimate && (
         <div
-          className="sticky top-0 z-10 border-b bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90 sm:px-4 sm:py-3"
+          className="pointer-events-none sticky top-0 z-10 flex justify-end"
           data-testid="session-time-estimate"
           role="status"
           aria-live="polite"
           aria-atomic="true"
         >
-          <div className="flex flex-col gap-2 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between min-[360px]:gap-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted sm:h-10 sm:w-10">
-                <Timer className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: 'var(--club-primary)' }} />
+          <div className="pointer-events-auto flex w-4/5 items-center rounded-bl-lg border-b border-l bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90 sm:w-1/4 sm:px-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
+                <Timer className="h-3.5 w-3.5" style={{ color: 'var(--club-primary)' }} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-muted-foreground">Estimated swimming time</p>
+                <p className="whitespace-nowrap text-[10px] font-medium leading-none text-muted-foreground">Estimated swimming time</p>
                 {sessionTimeEstimate.recognizedLineCount > 0 ? (
-                  <p className="text-lg font-semibold leading-tight sm:text-xl" data-testid="text-estimated-session-time">
+                  <p className="text-base font-semibold leading-tight" data-testid="text-estimated-session-time">
                     {formatEstimatedTime(sessionTimeEstimate.totalSeconds)}
                   </p>
                 ) : (
-                  <p className="text-sm font-medium" data-testid="text-estimated-session-time">
-                    Add a distance set to estimate
+                  <p className="truncate text-xs font-medium leading-tight" data-testid="text-estimated-session-time">
+                    Add a distance
                   </p>
                 )}
               </div>
-            </div>
-            <div className="pl-10 text-left text-[11px] text-muted-foreground min-[360px]:shrink-0 min-[360px]:pl-0 min-[360px]:text-right sm:text-xs">
-              <p>{sessionTimeEstimate.paceSecondsPer50m} sec / 50m</p>
-              {sessionTimeEstimate.unrecognizedLineCount > 0 && (
-                <p className="text-amber-700" data-testid="text-unrecognized-time-lines">
-                  {sessionTimeEstimate.unrecognizedLineCount} line{sessionTimeEstimate.unrecognizedLineCount === 1 ? '' : 's'} not estimated
-                </p>
-              )}
             </div>
           </div>
         </div>

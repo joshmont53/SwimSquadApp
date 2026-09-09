@@ -26,10 +26,20 @@ function parseClockValue(value: string, unit?: string): number | null {
 }
 
 function normalizeSessionLine(line: string): string {
-  return line
+  const normalized = line
     .replace(/^\s*(?:[-*]\s+|\d+[.)]\s+)/, '')
-    .replace(/^(\d+)\s+(\d+(?:\.\d+)?\s*m\b)/i, '$1 x $2')
     .trim();
+
+  return normalized
+    .replace(
+      /^(\d+)\s*(?:x|×)\s*(\d{2,4})(?!\d)\s*(?=(?:fc|front\s*crawl|bk|bc|back|br|brst|breast|fly|butterfly|im|kick|pull|drill|swim)\b)/i,
+      '$1 x $2m ',
+    )
+    .replace(
+      /^(\d{2,4})(?!\d)\s*(?=(?:fc|front\s*crawl|bk|bc|back|br|brst|breast|fly|butterfly|im|kick|pull|drill|swim)\b)/i,
+      '$1m ',
+    )
+    .replace(/^(\d+)\s+(\d+(?:\.\d+)?\s*m\b)/i, '$1 x $2');
 }
 
 function extractRepetitions(line: string): { count: number; includedInParsedDistance: boolean } {

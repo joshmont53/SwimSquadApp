@@ -1,3 +1,4 @@
 - [Season Planner snapshot contract](season-planner-contract.md) — plans snapshot schedules and match real sessions by canonical squad/date/time, never by generated-session identity.
 - [Mobile overlay positioning](mobile-overlay-positioning.md) — portal mobile sheets outside nested touch-scroll containers; use snap points for visible height.
 - [Development schema merges](development-schema-merges.md) — generic Drizzle push can prompt on existing drift; post-merge migrations must be targeted and non-interactive.
+- [Session estimate interpretation](session-estimate-interpretation.md) — treat common shorthand as swim distance/turnaround structure, including unitless distances and grouped repeats.

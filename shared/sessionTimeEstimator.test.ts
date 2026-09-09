@@ -21,6 +21,38 @@ test('uses squad pace for distance-only sets', () => {
   assert.equal(estimateSessionTime('2 200m FC', 60).totalSeconds, 480);
 });
 
+test('recognizes common distances written without an m', () => {
+  assert.equal(estimateSessionTime('400 IM', 60).totalSeconds, 480);
+  assert.equal(estimateSessionTime('2 x 200 fc', 60).totalSeconds, 480);
+  assert.equal(estimateSessionTime('200fc dps', 60).totalSeconds, 240);
+  assert.equal(estimateSessionTime('100kick with effort', 60).totalSeconds, 120);
+});
+
+test('does not treat numbered coaching instructions as distances', () => {
+  const estimate = estimateSessionTime('1: Fast BO\n3 on each stroke IMO', 60);
+  assert.equal(estimate.recognizedLineCount, 0);
+  assert.equal(estimate.totalSeconds, 0);
+});
+
+test('estimates mixed m and unitless notation in a complete session', () => {
+  const session = `warm up
+
+200m FC
+
+Main Set
+
+10 x 100m fc
+
+warm down
+
+200m BK
+400 IM
+
+4 x 50m fLY @ + 15`;
+
+  assert.equal(estimateSessionTime(session, 60).totalSeconds, 2460);
+});
+
 test('applies a standalone repeat count to the preceding line as total executions', () => {
   assert.equal(estimateSessionTime('4 x 50m FC\nRepeat 4 times', 60).totalSeconds, 960);
 });
