@@ -12,6 +12,7 @@ export interface Squad {
   name: string;
   color: string;
   primaryCoachId?: string | null;
+  average50mSeconds: number;
 }
 
 export type PoolType = '25m' | '50m';
@@ -111,6 +112,7 @@ export function adaptSquad(backend: BackendSquad): Squad {
     name: backend.squadName,
     color: backend.color || '#3B82F6',
     primaryCoachId: backend.primaryCoachId,
+    average50mSeconds: backend.average50mSeconds || 60,
   };
 }
 
@@ -119,6 +121,7 @@ export function adaptSquadToBackend(frontend: Omit<Squad, 'id'>): Omit<BackendSq
     squadName: frontend.name,
     color: frontend.color,
     primaryCoachId: frontend.primaryCoachId || null,
+    average50mSeconds: frontend.average50mSeconds || 60,
   };
 }
 

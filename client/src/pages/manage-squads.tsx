@@ -41,6 +41,7 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
     name: '',
     primaryCoachId: '',
     color: '#3B82F6',
+    average50mSeconds: '60',
   });
 
   const createMutation = useMutation({
@@ -50,7 +51,7 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/squads'] });
       setIsAddDialogOpen(false);
-      setFormData({ name: '', primaryCoachId: '', color: '#3B82F6' });
+      setFormData({ name: '', primaryCoachId: '', color: '#3B82F6', average50mSeconds: '60' });
     },
     onError: (error: Error) => {
       toast({
@@ -68,7 +69,7 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/squads'] });
       setEditingSquad(null);
-      setFormData({ name: '', primaryCoachId: '', color: '#3B82F6' });
+      setFormData({ name: '', primaryCoachId: '', color: '#3B82F6', average50mSeconds: '60' });
     },
     onError: (error: Error) => {
       toast({
@@ -97,10 +98,11 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
   });
 
   const handleAdd = () => {
-    if (!formData.name || !formData.primaryCoachId) {
+    const average50mSeconds = Number(formData.average50mSeconds);
+    if (!formData.name || !formData.primaryCoachId || !Number.isInteger(average50mSeconds) || average50mSeconds < 15 || average50mSeconds > 300) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        description: 'Please complete all fields and enter an average 50m pace between 15 and 300 seconds',
         variant: 'destructive',
       });
       return;
@@ -110,6 +112,7 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
       squadName: formData.name,
       primaryCoachId: formData.primaryCoachId,
       color: formData.color,
+      average50mSeconds,
     };
 
     createMutation.mutate(squadData);
@@ -121,16 +124,18 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
       name: squad.name,
       primaryCoachId: squad.primaryCoachId || '',
       color: squad.color,
+      average50mSeconds: String(squad.average50mSeconds || 60),
     });
   };
 
   const handleSaveEdit = () => {
     if (!editingSquad) return;
 
-    if (!formData.name || !formData.primaryCoachId) {
+    const average50mSeconds = Number(formData.average50mSeconds);
+    if (!formData.name || !formData.primaryCoachId || !Number.isInteger(average50mSeconds) || average50mSeconds < 15 || average50mSeconds > 300) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        description: 'Please complete all fields and enter an average 50m pace between 15 and 300 seconds',
         variant: 'destructive',
       });
       return;
@@ -140,6 +145,7 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
       squadName: formData.name,
       primaryCoachId: formData.primaryCoachId,
       color: formData.color,
+      average50mSeconds,
     };
 
     updateMutation.mutate({ id: editingSquad.id, data: squadData });
@@ -198,6 +204,9 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
                       <h3 className="font-medium mb-1">{squad.name}</h3>
                       <p className="text-sm text-muted-foreground">
                         Primary Coach: {coaches.find((c) => c.id === squad.primaryCoachId)?.name || '-'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Average 50m pace: {squad.average50mSeconds || 60} seconds
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -276,6 +285,20 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
                 <span className="text-sm text-muted-foreground">{formData.color}</span>
               </div>
             </div>
+            <div>
+              <Label htmlFor="average50mSeconds">Average 50m pace (seconds) *</Label>
+              <Input
+                id="average50mSeconds"
+                type="number"
+                min={15}
+                max={300}
+                step={1}
+                value={formData.average50mSeconds}
+                onChange={(e) => setFormData({ ...formData, average50mSeconds: e.target.value })}
+                data-testid="input-average-50m-seconds"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Used only to estimate session swimming time. Default: 60 seconds.</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -335,6 +358,20 @@ export function ManageSquads({ squads, coaches, onBack }: ManageSquadsProps) {
                 />
                 <span className="text-sm text-muted-foreground">{formData.color}</span>
               </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-average50mSeconds">Average 50m pace (seconds) *</Label>
+              <Input
+                id="edit-average50mSeconds"
+                type="number"
+                min={15}
+                max={300}
+                step={1}
+                value={formData.average50mSeconds}
+                onChange={(e) => setFormData({ ...formData, average50mSeconds: e.target.value })}
+                data-testid="input-edit-average-50m-seconds"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Used only to estimate session swimming time.</p>
             </div>
           </div>
           <DialogFooter>

@@ -109,6 +109,7 @@ export const squads = pgTable("squads", {
   squadName: varchar("squad_name").notNull(),
   color: varchar("color").notNull().default("#3B82F6"),
   primaryCoachId: varchar("primary_coach_id").references(() => coaches.id),
+  average50mSeconds: integer("average_50m_seconds").notNull().default(60),
   recordStatus: varchar("record_status").notNull().default("active"), // "active" | "inactive"
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -126,6 +127,7 @@ export const squadsRelations = relations(squads, ({ one, many }) => ({
 export type Squad = typeof squads.$inferSelect;
 export const insertSquadSchema = createInsertSchema(squads).omit({ id: true, createdAt: true, recordStatus: true }).extend({
   color: z.string().optional(),
+  average50mSeconds: z.number().int().min(15).max(300).optional().default(60),
 });
 export type InsertSquad = z.infer<typeof insertSquadSchema>;
 

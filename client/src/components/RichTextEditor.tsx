@@ -6,17 +6,33 @@ import {
   Highlighter, 
   Type,
   Undo,
-  Redo
+  Redo,
+  Timer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { SessionTimeEstimate } from '@shared/sessionTimeEstimator';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  sessionTimeEstimate?: SessionTimeEstimate;
 }
 
-export function RichTextEditor({ value, onChange, placeholder = 'Enter session content...' }: RichTextEditorProps) {
+function formatEstimatedTime(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `~${seconds} sec`;
+  if (seconds === 0) return `~${minutes} min`;
+  return `~${minutes} min ${seconds} sec`;
+}
+
+export function RichTextEditor({
+  value,
+  onChange,
+  placeholder = 'Enter session content...',
+  sessionTimeEstimate,
+}: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,8 +87,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Enter session c
   ];
 
   return (
-    <div className="border rounded-lg bg-card overflow-hidden relative">
-      <div className="border-b bg-muted/50 p-2 space-y-2">
+    <div className="border rounded-lg bg-card relative">
+      <div className="rounded-t-lg border-b bg-muted/50 p-2 space-y-2">
         <div className="flex flex-wrap items-center gap-1">
           <Button
             type="button"
@@ -181,6 +197,44 @@ export function RichTextEditor({ value, onChange, placeholder = 'Enter session c
           ))}
         </div>
       </div>
+
+      {sessionTimeEstimate && (
+        <div
+          className="sticky top-0 z-10 border-b bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90 sm:px-4 sm:py-3"
+          data-testid="session-time-estimate"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div className="flex flex-col gap-2 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between min-[360px]:gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted sm:h-10 sm:w-10">
+                <Timer className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: 'var(--club-primary)' }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground">Estimated swimming time</p>
+                {sessionTimeEstimate.recognizedLineCount > 0 ? (
+                  <p className="text-lg font-semibold leading-tight sm:text-xl" data-testid="text-estimated-session-time">
+                    {formatEstimatedTime(sessionTimeEstimate.totalSeconds)}
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium" data-testid="text-estimated-session-time">
+                    Add a distance set to estimate
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="pl-10 text-left text-[11px] text-muted-foreground min-[360px]:shrink-0 min-[360px]:pl-0 min-[360px]:text-right sm:text-xs">
+              <p>{sessionTimeEstimate.paceSecondsPer50m} sec / 50m</p>
+              {sessionTimeEstimate.unrecognizedLineCount > 0 && (
+                <p className="text-amber-700" data-testid="text-unrecognized-time-lines">
+                  {sessionTimeEstimate.unrecognizedLineCount} line{sessionTimeEstimate.unrecognizedLineCount === 1 ? '' : 's'} not estimated
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         {(!value || value === '<br>' || value === '') && (

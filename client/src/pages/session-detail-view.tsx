@@ -35,6 +35,7 @@ import { AiChatPanel } from '@/components/AiChatPanel';
 import { DuplicateSessionModal } from '@/components/DuplicateSessionModal';
 import type { Squad as SchemaSquad } from '@shared/schema';
 import type { Coach as BackendCoach } from '@shared/schema';
+import { estimateSessionTime, htmlToSessionText } from '@shared/sessionTimeEstimator';
 
 interface SessionDetailProps {
   sessionId: string;
@@ -310,7 +311,24 @@ export function SessionDetail({
   );
 
   const [sessionContent, setSessionContent] = useState('');
+  const [contentForTimeEstimate, setContentForTimeEstimate] = useState('');
   const [sessionNotes, setSessionNotes] = useState('');
+
+  useEffect(() => {
+    if (!isEditingSession) return;
+    const timeout = window.setTimeout(() => setContentForTimeEstimate(sessionContent), 250);
+    return () => window.clearTimeout(timeout);
+  }, [isEditingSession, sessionContent]);
+
+  const slowestSquadPace = useMemo(() => {
+    const paces = sessionSquadsList.map(item => item.average50mSeconds || 60);
+    return paces.length > 0 ? Math.max(...paces) : 60;
+  }, [sessionSquadsList]);
+
+  const sessionTimeEstimate = useMemo(
+    () => estimateSessionTime(htmlToSessionText(contentForTimeEstimate), slowestSquadPace),
+    [contentForTimeEstimate, slowestSquadPace],
+  );
 
   // ALL MUTATIONS MUST BE DEFINED BEFORE ANY CONDITIONAL RETURNS
   const updateAttendanceMutation = useMutation({
@@ -1154,6 +1172,7 @@ export function SessionDetail({
                     value={sessionContent}
                     onChange={setSessionContent}
                     placeholder="Enter session content..."
+                     sessionTimeEstimate={sessionTimeEstimate}
                   />
                   {/* Session Notes — only visible in edit mode */}
                   <div className="mt-4 border rounded-lg p-4 md:p-6 bg-card">
