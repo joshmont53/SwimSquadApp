@@ -42,6 +42,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 import type { Coach as BackendCoach, SwimmingSession, CompetitionCoaching, Squad, Competition, Location, FloatSession } from '@shared/schema';
 
 interface InvoiceData {
@@ -477,8 +478,9 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
     if (adminHours > 0) {
       csvRows.push([]);
       csvRows.push(['ADMIN HOURS']);
-      csvRows.push(['Total Hours', 'Amount']);
+      csvRows.push(['Subtotal', 'Total Hours', 'Amount']);
       csvRows.push([
+        '',
         formatHours(adminHours),
         `£${adminEarnings.toFixed(2)}`,
       ]);
@@ -493,22 +495,35 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       `£${totalEarningsWithAdmin.toFixed(2)}`,
     ]);
 
-    const escapeCsvCell = (cell: string) => {
-      if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
-        return `"${cell.replace(/"/g, '""')}"`;
-      }
-      return cell;
-    };
-    const csvContent = `\uFEFF${csvRows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice-${invoiceData.coachName.replace(/\s+/g, '-')}-${invoiceData.year}-${String(invoiceData.month).padStart(2, '0')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.aoa_to_sheet(csvRows);
+
+    csvRows.forEach((row, rowIndex) => {
+      row.forEach((value, columnIndex) => {
+        const currencyMatch = typeof value === 'string' ? value.match(/^£(-?\d+(?:\.\d+)?)$/) : null;
+        if (!currencyMatch) return;
+        const address = XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+        worksheet[address] = {
+          t: 'n',
+          v: Number(currencyMatch[1]),
+          z: '£0.00',
+        };
+      });
+    });
+
+    worksheet['!cols'] = [
+      { wch: 28 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 16 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoice');
+    XLSX.writeFile(
+      workbook,
+      `invoice-${invoiceData.coachName.replace(/\s+/g, '-')}-${invoiceData.year}-${String(invoiceData.month).padStart(2, '0')}.xlsx`,
+    );
   };
 
   if (!currentCoach) {
