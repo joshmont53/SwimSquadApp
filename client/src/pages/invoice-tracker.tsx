@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -36,6 +37,9 @@ import {
   FileText,
   Banknote,
   Copy,
+  Plus,
+  X,
+  ClipboardList,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Coach as BackendCoach, SwimmingSession, CompetitionCoaching, Squad, Competition, Location, FloatSession } from '@shared/schema';
@@ -121,6 +125,26 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+const INVOICE_MONTH_NAMES = [
+  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+  'JUL', 'AUG', 'SEPT', 'OCT', 'NOV', 'DEC'
+];
+const ADMIN_HOURS_STORAGE_PREFIX = 'invoice-admin-hours:';
+
+function adminHoursStorageKey(coachId: string, month: string) {
+  return `${ADMIN_HOURS_STORAGE_PREFIX}${coachId}:${month}`;
+}
+
+function invoiceInitials(coachName: string) {
+  const names = coachName.trim().split(/\s+/).filter(Boolean);
+  if (names.length === 0) return 'INV';
+  if (names.length === 1) return names[0].slice(0, 2).toUpperCase();
+  return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+}
+
+function formatHours(hours: number) {
+  return hours.toFixed(2).replace(/\.?0+$/, '');
+}
 
 export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
   const { user } = useAuth();
@@ -129,6 +153,9 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
   const [coachingExpanded, setCoachingExpanded] = useState(false);
   const [writingExpanded, setWritingExpanded] = useState(false);
   const [competitionExpanded, setCompetitionExpanded] = useState(false);
+  const [adminHoursInput, setAdminHoursInput] = useState('');
+  const [adminHoursVisible, setAdminHoursVisible] = useState(false);
+  const [storedAdminMonths, setStoredAdminMonths] = useState<string[]>([]);
 
   // Fetch current user's coach profile
   const { data: coaches = [] } = useQuery<BackendCoach[]>({ 
@@ -138,6 +165,23 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
   const currentCoach = useMemo(() => {
     return coaches.find(c => c.userId === user?.id);
   }, [coaches, user?.id]);
+
+  useEffect(() => {
+    if (!currentCoach) {
+      setStoredAdminMonths([]);
+      return;
+    }
+
+    const prefix = `${ADMIN_HOURS_STORAGE_PREFIX}${currentCoach.id}:`;
+    const months: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index++) {
+      const key = window.localStorage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      const value = Number(window.localStorage.getItem(key));
+      if (Number.isFinite(value) && value > 0) months.push(key.slice(prefix.length));
+    }
+    setStoredAdminMonths(months);
+  }, [currentCoach]);
 
   // Fetch all sessions to determine available months
   const { data: allSessions = [] } = useQuery<SwimmingSession[]>({ 
@@ -194,6 +238,8 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       monthSet.add(key);
     });
 
+    storedAdminMonths.forEach(month => monthSet.add(month));
+
     // Convert to sorted array of month options
     const months = Array.from(monthSet)
       .map(key => {
@@ -211,7 +257,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       });
 
     return months;
-  }, [currentCoach, allSessions, allCompetitionCoaching]);
+  }, [currentCoach, allSessions, allCompetitionCoaching, allMyFloatSessions, storedAdminMonths]);
 
   // Auto-select most recent month
   useEffect(() => {
@@ -233,8 +279,104 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
     enabled: !!currentCoach && !!selectedMonth && selectedYear > 0 && selectedMonthNum > 0,
   });
 
+  useEffect(() => {
+    if (!currentCoach || !selectedMonth) {
+      setAdminHoursInput('');
+      setAdminHoursVisible(false);
+      return;
+    }
+
+    const saved = window.localStorage.getItem(adminHoursStorageKey(currentCoach.id, selectedMonth));
+    const savedHours = saved === null ? 0 : Number(saved);
+    if (Number.isFinite(savedHours) && savedHours > 0) {
+      setAdminHoursInput(String(savedHours));
+      setAdminHoursVisible(true);
+    } else {
+      setAdminHoursInput('');
+      setAdminHoursVisible(false);
+    }
+  }, [currentCoach, selectedMonth]);
+
+  const adminHours = useMemo(() => {
+    const value = Number(adminHoursInput);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }, [adminHoursInput]);
+
+  const adminEarnings = adminHours * (invoiceData?.rates.hourlyRate || 0);
+  const totalEarningsWithAdmin = (invoiceData?.totals.totalEarnings || 0) + adminEarnings;
+
+  const updateAdminHours = (value: string) => {
+    if (value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0)) return;
+    setAdminHoursInput(value);
+    if (!currentCoach || !selectedMonth) return;
+
+    const numericValue = Number(value);
+    const key = adminHoursStorageKey(currentCoach.id, selectedMonth);
+    if (value !== '' && Number.isFinite(numericValue) && numericValue > 0) {
+      window.localStorage.setItem(key, String(numericValue));
+      setStoredAdminMonths(months => Array.from(new Set([...months, selectedMonth])));
+    } else {
+      window.localStorage.removeItem(key);
+      setStoredAdminMonths(months => months.filter(month => month !== selectedMonth));
+    }
+  };
+
+  const removeAdminHours = () => {
+    if (currentCoach && selectedMonth) {
+      window.localStorage.removeItem(adminHoursStorageKey(currentCoach.id, selectedMonth));
+      setStoredAdminMonths(months => months.filter(month => month !== selectedMonth));
+    }
+    setAdminHoursInput('');
+    setAdminHoursVisible(false);
+  };
+
+  const sortedCoachingSessions = useMemo(
+    () => [...(invoiceData?.coaching.sessions || [])].sort((a, b) =>
+      a.sessionDate.localeCompare(b.sessionDate) || a.startTime.localeCompare(b.startTime)
+    ),
+    [invoiceData],
+  );
+  const sortedFloatSessions = useMemo(
+    () => [...(invoiceData?.floatSessions.sessions || [])].sort((a, b) =>
+      a.sessionDate.localeCompare(b.sessionDate) || a.startTime.localeCompare(b.startTime)
+    ),
+    [invoiceData],
+  );
+  const sortedWritingSessions = useMemo(
+    () => [...(invoiceData?.sessionWriting.sessions || [])].sort((a, b) =>
+      a.sessionDate.localeCompare(b.sessionDate)
+    ),
+    [invoiceData],
+  );
+  const sortedCompetitions = useMemo(
+    () => [...(invoiceData?.coaching.competitions || [])].sort((a, b) =>
+      a.coachingDate.localeCompare(b.coachingDate)
+    ),
+    [invoiceData],
+  );
+  const combinedCoachingActivity = useMemo(() => [
+    ...sortedCoachingSessions.map(session => ({
+      kind: 'session' as const,
+      id: session.sessionId,
+      date: session.sessionDate,
+      startTime: session.startTime,
+      session,
+    })),
+    ...sortedFloatSessions.map(floatSession => ({
+      kind: 'float' as const,
+      id: floatSession.floatId,
+      date: floatSession.sessionDate,
+      startTime: floatSession.startTime,
+      floatSession,
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)), [
+    sortedCoachingSessions,
+    sortedFloatSessions,
+  ]);
+
   const handleExport = () => {
     if (!invoiceData) return;
+    const invoiceNumber = `${invoiceInitials(invoiceData.coachName)}-${INVOICE_MONTH_NAMES[invoiceData.month - 1]}-${String(invoiceData.year).slice(-2)}`;
     
     const csvRows = [
       ['Hart Swimming Club - Coaching Invoice'],
@@ -242,12 +384,13 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       [`Period: ${MONTH_NAMES[invoiceData.month - 1]} ${invoiceData.year}`],
       [`Qualification: ${invoiceData.qualificationLevel}`],
       [`Hourly Rate: £${invoiceData.rates.hourlyRate.toFixed(2)}`],
+      [`Invoice #: ${invoiceNumber}`],
       [],
       ['COACHING SESSIONS'],
       ['Date', 'Squad', 'Time', 'Hours', 'Amount'],
     ];
 
-    invoiceData.coaching.sessions.forEach(session => {
+    sortedCoachingSessions.forEach(session => {
       const sessionDate = new Date(session.sessionDate);
       csvRows.push([
         format(sessionDate, 'EEE dd MMM'),
@@ -270,7 +413,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
     csvRows.push(['SESSIONS WRITTEN']);
     csvRows.push(['Date', 'Squad', 'Amount']);
 
-    invoiceData.sessionWriting.sessions.forEach(session => {
+    sortedWritingSessions.forEach(session => {
       const sessionDate = new Date(session.sessionDate);
       csvRows.push([
         format(sessionDate, 'EEE dd MMM'),
@@ -289,7 +432,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       csvRows.push([]);
       csvRows.push(['FLOAT SESSIONS']);
       csvRows.push(['Date', 'Location', 'Time', 'Hours', 'Amount']);
-      invoiceData.floatSessions.sessions.forEach(fs => {
+      sortedFloatSessions.forEach(fs => {
         const fsDate = new Date(fs.sessionDate);
         csvRows.push([
           format(fsDate, 'EEE dd MMM'),
@@ -312,7 +455,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
     csvRows.push(['COMPETITION HOURS']);
     csvRows.push(['Date', 'Competition', 'Location', 'Hours', 'Amount']);
 
-    invoiceData.coaching.competitions.forEach(comp => {
+    sortedCompetitions.forEach(comp => {
       const compDate = new Date(comp.coachingDate);
       csvRows.push([
         format(compDate, 'EEE dd MMM'),
@@ -331,13 +474,23 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       `£${(invoiceData.coaching.breakdown.competitionHours * invoiceData.rates.hourlyRate).toFixed(2)}`,
     ]);
 
+    if (adminHours > 0) {
+      csvRows.push([]);
+      csvRows.push(['ADMIN HOURS']);
+      csvRows.push(['Total Hours', 'Amount']);
+      csvRows.push([
+        formatHours(adminHours),
+        `£${adminEarnings.toFixed(2)}`,
+      ]);
+    }
+
     csvRows.push([]);
     csvRows.push([
       'TOTAL PAYMENT',
       '',
       '',
       '',
-      `£${invoiceData.totals.totalEarnings.toFixed(2)}`,
+      `£${totalEarningsWithAdmin.toFixed(2)}`,
     ]);
 
     const escapeCsvCell = (cell: string) => {
@@ -346,8 +499,8 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       }
       return cell;
     };
-    const csvContent = csvRows.map(row => row.map(escapeCsvCell).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const csvContent = `\uFEFF${csvRows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -482,7 +635,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoiceData.coaching.sessions.map((session) => {
+                  {sortedCoachingSessions.map((session) => {
                     const sessionDate = new Date(session.sessionDate);
                     return (
                       <TableRow key={session.sessionId}>
@@ -516,7 +669,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoiceData.sessionWriting.sessions.map((session) => {
+                  {sortedWritingSessions.map((session) => {
                     const sessionDate = new Date(session.sessionDate);
                     return (
                       <TableRow key={session.sessionId} className={session.isDuplicated ? "text-muted-foreground" : ""}>
@@ -565,7 +718,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoiceData.floatSessions.sessions.map((fs) => {
+                  {sortedFloatSessions.map((fs) => {
                     const fsDate = new Date(fs.sessionDate);
                     return (
                       <TableRow key={fs.floatId}>
@@ -601,7 +754,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoiceData.coaching.competitions.map((comp) => {
+                  {sortedCompetitions.map((comp) => {
                     const compDate = new Date(comp.coachingDate);
                     return (
                       <TableRow key={comp.coachingId}>
@@ -623,6 +776,26 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
             </div>
           )}
 
+          {adminHours > 0 && (
+            <div>
+              <h3 className="mb-3 font-semibold">Admin Hours</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Total Hours</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>{formatHours(adminHours)}</TableCell>
+                    <TableCell className="text-right">£{adminEarnings.toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
           <div className="border-t pt-4">
             <div className="flex justify-between items-center">
               <div>
@@ -630,9 +803,10 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                 <p className="text-sm text-muted-foreground">
                   {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} session hrs + {invoiceData.coaching.breakdown.competitionHours.toFixed(1)} comp hrs
                   {invoiceData.floatSessions.totalHours > 0 ? ` + ${invoiceData.floatSessions.totalHours.toFixed(1)} float hrs` : ''} + {invoiceData.sessionWriting.count} written
+                   {adminHours > 0 ? ` + ${formatHours(adminHours)} admin hrs` : ''}
                 </p>
               </div>
-              <p className="text-3xl font-medium text-primary">£{invoiceData.totals.totalEarnings.toFixed(2)}</p>
+               <p className="text-3xl font-medium text-primary">£{totalEarningsWithAdmin.toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -664,25 +838,28 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               <CollapsibleContent>
                 <div className="border-t bg-muted/20">
                   <div className="divide-y">
-                    {invoiceData.coaching.sessions.map((session) => {
-                      const sessionDate = new Date(session.sessionDate);
-                      return (
-                        <div key={session.sessionId} className="p-4 space-y-1" data-testid={`session-detail-${session.sessionId}`}>
-                          <div className="flex items-center justify-between">
-                            <p className="font-medium">{format(sessionDate, 'EEEE do')}</p>
-                            <p className="font-semibold text-primary">{session.duration.toFixed(1)} hrs</p>
+                    {combinedCoachingActivity.map((activity) => {
+                      if (activity.kind === 'session') {
+                        const session = activity.session;
+                        const sessionDate = new Date(session.sessionDate);
+                        return (
+                          <div key={`session-${activity.id}`} className="p-4 space-y-1" data-testid={`session-detail-${session.sessionId}`}>
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium">{format(sessionDate, 'EEEE do')}</p>
+                              <p className="font-semibold text-primary">{session.duration.toFixed(1)} hrs</p>
+                            </div>
+                            <div className="flex items-start justify-between gap-2 text-sm">
+                              <Badge variant="outline" className="font-normal whitespace-normal text-left">{session.squadName}</Badge>
+                              <p className="text-muted-foreground whitespace-nowrap flex-shrink-0">{session.startTime} - {session.endTime}</p>
+                            </div>
                           </div>
-                          <div className="flex items-start justify-between gap-2 text-sm">
-                            <Badge variant="outline" className="font-normal whitespace-normal text-left">{session.squadName}</Badge>
-                            <p className="text-muted-foreground whitespace-nowrap flex-shrink-0">{session.startTime} - {session.endTime}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {invoiceData.floatSessions.sessions.map((fs) => {
+                        );
+                      }
+
+                      const fs = activity.floatSession;
                       const fsDate = new Date(fs.sessionDate);
                       return (
-                        <div key={fs.floatId} className="p-4 space-y-1" data-testid={`float-detail-${fs.floatId}`}>
+                        <div key={`float-${activity.id}`} className="p-4 space-y-1" data-testid={`float-detail-${fs.floatId}`}>
                           <div className="flex items-center justify-between">
                             <p className="font-medium">{format(fsDate, 'EEEE do')}</p>
                             <p className="font-semibold text-primary">{fs.duration.toFixed(1)} hrs</p>
@@ -723,7 +900,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               <CollapsibleContent>
                 <div className="border-t bg-muted/20">
                   <div className="divide-y">
-                    {invoiceData.sessionWriting.sessions.map((session) => {
+                    {sortedWritingSessions.map((session) => {
                       const sessionDate = new Date(session.sessionDate);
                       return (
                         <div key={session.sessionId} className={`p-4 space-y-1 ${session.isDuplicated ? "opacity-60" : ""}`} data-testid={`writing-detail-${session.sessionId}`}>
@@ -774,7 +951,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               <CollapsibleContent>
                 <div className="border-t bg-muted/20">
                   <div className="divide-y">
-                    {invoiceData.coaching.competitions.map((comp) => {
+                    {sortedCompetitions.map((comp) => {
                       const compDate = new Date(comp.coachingDate);
                       return (
                         <div key={comp.coachingId} className="p-4 space-y-1" data-testid={`competition-detail-${comp.coachingId}`}>
@@ -794,6 +971,69 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               </CollapsibleContent>
             </Card>
           </Collapsible>
+
+          {!adminHoursVisible ? (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 text-muted-foreground"
+                onClick={() => setAdminHoursVisible(true)}
+                data-testid="button-add-admin-hours"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add admin hours
+              </Button>
+            </div>
+          ) : (
+            <Card className="p-4" data-testid="card-admin-hours">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Admin Hours</p>
+                      <p className="text-2xl font-semibold text-primary" data-testid="text-admin-amount">
+                        £{adminEarnings.toFixed(2)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        At £{invoiceData.rates.hourlyRate.toFixed(2)} per hour
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground"
+                      onClick={removeAdminHours}
+                      aria-label="Remove admin hours"
+                      data-testid="button-remove-admin-hours"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="admin-hours" className="text-sm whitespace-nowrap">Hours:</label>
+                    <Input
+                      id="admin-hours"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.25"
+                      value={adminHoursInput}
+                      onChange={(event) => updateAdminHours(event.target.value)}
+                      placeholder="0"
+                      className="max-w-28"
+                      data-testid="input-admin-hours"
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Hourly Rate Card */}
           <Card className="p-4" data-testid="card-hourly-rate">
@@ -817,9 +1057,10 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-muted-foreground">Total Payment</p>
-                <p className="text-3xl font-semibold text-primary" data-testid="text-total-earnings">£{invoiceData.totals.totalEarnings.toFixed(2)}</p>
+                <p className="text-3xl font-semibold text-primary" data-testid="text-total-earnings">£{totalEarningsWithAdmin.toFixed(2)}</p>
                 <p className="text-xs text-muted-foreground">
                   {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} coaching + {invoiceData.floatSessions.totalHours.toFixed(1)} float hrs
+                  {adminHours > 0 ? ` + ${formatHours(adminHours)} admin hrs` : ''}
                 </p>
               </div>
             </div>

@@ -2339,7 +2339,10 @@ Note on definitions:
           duration: parseFloat(s.duration),
           role: s.leadCoachId === coachId ? 'lead' : (s.secondCoachId === coachId ? 'second' : 'helper'),
         };
-      });
+      }).sort((a, b) =>
+        a.sessionDate.localeCompare(b.sessionDate) ||
+        a.startTime.localeCompare(b.startTime)
+      );
 
       const totalCoachingHours = sessionDetails.reduce((sum, s) => sum + s.duration, 0);
 
@@ -2353,7 +2356,7 @@ Note on definitions:
           squadName: getSquadName(s),
           isDuplicated: !!s.duplicatedFromSessionId,
         };
-      });
+      }).sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
 
       // Get competition coaching
       const allCompetitionCoaching = await storage.getAllCompetitionCoaching();
@@ -2378,7 +2381,7 @@ Note on definitions:
           coachingDate: c.coachingDate,
           duration: parseFloat(c.duration),
         };
-      });
+      }).sort((a, b) => a.coachingDate.localeCompare(b.coachingDate));
 
       const totalCompetitionHours = competitionDetails.reduce((sum, c) => sum + c.duration, 0);
 
@@ -2401,7 +2404,10 @@ Note on definitions:
           locationName: location?.poolName || 'Unknown Location',
           duration,
         };
-      });
+      }).sort((a, b) =>
+        a.sessionDate.localeCompare(b.sessionDate) ||
+        a.startTime.localeCompare(b.startTime)
+      );
 
       const totalFloatHours = floatSessionDetails.reduce((sum, fs) => sum + fs.duration, 0);
 
