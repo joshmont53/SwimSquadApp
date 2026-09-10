@@ -18,6 +18,12 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -375,7 +381,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
     sortedFloatSessions,
   ]);
 
-  const handleExport = () => {
+  const handleExport = (exportFormat: 'csv' | 'xlsx') => {
     if (!invoiceData) return;
     const invoiceNumber = `${invoiceInitials(invoiceData.coachName)}-${INVOICE_MONTH_NAMES[invoiceData.month - 1]}-${String(invoiceData.year).slice(-2)}`;
     
@@ -495,6 +501,28 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
       `£${totalEarningsWithAdmin.toFixed(2)}`,
     ]);
 
+    const fileName = `invoice-${invoiceData.coachName.replace(/\s+/g, '-')}-${invoiceData.year}-${String(invoiceData.month).padStart(2, '0')}`;
+
+    if (exportFormat === 'csv') {
+      const escapeCsvCell = (cell: string) => {
+        if (cell.includes(',') || cell.includes('"') || cell.includes('\n')) {
+          return `"${cell.replace(/"/g, '""')}"`;
+        }
+        return cell;
+      };
+      const csvContent = `\uFEFF${csvRows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${fileName}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      return;
+    }
+
     const worksheet = XLSX.utils.aoa_to_sheet(csvRows);
 
     csvRows.forEach((row, rowIndex) => {
@@ -522,7 +550,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoice');
     XLSX.writeFile(
       workbook,
-      `invoice-${invoiceData.coachName.replace(/\s+/g, '-')}-${invoiceData.year}-${String(invoiceData.month).padStart(2, '0')}.xlsx`,
+      `${fileName}.xlsx`,
     );
   };
 
@@ -556,17 +584,29 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
           <div className="flex-1 min-w-0">
             <h1 className="text-base truncate">Invoice Tracker</h1>
           </div>
-          <Button 
-            onClick={handleExport} 
-            variant="outline"
-            size="sm"
-            className="shrink-0 gap-1.5"
-            disabled={!invoiceData}
-            data-testid="button-export"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                disabled={!invoiceData}
+                data-testid="button-export"
+              >
+                <Download className="h-4 w-4" />
+                Export
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('xlsx')} data-testid="button-export-xlsx">
+                Excel workbook (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')} data-testid="button-export-csv">
+                CSV file (.csv)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Month Selector */}
