@@ -554,7 +554,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
 
     if (coachMeetingHours > 0) {
       csvRows.push([]);
-      csvRows.push(['COACHES MEETINGS']);
+      csvRows.push(['OTHER']);
       csvRows.push(['Subtotal', 'Total Hours', 'Amount']);
       csvRows.push([
         '',
@@ -924,7 +924,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
 
           {coachMeetingHours > 0 && (
             <div>
-              <h3 className="mb-3 font-semibold">Coaches Meetings</h3>
+              <h3 className="mb-3 font-semibold">Other</h3>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -950,7 +950,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} session hrs + {invoiceData.coaching.breakdown.competitionHours.toFixed(1)} comp hrs
                   {invoiceData.floatSessions.totalHours > 0 ? ` + ${invoiceData.floatSessions.totalHours.toFixed(1)} float hrs` : ''} + {invoiceData.sessionWriting.count} written
                    {adminHours > 0 ? ` + ${formatHours(adminHours)} admin hrs` : ''}
-                   {coachMeetingHours > 0 ? ` + ${formatHours(coachMeetingHours)} meeting hrs` : ''}
+                   {coachMeetingHours > 0 ? ` + ${formatHours(coachMeetingHours)} other hrs` : ''}
                 </p>
               </div>
                <p className="text-3xl font-medium text-primary">£{totalEarningsWithExtras.toFixed(2)}</p>
@@ -1144,7 +1144,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                   data-testid="button-add-coach-meeting-hours"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Add coaches meetings
+                  Add other
                 </Button>
               )}
             </div>
@@ -1208,7 +1208,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                 <div className="flex-1 min-w-0 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm text-muted-foreground">Coaches Meetings</p>
+                      <p className="text-sm text-muted-foreground">Other</p>
                       <p className="text-2xl font-semibold text-primary" data-testid="text-coach-meeting-amount">
                         £{coachMeetingEarnings.toFixed(2)}
                       </p>
@@ -1222,7 +1222,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                       size="icon"
                       className="h-8 w-8 text-muted-foreground"
                       onClick={removeCoachMeetingHours}
-                      aria-label="Remove coaches meetings"
+                      aria-label="Remove other hours"
                       data-testid="button-remove-coach-meeting-hours"
                     >
                       <X className="h-4 w-4" />
@@ -1274,7 +1274,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
                 <p className="text-xs text-muted-foreground">
                   {invoiceData.coaching.breakdown.sessionHours.toFixed(1)} coaching + {invoiceData.floatSessions.totalHours.toFixed(1)} float hrs
                   {adminHours > 0 ? ` + ${formatHours(adminHours)} admin hrs` : ''}
-                  {coachMeetingHours > 0 ? ` + ${formatHours(coachMeetingHours)} meeting hrs` : ''}
+                  {coachMeetingHours > 0 ? ` + ${formatHours(coachMeetingHours)} other hrs` : ''}
                 </p>
               </div>
             </div>
