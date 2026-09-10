@@ -1119,21 +1119,38 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
             </Card>
           </Collapsible>
 
-          {!adminHoursVisible ? (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 text-muted-foreground"
-                onClick={() => setAdminHoursVisible(true)}
-                data-testid="button-add-admin-hours"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add admin hours
-              </Button>
+          {(!adminHoursVisible || !coachMeetingHoursVisible) && (
+            <div className="flex items-center justify-end gap-2">
+              {!adminHoursVisible && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-muted-foreground"
+                  onClick={() => setAdminHoursVisible(true)}
+                  data-testid="button-add-admin-hours"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add admin hours
+                </Button>
+              )}
+              {!coachMeetingHoursVisible && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 text-muted-foreground"
+                  onClick={() => setCoachMeetingHoursVisible(true)}
+                  data-testid="button-add-coach-meeting-hours"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add coaches meetings
+                </Button>
+              )}
             </div>
-          ) : (
+          )}
+
+          {adminHoursVisible && (
             <Card className="p-4" data-testid="card-admin-hours">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
@@ -1182,21 +1199,7 @@ export function InvoiceTracker({ onBack }: InvoiceTrackerProps) {
             </Card>
           )}
 
-          {!coachMeetingHoursVisible ? (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 text-muted-foreground"
-                onClick={() => setCoachMeetingHoursVisible(true)}
-                data-testid="button-add-coach-meeting-hours"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add coaches meetings
-              </Button>
-            </div>
-          ) : (
+          {coachMeetingHoursVisible && (
             <Card className="p-4" data-testid="card-coach-meeting-hours">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
