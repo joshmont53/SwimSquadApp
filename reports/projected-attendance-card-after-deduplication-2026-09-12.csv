@@ -1,0 +1,219 @@
+squad_name,first_name,last_name,swimmer_id,swimmer_created_at,attended_sessions,recorded_sessions,percentage,projected_card_fraction
+County Advanced,Rudy,Aspland,0ec0fc42-a446-4107-b53c-f26c8652e134,2025-11-24T19:17:15.675Z,8,9,89,8/9
+County Advanced,Lachlan,Brown,3ac07300-2934-451e-a767-d861a6a8b563,2025-11-24T19:17:15.675Z,6,9,67,6/9
+County Advanced,Simona,Buonomo,4bb63d62-2197-4a4f-8a9b-c5ead1e83721,2026-04-12T10:46:35.480Z,9,9,100,9/9
+County Advanced,Patrick,Campbell,187819f9-ab8f-4cfe-ba0a-f388eb7254db,2025-11-24T19:17:15.675Z,6,9,67,6/9
+County Advanced,Lilly,Casson,25907dcf-82a5-46cc-805d-aed798c28e5c,2025-11-24T19:17:15.675Z,1,9,11,1/9
+County Advanced,Kiana,Coley,5cf43e0b-3c49-471f-a495-f4c9495cc732,2025-11-24T19:17:15.675Z,7,9,78,7/9
+County Advanced,Miya,Cook,2eac0f65-a04b-404b-8c2f-213f34f24172,2025-11-24T19:17:15.675Z,5,9,56,5/9
+County Advanced,Alexander,Dzavan,e8814304-2cd1-4dbc-b1cd-01ffb5327a65,2025-11-24T19:17:15.675Z,4,9,44,4/9
+County Advanced,Alexander,Gaw,8146ef59-b9d4-48d6-857d-a4145d49a9df,2025-11-24T19:17:15.675Z,5,9,56,5/9
+County Advanced,Emma,Goddard,92bc6c97-92e8-4f46-a5bc-6765ca6ce8f2,2025-11-24T19:17:15.675Z,7,9,78,7/9
+County Advanced,Amy,Hart,0c2dec6d-cd5d-44d3-b101-eeb7d9303edc,2025-11-24T19:17:15.675Z,7,9,78,7/9
+County Advanced,Ella,Howard,f95d6a79-7805-40f8-b638-eb5ac4f4f64f,2026-04-12T10:38:32.482Z,6,9,67,6/9
+County Advanced,Amelie,Hulse,1316ffe0-ba77-4a67-8c5b-a1294a37f53f,2026-02-02T08:11:32.606Z,5,9,56,5/9
+County Advanced,Oliver,Hulse,09d8e37b-0a4d-4971-9626-d84d46d2737a,2026-02-02T08:12:15.203Z,7,9,78,7/9
+County Advanced,Riley,Knuszka,186d30f8-e64a-4805-a2c5-5ba0393c5d7b,2025-11-24T19:19:03.128Z,8,9,89,8/9
+County Advanced,Gabriela,Koryciak,d32660eb-0ed8-41cd-824d-6cd753996bb6,2026-04-12T10:47:19.962Z,9,9,100,9/9
+County Advanced,Tabitha,Meadows,c63c6100-ba8c-42fb-ab0f-301a3cb9f3f1,2025-11-24T19:19:03.128Z,9,9,100,9/9
+County Advanced,Josh,Orme,8d98a59a-5288-4075-a9b0-1a24e54cf473,2025-11-24T19:19:03.128Z,5,9,56,5/9
+County Advanced,Ellie,Robson-Rowan,7444edf1-0c1d-4e8b-abea-5c028ed2b8bb,2026-04-12T10:45:47.489Z,8,9,89,8/9
+County Advanced,Joshua,Small,14025289-985e-443d-b3e6-3bfd0f04adc6,2026-02-02T08:12:47.622Z,7,9,78,7/9
+County Advanced,Austin,Spooner,10289d7a-fb43-4509-9293-8f5d1ee140a5,2025-11-24T19:19:16.675Z,6,9,67,6/9
+County Advanced,Henry,Wakefield,d412c6b2-cfaf-4ade-9416-42927f81873f,2025-11-24T19:19:16.675Z,7,9,78,7/9
+County Advanced,Millie,Wall,e52cceec-b312-43ae-9354-24cf838526e8,2025-11-24T19:19:16.675Z,2,9,22,2/9
+County Advanced,Skylar,Welch,5496898f-b576-4a41-908f-9e27f2900fa0,2025-11-24T19:19:16.675Z,5,9,56,5/9
+County Development,Sophie,Attwood,5dddbae1-6a53-4858-b62d-525046435afd,2025-11-24T19:17:15.675Z,5,6,83,5/6
+County Development,Ava,Baker,b6539710-a7af-4e77-8c4c-27cae15c0226,2025-11-24T19:17:15.675Z,3,6,50,3/6
+County Development,Mason,Browne,5a419560-5719-430d-ba1c-6c275fee5cca,2025-11-24T19:17:15.675Z,4,6,67,4/6
+County Development,Hermione,Burkin,f1b5df07-6450-4fc6-aa7a-014a0fcf2fa2,2026-09-07T21:33:13.265Z,0,2,0,0/2
+County Development,Joshua,Chapman,54cf112c-825b-4999-9291-082c67928254,2025-11-24T19:17:15.675Z,5,6,83,5/6
+County Development,Mia,Cleator,6e035375-2880-40f7-9a40-85f5eefda51c,2025-11-24T19:17:15.675Z,6,6,100,6/6
+County Development,Tilly,Cooper,a354b1ef-2d7d-4340-bd4a-fc1fe02eac57,2025-11-24T19:17:15.675Z,6,6,100,6/6
+County Development,Barnaby,Day,2e482257-a362-4cf3-98af-dd9a45f18942,2025-11-24T19:17:15.675Z,5,6,83,5/6
+County Development,Jack,Einchcomb,5e7b3f9b-4a4b-4e8f-8704-93c9e8fb93f3,2025-11-24T19:17:15.675Z,5,6,83,5/6
+County Development,Benjamin,Falconi,22071cf0-22b2-4df6-9a7f-e746cac63f90,2025-11-24T19:17:15.675Z,4,6,67,4/6
+County Development,Brodie,Golabek,e39a3acc-08a5-4df4-88e7-2e1e814c7e47,2025-11-24T19:17:15.675Z,5,6,83,5/6
+County Development,Kristian,Gulcz,bad4fd14-2ff3-496b-a121-5650163d5f15,2025-11-24T19:17:15.675Z,1,6,17,1/6
+County Development,Annabelle,Hawes,282c3aca-9460-4c85-97e0-45f1e0a938f8,2025-11-24T19:17:15.675Z,4,6,67,4/6
+County Development,Connie,Herlihey,cd38158e-e7b7-4ddb-afaf-054272a5599e,2026-04-12T10:39:13.677Z,5,6,83,5/6
+County Development,Olivia,Howard,354946fe-e923-49a7-9022-fdc49c7d54dc,2026-04-12T10:31:14.720Z,4,6,67,4/6
+County Development,Beth,Johnston,3fda472d-8107-4f6f-a91c-b45a9a50fef3,2025-11-24T19:19:03.128Z,5,6,83,5/6
+County Development,Evan,Lee,5d36ae45-f298-435e-b2a7-30e3b2b6748c,2025-11-24T19:19:03.128Z,5,6,83,5/6
+County Development,James,Leung,01305ce1-d39d-42d7-8e6e-5761a3aaeff7,2025-11-24T19:19:03.128Z,4,6,67,4/6
+County Development,Molly,Nicholls,926230d3-196c-46a1-bdaa-1a0f5be3bd35,2025-11-24T19:19:03.128Z,5,6,83,5/6
+County Development,Sam,Orme,ffe115af-470f-4dce-9d50-4be21f134fc2,2025-11-24T19:19:03.128Z,6,6,100,6/6
+County Development,Jacob,Pavel,8efeecc1-1252-4bc6-b4b7-43d96f373de5,2025-11-24T19:19:03.128Z,4,6,67,4/6
+County Development,Aashman,Rai,73451ec8-18eb-4a3d-8660-9e12e9d629cf,2025-11-24T19:19:03.128Z,5,6,83,5/6
+County Development,Molly,Robson-Rowan,56321b2b-ff2b-4482-bb07-d134ef901af8,2025-11-24T19:19:16.675Z,4,6,67,4/6
+County Development,Winnie,Uccelli,133dd469-2174-4b6c-a130-d00b70b5a7c4,2025-11-24T19:19:16.675Z,6,6,100,6/6
+County Development,Dexter,Welch,f31eb3c7-92b8-4940-9f26-e1c5ab054c9f,2025-11-24T19:19:16.675Z,5,6,83,5/6
+County Development,Paige,van der Westhuizen,a569419c-6dac-425c-86ed-a5ec3ccf6bd7,2025-11-24T19:19:16.675Z,4,6,67,4/6
+Form Build,Yaman,Ayral,76c85e0d-721f-4746-9c67-efa910c9a39d,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Form Build,Amber,Mullan,e2125d9f-77c5-4065-8d9c-895d53cf1038,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Form Build,Grace,Mullan,052018f7-d8bf-4389-aea0-056aaa336267,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Form Build,Alicia,Oluwande,58c1a936-c47e-4679-8900-9c9ba5ab4add,2026-08-24T18:08:04.637Z,0,0,,Not shown: 0 recorded sessions
+Form Prime,Edward,Goddard,59ab9632-7f04-4d74-811f-ad96ac229794,2025-11-24T19:17:15.675Z,2,4,50,2/4
+Form Prime,Oliver,Goddard,5aecba62-091c-47da-9ee9-382c8770ba6c,2025-11-24T19:17:15.675Z,3,4,75,3/4
+Form Prime,Adam,Hey,752242b0-fdf2-4ee8-8985-23ce6591ac87,2025-11-24T19:19:03.128Z,2,4,50,2/4
+Form Prime,Amy,Jones,cf348cad-28e4-4c25-9d3f-51f3e1d7e85b,2025-11-24T19:19:03.128Z,3,4,75,3/4
+Form Prime,Ollie,Lovick,90a72c01-d367-4688-8e0e-5562628dbab2,2025-11-24T19:19:03.128Z,2,4,50,2/4
+Form Prime,Alannah,Sime,8aceccf1-c478-4ce8-9490-76089212fdb5,2025-11-24T19:19:16.675Z,2,4,50,2/4
+Form Prime,Ella,Worship,f1306714-6baf-47da-81ba-5d6856560c1f,2025-11-24T19:19:16.675Z,2,4,50,2/4
+Form Prime,Samuel,Yates,de06bb67-978e-470a-a79b-6f7e4cb9974c,2025-11-24T19:19:16.675Z,2,4,50,2/4
+Form Rise,Emily,Abel,a25cf9ef-9aa8-424d-9812-44d0b2d29d51,2026-09-07T21:34:55.851Z,0,0,,Not shown: 0 recorded sessions
+Form Rise,Bella,Falconi,146fd4ea-dc4c-4cc6-a631-6ccdac1438b3,2025-11-24T19:17:15.675Z,1,2,50,1/2
+Form Rise,Dominika,Kolelis,5515d6e7-4820-4bd9-9093-db4c3250395a,2025-11-24T19:19:03.128Z,1,2,50,1/2
+Form Rise,Lewis,Parton,27521629-b21c-4025-ae97-39620c491d63,2025-11-24T19:19:03.128Z,2,2,100,2/2
+Form Rise,Luca,Righetti Zullo,a544dfbc-57c6-47f4-9e17-1aff32396c46,2025-11-24T19:19:16.675Z,0,2,0,0/2
+Form Rise,Yuri,Wong,fb234f05-f006-4254-9e61-c2cd0ccb9b92,2025-11-24T19:19:16.675Z,1,2,50,1/2
+Leaver,William,Bass,53503a7a-3083-407c-a978-2e313758fcdd,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Louis,Chapman,62deaebf-7b0f-4331-ae11-36b65fca8e8b,2026-05-09T06:35:40.624Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Lara,Charlton,2d97938f-8092-4201-86e6-af7bd2cbba26,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,James,Clark,ddfb9480-b8a3-4318-98be-b7403acb8601,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,James,Clarkson,cdfde65a-5584-4bae-ab9d-6b3694dcbf59,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Darcy,Cooper,3a6c135f-e8a4-414f-8eff-97bf6330694b,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Emilia,Date,c878eabf-8097-4d69-8465-d94fe0a41873,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,George,Esch,c3dd8bdc-767b-4a00-9af8-9cbebe8a4f65,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Edward,Evans,5e8ea46d-9e44-42c8-9ccd-41dbfcb32f0b,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Naomi,Everard,cf925a6d-ac60-405b-b52e-ab51c972f026,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Harry,Fagan,3896d728-6a8f-4562-bcb7-2d134e95da40,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Vincent,Fanning,556e5af6-a001-4213-aef5-543f9f1e59a4,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Maya,Farmer,d9a7ee7c-1cb0-435a-b83c-308c36b693ff,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Mark,Faulkner,fd519ba4-da3f-4152-91ea-51b6ea2e34e1,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Thomas,Fletcher,24172c8d-ab9b-44d9-847b-b28c60573946,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Jayden,Fu,834aefae-28b1-4acc-bb36-f7aa2190e8c2,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Igor,Gladysz,0e409335-8265-4cec-aa98-e038543665bb,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Alexander,Gordon,1f520107-4063-47ca-b199-c6a2ea9fada5,2025-11-24T19:17:15.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Nell,Hayward,844c31d8-cdcb-42b5-90ef-8bdd310a9e61,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Chloe,Hodgson,659244a8-6550-4a59-914b-e9eec61e6005,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Lily,Jacobs,10760309-6b05-4202-83e4-1096d4ad96f1,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Chelsea,Knight,3f01256c-33b9-4868-81fc-1681a52308da,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Lauren,Knight,2fa23e8f-99ed-4235-aaeb-6a4c6fb764ff,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Ellie,Kong,50fa0947-93f6-4fd2-b851-4a07d97ecb20,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Sam,Law Chin Yung,ba641e18-1979-4e3c-9cf3-384206dd2d76,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Harry,Laws,5f8e01f1-fe62-48ae-887f-c3a5e889a2ee,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Elliot,Mack,958712c3-d1cf-4c51-b846-dbe8de245ba9,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Luke,Meeks,56582bfb-e379-4249-9e8f-a512805cb39c,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Andrea,Merritt,e58e52df-daca-48ad-94e2-c335af8fe492,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Haley,Morgan,cd5d074c-cf3c-4939-9160-09cdbee74339,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,John,Morton,11ab0cc5-c373-46a3-be27-e6a49bca1c86,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Isobel,Neighbour,470227ac-4737-4680-885a-e542b331cbf8,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Charlotte,Pallangyo,d866e3f6-fb95-42cf-b967-07a379c1ef6e,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Amara,Pamma,5a3d1c5e-9f50-491d-9025-350403494592,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Riya,Pamma,0f82e7ff-e0d5-4cb6-806a-21d7e6985098,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,James,Payne,7b0a7179-c209-4a78-a6cf-b52456348989,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Gyorgy,Posta,8d871b40-0a1a-4776-895e-76f0e6b7bfc7,2025-11-24T19:19:03.128Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Isabelle,Riches,7ad44331-768c-47c5-847c-2098f0a10950,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Lily,Riches,c8f3d054-f384-4813-8e96-01865b69c515,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Zoe,Sadler,96eaa009-6574-4a87-88b0-c4cff913fde0,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Arrice,Scott,c0dac148-afc8-4053-9e40-e61704321360,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,George,Stanchev,2d945b6b-0c42-460f-b985-3339a9af5d8d,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Sarah,Taylor,e9512186-b539-4226-aace-0602b09bbd7f,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Ffion,Thomas,2b7bc92b-1391-4128-8c50-d6559a84854a,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Iris,Tong,b5894a09-14e1-41f1-bc42-78369b30ce30,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Christian,Walker,27f65f17-28a2-411c-9ca7-5b1a082c9ea2,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Leaver,Tegan,Ward,73d48748-123e-48b3-8b7d-a216cbb23ce1,2025-11-24T19:19:16.675Z,0,0,,Not shown: 0 recorded sessions
+Masters,Clive,Benson,e6b2197f-7a83-4a63-99fd-b0ab70d29190,2025-11-24T19:17:15.675Z,2,3,67,2/3
+Masters,Richard,Brinck,a6954f81-43cb-4e19-861f-99a790aee8b8,2025-11-24T19:17:15.675Z,2,3,67,2/3
+Masters,Karen,Brown,08d61813-1d58-488b-9975-d3a883574349,2026-08-24T18:27:44.230Z,0,3,0,0/3
+Masters,Anthony,Browne,b757e6a1-2f36-472f-9e34-515f9b3843e0,2025-11-24T19:17:15.675Z,1,3,33,1/3
+Masters,Stephen,Calver,1393dc24-aa65-4faa-89fd-28b8d194cd2a,2025-11-24T19:17:15.675Z,0,3,0,0/3
+Masters,Chris,Fawkes,1ca6df68-104e-4d68-971a-b304db58302f,2025-11-24T19:17:15.675Z,3,3,100,3/3
+Masters,Hannah,Hooper,64dfe743-7723-48d5-af97-99bebc10d036,2025-11-24T19:19:03.128Z,0,3,0,0/3
+Masters,Paul,Jones,54b52526-cc47-4ec4-8837-4ee3794aacae,2025-11-24T19:19:03.128Z,1,3,33,1/3
+Masters,Michelle,Laverick,a61a2867-df4d-46a0-8b61-66ab9dbca431,2025-11-24T19:19:03.128Z,3,3,100,3/3
+Masters,Oliver,Mellor,1a17a133-b261-499d-b2e8-a931a38d7696,2025-11-24T19:19:03.128Z,0,3,0,0/3
+Masters,Josh,Montgomery,249c7ace-1c95-4e85-b595-20667302e4f2,2025-11-23T17:55:10.856Z,2,3,67,2/3
+Masters,Helen,Payne,4a94a5bd-cb68-4fd8-b56e-708f81e762d6,2025-11-24T19:19:03.128Z,2,3,67,2/3
+Masters,Joseph,Payne,cda7acfb-5894-40a9-9c37-57b8eaf33770,2025-11-24T19:19:03.128Z,1,3,33,1/3
+Masters,Matthew,Perry,957e528f-a3ed-41d8-bdaa-ae2189ccf3ea,2025-11-24T19:19:03.128Z,2,3,67,2/3
+Masters,Malcolm,Rainier,3b1aa151-0d71-4028-b5d9-7461bd6fc562,2025-11-24T19:19:03.128Z,0,3,0,0/3
+Masters,Rachael,Rock,38d2007e-ff3d-4792-adf5-506931c3f97f,2025-11-24T19:19:16.675Z,3,3,100,3/3
+Masters,Zack,Westhead,7a43efe8-9a8e-48fa-9064-dc4cc58ce468,2026-08-24T18:27:57.990Z,3,3,100,3/3
+Masters,Eamon,van der Flier,12ea94d0-e50c-4a09-a120-a6261e99fd02,2026-08-24T18:27:29.826Z,0,3,0,0/3
+Regional Development,Olivia,Bayley,fd26928a-5e84-4383-827c-6a0b3fbabcb0,2025-11-24T19:17:15.675Z,2,6,33,2/6
+Regional Development,Tom,Clarke,ec1cfb94-0c88-4703-bafd-62dffc5a212c,2025-11-24T19:17:15.675Z,4,6,67,4/6
+Regional Development,Oscar,Davies,c9d0dd53-d5e4-4562-89cf-8ae453b3d0ff,2025-11-24T19:17:15.675Z,2,6,33,2/6
+Regional Development,Ava,Harper,3c36daba-3437-4e37-b470-3983ae957c07,2025-11-24T19:17:15.675Z,6,6,100,6/6
+Regional Development,Dexter,Herbert,870718b9-9846-4b05-b309-267dedd8bb59,2025-11-24T19:19:03.128Z,1,6,17,1/6
+Regional Development,Jasmine,Key,7bf4db54-dc8e-478c-baf2-2f6628e58d84,2025-11-24T19:19:03.128Z,0,6,0,0/6
+Regional Development,Kylie-Rae,Livesey,3bc989d1-9672-42e6-a823-328fce0636a8,2025-11-24T19:19:03.128Z,5,6,83,5/6
+Regional Development,Ariya,Mirhosseini,ef930d95-d0d2-4bdb-a253-cb4126a74fee,2025-11-24T19:19:03.128Z,4,6,67,4/6
+Regional Development,Vivienne,Morton,088a9ce0-63ae-4a67-8a3b-bddb2e862fd3,2025-11-24T19:19:03.128Z,2,6,33,2/6
+Regional Development,Iulia,Nestor,f54d1121-d93f-4a8e-afaf-0fda83ce24af,2025-11-24T19:19:03.128Z,5,6,83,5/6
+Regional Development,Ben,Orme,0d95e228-79d7-4424-9cc2-40b74c400763,2025-11-24T19:19:03.128Z,3,6,50,3/6
+Regional Development,Abhay,Paruchuri,e1dba842-3610-449d-96ff-c4ebe22f9bcb,2025-11-24T19:19:03.128Z,4,6,67,4/6
+Regional Development,Laetizia,Sandoval,f9895234-57d7-4246-8777-4e76fba7e2d9,2025-11-24T19:19:16.675Z,5,6,83,5/6
+Regional Development,Amelia,Stewart,584a8d33-80af-42da-93f7-c13c90ff2f75,2026-08-24T18:22:20.034Z,5,6,83,5/6
+Regional Development,Katie,Taylor,d222ba4a-40f2-4299-b2d0-0a6cdb30f126,2025-11-24T19:19:16.675Z,3,6,50,3/6
+Regional Development,Alice,Tillett,c700df75-b79c-418b-aed6-388dea803045,2025-11-24T19:19:16.675Z,3,6,50,3/6
+Regional Development,Sophie,Warne,2cb52bef-b77d-47e3-8db9-cea7b7f777c4,2025-11-24T19:19:16.675Z,4,6,67,4/6
+Regional Development,Thomas,Wight-boycott,5bbfda12-f6a4-4b75-9918-989ff983316d,2025-11-24T19:19:16.675Z,0,6,0,0/6
+Regional Performance,Owen,Channing,e1e4d7c2-94cd-402e-9850-013f94f263a4,2025-11-24T19:17:15.675Z,4,9,44,4/9
+Regional Performance,Eva,Dickinson,ebddf5b3-c905-4b24-8e84-28a23a13e974,2025-11-24T19:17:15.675Z,6,9,67,6/9
+Regional Performance,Eva,Harvey,a49720e5-23fa-4f52-b4b4-40f0469ca64b,2025-11-24T19:17:15.675Z,7,9,78,7/9
+Regional Performance,Ella,Head,6ec7f4c4-0283-4341-80cd-5142a7dae08c,2025-11-24T19:19:03.128Z,8,9,89,8/9
+Regional Performance,Olivia,Hooper,8b13000c-6ddb-4c76-96d1-5053e2163df4,2025-11-24T19:19:03.128Z,7,9,78,7/9
+Regional Performance,Evan,Ian,8aec5654-4a4f-4403-8a21-cc74fb2cbe8c,2025-11-24T19:19:03.128Z,4,9,44,4/9
+Regional Performance,Kaylem,Livesey,cd2217cd-fb3a-42c5-aeec-21fb6dc198fe,2025-11-24T19:19:03.128Z,7,9,78,7/9
+Regional Performance,Lily,Neighbour,c8dc24a3-c90e-4d3c-8371-f7e40b868282,2025-11-24T19:19:03.128Z,7,9,78,7/9
+Regional Performance,Emily,Paull,f64cdf7a-f4fe-490c-b7ba-a3286888cb5b,2025-11-24T19:19:03.128Z,8,9,89,8/9
+Regional Performance,Thomas,Pride,8c5cd639-068e-4385-8dcb-954eee0e2bd5,2025-11-24T19:19:03.128Z,7,9,78,7/9
+Regional Performance,Cerys,Snelling,4e695925-810f-484b-be8a-231daa407536,2025-11-24T19:19:16.675Z,0,9,0,0/9
+Regional Performance,Sophie,Southcott,7060b512-8de4-4ac7-b964-c49982be1259,2026-08-24T18:24:03.236Z,4,9,44,4/9
+Regional Performance,Eva,Stancheva,bbdaa766-9411-4d3a-b855-62494952eea4,2025-11-24T19:19:16.675Z,5,9,56,5/9
+Regional Performance,Iwan,Stone,9ebdfe16-693b-48b7-8164-83af4cd9f7d1,2025-11-24T19:19:16.675Z,7,9,78,7/9
+Regional Performance,Finlay,Stuart,d9596376-7391-4706-93ac-c5a512adca71,2025-11-24T19:19:16.675Z,7,9,78,7/9
+Regional Performance,Hannah,Vanstone,e16de064-b603-40c0-89c0-abbc93f2f7b4,2025-11-24T19:19:16.675Z,5,9,56,5/9
+Regional Performance,Thomas,Warne,8b78416c-fb3f-422a-b00b-3eee322e69d9,2025-11-24T19:19:16.675Z,8,9,89,8/9
+Regional Performance,Zara,Wilkins,b6f8b2a1-7e8f-48e8-a4c6-532834eafa8c,2026-08-24T18:24:30.092Z,6,9,67,6/9
+Regional Performance,Ellena,Windard,2bf63e5d-d2c2-4dd2-8861-b80b5af8b1bb,2026-05-16T09:10:52.513Z,6,9,67,6/9
+Regional Performance,Abigail,van der Westhuizen,6e86431c-0d02-4216-8431-2914805a8c6e,2025-11-24T19:19:16.675Z,7,9,78,7/9
+Skills Advanced,Thomas,Bass,4f33002a-6052-40af-a14c-b654652bbdfa,2025-11-24T19:17:15.675Z,1,6,17,1/6
+Skills Advanced,Holly,Brayton,6815eb7b-6ff6-414d-ad7b-e1d7dd0177ac,2025-11-24T19:17:15.675Z,4,6,67,4/6
+Skills Advanced,Rebecca,Brown,61503350-ae9c-45ba-bb56-89335a45199c,2025-11-24T19:17:15.675Z,5,6,83,5/6
+Skills Advanced,Willow,Casson,447df4f7-5c7a-47a2-a3ed-90a23b545a01,2025-11-24T19:17:15.675Z,5,6,83,5/6
+Skills Advanced,Ava,Clegg,2a8910f0-e36d-4660-8f38-1f4196868799,2025-11-24T19:17:15.675Z,4,6,67,4/6
+Skills Advanced,William,Dimmack,5081320d-bcda-4bd0-badb-136f098ed57c,2025-11-24T19:17:15.675Z,1,6,17,1/6
+Skills Advanced,Sara,Hunter,eaae8e44-ae69-4ecb-b254-18bffafb75d4,2025-11-24T19:19:03.128Z,6,6,100,6/6
+Skills Advanced,George,Johnston,a116b2d0-9b7e-4aa7-a598-a2720530fe23,2026-04-12T10:36:10.976Z,5,6,83,5/6
+Skills Advanced,Sebastian,Liddle,199351da-b7f7-4a31-9d20-5147f582aa19,2026-04-12T10:36:47.802Z,4,6,67,4/6
+Skills Advanced,Audrey,Lofts,88848a55-dc41-4a41-88d1-2a3faa3b1fe5,2025-11-24T19:19:03.128Z,1,6,17,1/6
+Skills Advanced,Rupert,Mack,060ef7b5-2f75-498f-8270-ace45d372589,2025-11-24T19:19:03.128Z,2,6,33,2/6
+Skills Advanced,Beatrix,Meader-Hill,ade19437-a219-4a09-aff4-ae5287fc64af,2026-09-07T21:31:49.686Z,2,3,67,2/3
+Skills Advanced,Florence,Ostler,aa395f49-3830-4dfc-987b-5dadb33e4b64,2025-11-24T19:19:03.128Z,5,6,83,5/6
+Skills Advanced,William,Pope,e2aba1a1-4864-4414-a8cf-d1cceff4c5dd,2026-08-24T18:16:18.781Z,4,6,67,4/6
+Skills Advanced,Elizabeth,Sampson,21ac86df-5dcc-4fcc-9a8d-ffb8f2b5f676,2025-11-24T19:19:16.675Z,3,6,50,3/6
+Skills Advanced,Clara,Seery,fcee4b6c-62d1-4d5c-82ae-f4fc406c4b2b,2025-11-24T19:19:16.675Z,6,6,100,6/6
+Skills Advanced,Miles,Spillane,76039012-09d6-440f-8194-ddaede7c5b18,2025-11-24T19:19:16.675Z,5,6,83,5/6
+Skills Advanced,Chloe,Wight-Boycott,8f512959-ee2f-4959-a485-d51fcc25b960,2026-08-24T18:16:43.728Z,1,6,17,1/6
+Skills Entry,Aras,Ayral,25360b26-fc84-4a7d-b153-d00128ac3ca2,2026-08-24T18:10:02.594Z,2,2,100,2/2
+Skills Entry,Harper,Matthews,0ac66095-dcc3-4063-b848-0547a686284a,2026-09-07T21:34:22.487Z,0,1,0,0/1
+Skills Entry,Ella,Warren,222f5592-2a3a-429c-92f5-9fba221b87f1,2026-04-12T10:24:18.533Z,0,2,0,0/2
+Skills Entry,Jessica,Wilcock,6ca50948-5e0c-44c6-967e-f8ca33ea612a,2026-09-07T21:32:28.908Z,0,1,0,0/1
+Skills Foundation,Dylan,Hancock,42afa325-7b98-4300-9987-2f6d2d7af1f7,2025-11-24T19:17:15.675Z,0,2,0,0/2
+Skills Foundation,Chloe,Hattingh,7cfb2cf5-7627-4f4a-a78e-4d967b84514d,2026-04-29T08:23:02.211Z,2,2,100,2/2
+Skills Foundation,Megan,Healey,ecbf509f-c423-4d3e-8f96-075641f58013,2025-11-24T19:19:03.128Z,2,2,100,2/2
+Skills Foundation,Peter,Heyns,3cf3f7a6-4918-49b5-a5ca-d28afa290632,2025-11-24T19:19:03.128Z,2,2,100,2/2
+Skills Foundation,Aiden,Kong,38a6817b-b3d3-43c5-84f8-ec30c1e0c823,2026-04-29T08:22:05.022Z,0,2,0,0/2
+Skills Foundation,Morgan,Ridgway,c2aeb122-a10f-46ea-a21b-3948754daf97,2026-08-24T18:11:08.980Z,2,2,100,2/2
+Skills Foundation,Edward,Sampson,726c8af3-125e-47fd-8eb9-275e6f8e01d3,2025-11-24T19:19:16.675Z,1,2,50,1/2
+Skills Foundation,Emma,Stephen,cde83581-a69c-4b34-b1e4-85d57610ae5a,2025-11-24T19:19:16.675Z,2,2,100,2/2
+Skills Foundation,Zack,Sutton,cb6d20f2-9ec8-48ee-b46d-67e7168b0b8a,2025-11-24T19:19:16.675Z,0,2,0,0/2
+Skills Foundation,Alex,Tarrant,bd39e9b8-f9d7-49b7-9b47-a941f7146ef8,2026-09-07T21:33:46.184Z,1,1,100,1/1
+Skills Foundation,Barney,Uccelli,48fcd94e-4bfa-4ee6-92c1-4ed4e05d2313,2025-11-24T19:19:16.675Z,2,2,100,2/2
+Skills Foundation,Charlie,Vanstone,03ba8cb0-c3d7-42f0-a99c-22e982ba4919,2026-04-29T08:21:31.355Z,2,2,100,2/2
+Skills Intermediate,Ellie,Bailey,d26dec0b-d841-4153-bcdc-612c1d2a0072,2026-04-12T10:32:05.809Z,4,4,100,4/4
+Skills Intermediate,William,Darcy,b103f960-3ed0-441d-abe4-3f949d93f8e0,2025-11-24T19:17:15.675Z,3,4,75,3/4
+Skills Intermediate,Cara,Durieu,29333c8f-3e87-4638-ab06-61dc0e187e71,2025-11-24T19:17:15.675Z,3,4,75,3/4
+Skills Intermediate,Otillia,Golliman,9f6a9801-afc9-4ccf-bddb-d75493fc684a,2026-08-24T18:14:30.019Z,0,4,0,0/4
+Skills Intermediate,Matilida,Hickman,a4704b79-7a5d-49c9-8fff-c3509be2196c,2025-11-24T19:19:03.128Z,3,4,75,3/4
+Skills Intermediate,Jude,Hookings,ec5a489a-88cf-45b2-97af-15d49054fe0f,2025-11-24T19:19:03.128Z,4,4,100,4/4
+Skills Intermediate,Rowan,Hookings,03fee9b6-09fd-489f-b090-19afe91f4c60,2025-11-24T19:19:03.128Z,4,4,100,4/4
+Skills Intermediate,Cheuk Nam,Kan,4f65ede1-4f46-41f0-9de1-1970729041ec,2025-11-24T19:19:03.128Z,2,4,50,2/4
+Skills Intermediate,Felix,Pearce,02414f4b-bae1-4ed3-9866-706ce3ee9544,2026-04-12T10:30:15.479Z,3,4,75,3/4
+Skills Intermediate,George,Stoneham,0558148d-400e-4c60-9ad5-3228f6035b45,2026-08-24T18:14:10.067Z,1,4,25,1/4
+Skills Intermediate,Bruce,Taylor,9abdd834-124e-411b-b9eb-7d5bb13568b5,2025-11-24T19:19:16.675Z,4,4,100,4/4
+Skills Intermediate,Alexander,Tucker,d97b1ed1-cec9-4646-8be1-6bf67df916a7,2026-08-24T18:13:48.132Z,4,4,100,4/4
+Skills Intermediate,Emilia,Turner,9ce7d082-2a77-4d1e-a779-ddefcf2baf1a,2025-11-24T19:19:16.675Z,1,4,25,1/4

@@ -28,3 +28,17 @@ mtime_ms = 1789205108678
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:c07e8f38-2bce-41f2-ade1-330464a3fee3/533f912a-ffe5-4722-808b-acefccd64368/08ba414c-7614-471e-ba70-c07f064046dd"
 storage_version_token = "1789205131678747"
 content_type = "text/csv"
+
+[[outputs]]
+id = "ag-BaP4ejFibrhb98j6_Y"
+uri = "file://reports/projected-attendance-card-after-deduplication-2026-09-12.csv"
+type = "table"
+title = "Projected attendance card after duplicate cleanup"
+description = "Every active swimmer grouped by current squad, with the projected attended/recorded fraction after counting each swimmer-session once. Includes swimmers the current card would omit because they have zero recorded sessions."
+logical_id = "978ab876-d1fc-42f1-a574-2de694b0b439"
+content_hash = "sha256:703c83b2feccba420b0a3bc7efa91553eb477aa7938d301840c56e858eee5b8d"
+size = 23558
+mtime_ms = 1789205633654
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:c07e8f38-2bce-41f2-ade1-330464a3fee3/978ab876-d1fc-42f1-a574-2de694b0b439/c0dcbfdf-28ce-420c-87b5-548db807a373"
+storage_version_token = "1789205678190870"
+content_type = "text/csv"
