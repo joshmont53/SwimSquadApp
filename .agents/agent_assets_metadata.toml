@@ -6,9 +6,25 @@ id = "XSm8V6ISKOIsbN6s9PyxG"
 uri = "file://privacy_documents/privacy_policy_coaches.md"
 type = "text"
 title = "Updated: Privacy Policy (Swim Squad, Coach-Facing)"
+logical_id = "c16a4a4a-cddc-4575-bd34-2bd1d42a83f1"
 
 [[outputs]]
 id = "yc1-CQp_FZrhtnW-Y7H3p"
 uri = "file://privacy_documents/data_notice_parents_swimmers.md"
 type = "text"
 title = "Updated: Data Notice for Parents and Swimmers"
+logical_id = "bc6ed833-03f1-41c2-bbf9-67d5560581e4"
+
+[[outputs]]
+id = "ZHb6PqXhM6Yo-7RYlNCxt"
+uri = "file://reports/attendance-duplicate-audit-2026-09-12.csv"
+type = "table"
+title = "Production attendance duplicate audit"
+description = "Every active duplicate attendance row, grouped by squad/session/swimmer, with a deterministic KEEP or DEACTIVATE recommendation. Production data was not changed."
+logical_id = "533f912a-ffe5-4722-808b-acefccd64368"
+content_hash = "sha256:2e88e5f4602638d4b5a425d600f9143b5cee2722aefe8e95aca71b7127929142"
+size = 369983
+mtime_ms = 1789205108678
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:c07e8f38-2bce-41f2-ade1-330464a3fee3/533f912a-ffe5-4722-808b-acefccd64368/08ba414c-7614-471e-ba70-c07f064046dd"
+storage_version_token = "1789205131678747"
+content_type = "text/csv"
