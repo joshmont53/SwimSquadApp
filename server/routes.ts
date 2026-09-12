@@ -1722,29 +1722,59 @@ Note on definitions:
     }
   });
 
-  app.post("/api/attendance/:sessionId", requireAuth, async (req, res) => {
+  app.post("/api/attendance/:sessionId", requireAuth, async (req: any, res) => {
     try {
       const { attendance: attendanceData } = req.body;
-      
-      // Delete existing attendance for this session
-      await storage.deleteAttendanceBySession(req.params.sessionId);
-      
-      // Create new attendance records
-      const createdRecords = [];
-      for (const record of attendanceData) {
+
+      const session = await storage.getSessionForClub(req.params.sessionId, req.user.clubId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      if (!Array.isArray(attendanceData)) {
+        return res.status(400).json({ message: "Attendance must be an array" });
+      }
+
+      const [clubSwimmers, linkedSessionSquads] = await Promise.all([
+        storage.getSwimmers(req.user.clubId),
+        storage.getSessionSquads(req.params.sessionId, req.user.clubId),
+      ]);
+      const allowedSquadIds = new Set([
+        session.squadId,
+        ...linkedSessionSquads.map((mapping) => mapping.squadId),
+      ]);
+      const allowedSwimmerIds = new Set(
+        clubSwimmers
+          .filter((swimmer) => allowedSquadIds.has(swimmer.squadId))
+          .map((swimmer) => swimmer.id),
+      );
+
+      const swimmerIds = new Set<string>();
+      const validatedRecords = attendanceData.map((record) => {
+        if (!allowedSwimmerIds.has(record.swimmerId)) {
+          throw new Error("Attendance contains a swimmer who is not in this session's squads");
+        }
+        if (swimmerIds.has(record.swimmerId)) {
+          throw new Error("Attendance contains the same swimmer more than once");
+        }
+        swimmerIds.add(record.swimmerId);
+
         // Validate that notes is null when status is Absent
         const notes = record.status === "Absent" ? null : (record.notes || null);
-        
-        const validatedData = insertAttendanceSchema.parse({
+
+        return insertAttendanceSchema.parse({
           sessionId: req.params.sessionId,
           swimmerId: record.swimmerId,
           status: record.status,
           notes: notes,
         });
-        const attendance = await storage.createAttendance(validatedData);
-        createdRecords.push(attendance);
-      }
-      
+      });
+
+      const createdRecords = await storage.replaceAttendanceBySession(
+        req.params.sessionId,
+        validatedRecords,
+      );
+
       res.json(createdRecords);
     } catch (error: any) {
       console.error("Error saving attendance:", error);

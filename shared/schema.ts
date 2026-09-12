@@ -14,6 +14,7 @@ import {
   text,
   boolean,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -336,7 +337,11 @@ export const attendance = pgTable("attendance", {
   notes: varchar("notes"), // "Late" | "Very Late" | null (timeliness indicator)
   recordStatus: varchar("record_status").notNull().default("active"), // "active" | "inactive"
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("attendance_active_session_swimmer_unique")
+    .on(table.sessionId, table.swimmerId)
+    .where(sql`${table.recordStatus} = 'active'`),
+]);
 
 export const attendanceRelations = relations(attendance, ({ one }) => ({
   session: one(swimmingSessions, {

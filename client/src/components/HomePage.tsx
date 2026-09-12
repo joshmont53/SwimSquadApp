@@ -55,6 +55,29 @@ interface HomePageProps {
   onNavigateToSwimmerProfile: (swimmer: Swimmer) => void;
 }
 
+function newestAttendanceBySession(records: Attendance[]): Attendance[] {
+  const bySession = new Map<string, Attendance>();
+
+  for (const record of records) {
+    const existing = bySession.get(record.sessionId);
+    if (!existing) {
+      bySession.set(record.sessionId, record);
+      continue;
+    }
+
+    const recordCreatedAt = new Date(record.createdAt ?? 0).getTime();
+    const existingCreatedAt = new Date(existing.createdAt ?? 0).getTime();
+    if (
+      recordCreatedAt > existingCreatedAt ||
+      (recordCreatedAt === existingCreatedAt && record.id > existing.id)
+    ) {
+      bySession.set(record.sessionId, record);
+    }
+  }
+
+  return Array.from(bySession.values());
+}
+
 export function HomePage({ 
   coach, 
   sessions, 
@@ -294,9 +317,11 @@ export function HomePage({
     
     return squadSwimmers.map(swimmer => {
       // Get attendance records for this swimmer in current month sessions
-      const swimmerAttendanceRecords = attendance.filter(a => 
-        a.swimmerId === swimmer.id && 
-        currentMonthSessions.some(s => s.id === a.sessionId)
+      const swimmerAttendanceRecords = newestAttendanceBySession(
+        attendance.filter(a =>
+          a.swimmerId === swimmer.id &&
+          currentMonthSessions.some(s => s.id === a.sessionId)
+        )
       );
       
       const total = swimmerAttendanceRecords.length;
@@ -334,9 +359,11 @@ export function HomePage({
     });
     
     const swimmerStats = squadSwimmers.map(swimmer => {
-      const swimmerAttendanceRecords = attendance.filter(a => 
-        a.swimmerId === swimmer.id && 
-        lastMonthSessions.some(s => s.id === a.sessionId)
+      const swimmerAttendanceRecords = newestAttendanceBySession(
+        attendance.filter(a =>
+          a.swimmerId === swimmer.id &&
+          lastMonthSessions.some(s => s.id === a.sessionId)
+        )
       );
       
       const total = swimmerAttendanceRecords.length;

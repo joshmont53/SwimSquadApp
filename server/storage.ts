@@ -194,6 +194,7 @@ export interface IStorage {
   getAttendanceBySession(sessionId: string, clubId?: string): Promise<Attendance[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
   deleteAttendanceBySession(sessionId: string): Promise<void>;
+  replaceAttendanceBySession(sessionId: string, records: InsertAttendance[]): Promise<Attendance[]>;
   
   // Invitation operations (for email/password auth)
   createInvitation(invitation: InsertAuthorizedInvitation): Promise<AuthorizedInvitation>;
@@ -820,6 +821,27 @@ export class DatabaseStorage implements IStorage {
       .update(attendance)
       .set({ recordStatus: 'inactive' })
       .where(eq(attendance.sessionId, sessionId));
+  }
+
+  async replaceAttendanceBySession(sessionId: string, records: InsertAttendance[]): Promise<Attendance[]> {
+    return db.transaction(async (tx) => {
+      // Serialize complete-register replacements for this session across all
+      // browsers/devices before touching the existing attendance rows.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${sessionId}, 0))`,
+      );
+
+      await tx
+        .update(attendance)
+        .set({ recordStatus: 'inactive' })
+        .where(eq(attendance.sessionId, sessionId));
+
+      if (records.length === 0) {
+        return [];
+      }
+
+      return await tx.insert(attendance).values(records).returning();
+    });
   }
 
   // New Email/Password Auth operations

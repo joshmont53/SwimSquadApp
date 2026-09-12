@@ -643,6 +643,7 @@ export function SessionDetail({
   };
 
   const handleSaveAttendance = () => {
+    if (updateAttendanceMutation.isPending) return;
     updateAttendanceMutation.mutate(attendanceRecords);
   };
 
@@ -1326,9 +1327,14 @@ export function SessionDetail({
                   <UserX className="h-4 w-4 mr-2" />
                   {allMarkedAbsent ? 'Mark All Present' : 'Mark All Absent'}
                 </Button>
-                <Button onClick={handleSaveAttendance} size="sm" data-testid="button-save-attendance">
+                <Button
+                  onClick={handleSaveAttendance}
+                  size="sm"
+                  disabled={updateAttendanceMutation.isPending}
+                  data-testid="button-save-attendance"
+                >
                   <Save className="h-4 w-4 mr-2" />
-                  Save Attendance
+                  {updateAttendanceMutation.isPending ? 'Saving…' : 'Save Attendance'}
                 </Button>
               </div>
             </div>
